@@ -7,7 +7,11 @@
 		{
 			"Name": "BulletAnt",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"GeometryFramework"
+			]
 		}
 	],
 	"Plugins": [
