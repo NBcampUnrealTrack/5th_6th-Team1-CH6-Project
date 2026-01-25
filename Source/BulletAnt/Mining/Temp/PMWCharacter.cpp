@@ -95,7 +95,7 @@ void APMWCharacter::ExecuteMining()
 
 			if (IsValid(Ground) == true)
 			{
-				Ground->DigGround(HitResult.Location, 150.0f);
+				Ground->DigGround(HitResult.Location, 180.0f);
 
 				bCanMine = false;
 				GetWorldTimerManager().SetTimer(

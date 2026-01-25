@@ -10,6 +10,7 @@ void UVoxelGroundChunk::InitializeChunk(int32 InGridSize, float InVoxelSize, flo
 
 void UVoxelGroundChunk::UpdateMesh(const TArray<uint8>& DensityValues)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(UpdateMesh);
 	if (DensityValues.IsEmpty() == true)
 		return;
 
