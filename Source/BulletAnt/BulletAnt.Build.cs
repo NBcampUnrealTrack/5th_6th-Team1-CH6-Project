@@ -8,7 +8,10 @@ public class BulletAnt : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "GameplayAbilities", "GameplayTags", "GameplayTasks" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AnimGraphRuntime", "GameplayAbilities", "GameplayTags", "GameplayTasks" });
+
+		PublicIncludePaths.AddRange(new string[] {
+            "BulletAnt" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
