@@ -5,6 +5,7 @@
 #include "VoxelGround.generated.h"
 
 class UVoxelGroundChunk;
+struct FNeighborLOD;
 
 UENUM()
 enum class EChunkState
@@ -23,6 +24,8 @@ struct FVoxelGroundChunkData
 	EChunkState ChunkState = EChunkState::Ground;
 	UPROPERTY()
 	TArray<uint8> DensityValues;
+	UPROPERTY()
+	int32 LODLevel = 0;					// 0이 가장 정밀한 LOD
 };
 
 UCLASS()
@@ -35,6 +38,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
 	void DigGround(const FVector& WorldLocation, float Radius);
@@ -42,12 +46,23 @@ public:
 
 protected:
 	void InitializeGround();
-	void InitializeDensityPerChunk(int32 ChunkIdx);
+	void InitializeChunkData(int32 ChunkIdx);
 	void SpawnChunk(int32 ChunkIdx);
+
+	FVector GetPlayerLocation();					// 나중에 팀원들 전체 위치 가져오도록 수정
+	void CheckPlayerChunk(const FVector& PlayerLocation);
+	void UpdateNearByChunks(const FIntVector& PlayerChunkCoord);
+	UFUNCTION()
+	void UpdateChunkLODs();
 
 	int32 GetChunkIndex(int32 X, int32 Y, int32 Z) const;
 	FIntVector GetChunkCoord(int32 ChunkIdx) const;
 	FVector GetChunkOffset(int32 X, int32 Y, int32 Z) const;
+	int32 GetLODLevelByPlayer(const FIntVector& ChunkCoord, const FIntVector& PlayerChunkCoord);
+	int32 GetChunkLODLevel(const FIntVector& ChunkCoord);
+	int32 GetChunkLODLevel(int32 ChunkIdx);
+	FNeighborLOD GetNeighborLOD(const FIntVector& ChunkCoord);
+	FNeighborLOD GetNeighborLOD(int32 ChunkIdx);
 
 #pragma region GroundSetting
 
@@ -60,7 +75,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	float ChunkVoxelSize = 100.0f;		// 복셀 간격
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	uint8 IsoLevel = 100;				// 지표면 임계값
+	uint8 IsoLevel = 127;				// 지표면 임계값
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
+	float CaveScale = 0.0005f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
+	float CaveThreshold = 0.6f;
+
+	TArray<int32> LODDistance = { 1, 2, 3 };
 
 #pragma endregion
 
@@ -74,6 +96,9 @@ protected:
 	FIntVector ChunkRangeMin;
 	FIntVector ChunkRangeMax;
 	FIntVector GridWidth;
+
+	FIntVector LastPlayerChunkCoord;
+	FTimerHandle UpdateChunkLODTimerHandle;
 
 #pragma endregion
 };

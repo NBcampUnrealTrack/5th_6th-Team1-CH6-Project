@@ -85,7 +85,7 @@ void APMWCharacter::Input_LeftClick(const FInputActionValue& Value)
 void APMWCharacter::ExecuteMining()
 {
 	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + Camera->GetForwardVector() * 2000.0f;
+	FVector End = Start + Camera->GetForwardVector() * 700.0f;
 
 	FHitResult HitResult;
 	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility);
