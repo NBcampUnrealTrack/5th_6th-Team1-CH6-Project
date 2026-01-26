@@ -9,9 +9,6 @@ APMWPlayerController::APMWPlayerController() :
 void APMWPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	bShowMouseCursor = true;
-	SetInputMode(FInputModeGameAndUI());
 }
 
 void APMWPlayerController::SetupInputComponent()

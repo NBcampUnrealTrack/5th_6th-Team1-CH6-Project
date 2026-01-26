@@ -31,11 +31,12 @@ APMWCharacter::APMWCharacter()
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->SetUsingAbsoluteRotation(true);
 	SpringArm->TargetArmLength = 500.0f;
-	SpringArm->SetRelativeRotation(FRotator(-50.f, 0.f, 0.f));
+	SpringArm->bUsePawnControlRotation = true;
+	SpringArm->bInheritYaw = true;
+	SpringArm->bInheritPitch = true;
+	SpringArm->bInheritRoll = false;
 	SpringArm->bDoCollisionTest = false;
-	SpringArm->bEnableCameraLag = true;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
@@ -83,8 +84,11 @@ void APMWCharacter::Input_LeftClick(const FInputActionValue& Value)
 
 void APMWCharacter::ExecuteMining()
 {
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + Camera->GetForwardVector() * 2000.0f;
+
 	FHitResult HitResult;
-	bool bHit = GetController<APMWPlayerController>()->GetHitResultUnderCursor(ECC_Visibility, false, HitResult);
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility);
 	if (bHit)
 	{
 		AActor* HitActor = HitResult.GetActor();
