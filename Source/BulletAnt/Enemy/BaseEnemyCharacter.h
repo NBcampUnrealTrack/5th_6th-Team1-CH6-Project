@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "BaseEnemyCharacter.generated.h"
 
+class UStateTreeComponent;
+
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter
 {
@@ -21,6 +23,9 @@ protected:
 
 	
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStateTreeComponent> StateTreeComponent;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetCore;
 	
