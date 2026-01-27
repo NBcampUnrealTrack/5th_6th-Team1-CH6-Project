@@ -3,12 +3,13 @@
 
 #include "Building/BuildManagerComponent.h"
 #include "Building/BuildPreview.h"
-#include "Building/BuildManagerComponent.h"
 #include "Building/BaseBuilding.h"
+#include "Engine/OverlapResult.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+    SetComponentTickEnabled(false);
 }
 
 void UBuildManagerComponent::BeginPlay()
@@ -25,18 +26,11 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         return;
     }
 
-    AActor* OwnerActor = GetOwner();
-    if (!OwnerActor)
-    {
-        return;
-    }
-    APawn* PawnOwner = Cast<APawn>(OwnerActor);
-    if (!PawnOwner) 
-    {
-        return;
-    }
-    APlayerController* PC = Cast<APlayerController>(PawnOwner->GetController());
-    if (!PC) 
+    PreviewActor->SetCanPlace(false);
+
+    AActor* OwnerActor = CachedOwner.Get();
+    APlayerController* PC = CachedPC.Get();
+    if (!OwnerActor || !PC)
     {
         return;
     }
@@ -99,6 +93,9 @@ void UBuildManagerComponent::EnterBuildMode()
     bBuildMode = true;
     CurrentData = DefaultBuildData;
 
+    RefreshCachedRef();
+    SetComponentTickEnabled(true);
+
     UWorld* World = GetWorld();
     if (!World)
     {
@@ -116,6 +113,10 @@ void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
     CurrentData = nullptr;
+
+    SetComponentTickEnabled(false);
+    CachedOwner = nullptr;
+    CachedPC = nullptr;
 
     if (PreviewActor)
     {
@@ -164,7 +165,65 @@ void UBuildManagerComponent::TryPlace()
 
 bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, float Radius) const
 {
-    // 임시
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return false;
+    }
+
+    const float UseRadius = FMath::Max(5.f, Radius);
+
+    FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildOverlap), false);
+    if (PreviewActor) 
+    {
+        Params.AddIgnoredActor(PreviewActor);
+    }
+
+    FCollisionObjectQueryParams ObjParams;
+    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
+    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+    ObjParams.AddObjectTypesToQuery(ECC_Pawn);
+
+    TArray<FOverlapResult> Overlaps;
+    const bool bAnyOverlap = World->OverlapMultiByObjectType(
+        Overlaps,
+        Location,
+        FQuat::Identity,
+        ObjParams,
+        FCollisionShape::MakeSphere(UseRadius),
+        Params
+    );
+
+    DrawDebugSphere(World, Location, UseRadius, 16, bAnyOverlap ? FColor::Red : FColor::Green, false, 0.f, 0, 1.f);
+
+    if (!bAnyOverlap)
+    {
+        return true;
+    }
+
+    for (const FOverlapResult& R : Overlaps)
+    {
+        AActor* Other = R.GetActor();
+        if (!Other) 
+        {
+            continue;
+        }
+
+        if (Other->ActorHasTag("Ground")) 
+        {
+            continue;
+        }
+
+        return false;
+    }
+
     return true;
+}
+
+void UBuildManagerComponent::RefreshCachedRef()
+{
+    CachedOwner = GetOwner();
+    APawn* OwnerPawn = Cast<APawn>(CachedOwner.Get());
+    CachedPC = OwnerPawn ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
 }
 

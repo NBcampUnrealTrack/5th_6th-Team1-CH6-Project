@@ -39,6 +39,8 @@ public:
 private:
 	bool CheckCanPlaceAt(const FVector& Location, float Radius) const;
 
+	void RefreshCachedRef();
+
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Test")
 	UBuildingData* DefaultBuildData = nullptr;
@@ -53,4 +55,10 @@ private:
 	ABuildPreview* PreviewActor = nullptr;
 
 	bool bBuildMode = false;
+
+	UPROPERTY()
+	TWeakObjectPtr<AActor> CachedOwner;
+
+	UPROPERTY()
+	TWeakObjectPtr<APlayerController> CachedPC;
 };
