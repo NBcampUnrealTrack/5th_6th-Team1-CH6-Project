@@ -17,6 +17,7 @@ public:
 protected:	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	
 	void SetSpawnDataTable();
 	void StartWave();

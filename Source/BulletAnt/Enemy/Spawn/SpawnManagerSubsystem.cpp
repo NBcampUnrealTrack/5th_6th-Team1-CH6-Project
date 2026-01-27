@@ -19,10 +19,6 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	checkf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL"));
 	GetWorld()->GetTimerManager().SetTimer(SpawnTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
-	
-	// TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
-	//
-	// UE_LOG(LogTemp, Warning, TEXT("Subsystem Initialize, StartTime : %f, TargetActor Name : %s"), WorldStartTime, *TargetActor->GetName())
 }
 
 void USpawnManagerSubsystem::Deinitialize()
@@ -33,6 +29,31 @@ void USpawnManagerSubsystem::Deinitialize()
 	{
 		GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 	}
+}
+
+bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	if (!Super::ShouldCreateSubsystem(Outer))
+	{
+		return false;
+	}
+
+	UWorld* World = Cast<UWorld>(Outer);
+	if (IsValid((World)))
+	{
+		if (!(World->IsGameWorld() || World->IsPlayInEditor()))
+		{
+			return false;
+		}
+
+		FString LevelName = World->GetMapName();
+		if (LevelName.Contains(TEXT("TestMap")))
+		{
+			return true; 
+		}
+	}
+
+	return false;
 }
 
 void USpawnManagerSubsystem::SetSpawnDataTable()
@@ -51,7 +72,10 @@ void USpawnManagerSubsystem::StartWave()
 	
 	if (TargetActor == nullptr)
 	{
-		TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
+		if (IsValid(GetWorld()->GetFirstPlayerController()))
+		{
+			TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
+		}
 	}
 	
 	if (IsValid(SpawnDataTable) == false)
@@ -66,11 +90,22 @@ void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 {
 	if (IsValid(SpawnDataTable) == false)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
 		return;
 	}
-
+	if (IsValid(TargetActor) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : TargetActor Error"));
+		return;
+	}
+	
 	static const FString ContextString(TEXT("EnemySpawnContext"));
 	FEnemySpawnerEntry* Row = SpawnDataTable->FindRow<FEnemySpawnerEntry>(FName(TEXT("Wave1")), ContextString);
+	if (Row == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : Row Error"));
+		return;
+	}
 	
 	for (int32 i = 0; i < Row->SpawnEnemyDataArray.Num(); i++)
 	{
@@ -85,12 +120,16 @@ void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 			
 		for (int32 j = 0; j < Count; j++)
 		{
-			int32 SpawnX = FMath::RandRange(MinDistance, MaxDistance) + TargetActor->GetActorLocation().X;
-			int32 SpawnY = FMath::RandRange(MinDistance, MaxDistance) + TargetActor->GetActorLocation().Y;
+			FVector RandomDirection = FMath::VRand();
+			RandomDirection.Z = 0.0f; 
+			RandomDirection.Normalize();
+			float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
+			
+			FVector SpawnLocation = TargetActor->GetActorLocation() + (RandomDirection * RandomDistance);
 			
 			ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
 				EnemyClass,
-				FVector(SpawnX, SpawnY, TargetActor->GetActorLocation().Z),
+				SpawnLocation,
 				FRotator::ZeroRotator
 			);
 		}
