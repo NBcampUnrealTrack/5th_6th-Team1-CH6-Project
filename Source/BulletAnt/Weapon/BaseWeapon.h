@@ -25,7 +25,6 @@ public:
 
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
 	FORCEINLINE UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
-	FORCEINLINE FName GetMuzzleSocketName() const { return MuzzleSocketName; }
 	FORCEINLINE FGameplayTag GetWeaponTag() const { return WeaponTag; }
 
 protected:
@@ -43,7 +42,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")
 	TObjectPtr<UWeaponDataAsset> WeaponData;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")
-	FName MuzzleSocketName;
 };

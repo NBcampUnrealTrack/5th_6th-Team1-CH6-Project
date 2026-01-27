@@ -8,6 +8,7 @@
 
 class ABaseWeapon;
 class UGameplayEffect;
+class URangedWeaponDataAsset;
 
 UCLASS()
 class BULLETANT_API UGA_Fire : public UGameplayAbility
@@ -22,6 +23,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Fire")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Data")
+	TObjectPtr<URangedWeaponDataAsset> WeaponData;
+
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -29,9 +33,10 @@ protected:
 		const FGameplayEventData* TriggerEventData
 	) override;
 
-	void ServerFire(const FGameplayAbilityActorInfo* ActorInfo);
+	void FireOnce(const FGameplayAbilityActorInfo* ActorInfo);
 
-	FVector GetTraceStart(const AActor* AvatarActor, ABaseWeapon* Weapon) const;
-	FVector GetTraceEnd(const FVector& Start, float Range) const;
+	void ApplyDamageEffect(const FGameplayAbilityActorInfo* ActorInfo,
+		AActor* Target,
+		float Damage);
 	
 };

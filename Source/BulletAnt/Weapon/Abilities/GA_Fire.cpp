@@ -1,12 +1,13 @@
 ﻿#include "GA_Fire.h"
 
-#include "BulletAnt/Weapon/BaseWeapon.h"
+#include "BulletAnt/Weapon/BaseRangedWeapon.h"
 #include "BulletAnt/Weapon/Data/WeaponDataAsset.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/Actor.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
+#include "Weapon/Data/RangedWeaponDataAsset.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -27,93 +28,82 @@ void UGA_Fire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-
-	ServerFire(ActorInfo);
+	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
+	FireOnce(ActorInfo);
 
 	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
 }
 
-void UGA_Fire::ServerFire(const FGameplayAbilityActorInfo* ActorInfo)
+void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
-	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
-	if (!AvatarActor) return;
+	if (!ActorInfo) return;
 
-	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!ASC) return;
+	AActor* SourceActor = ActorInfo->AvatarActor.Get();
+	if (!SourceActor) return;
 
-	UObject* SourceObj = GetCurrentSourceObject();
-	ABaseWeapon* Weapon = Cast<ABaseWeapon>(SourceObj);
-	if (!Weapon || !Weapon->GetWeaponData()) return;
+	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
+	if (!FireStart) return;
 
-	float Range = Weapon->GetWeaponData()->Range;
-	float Damage = Weapon->GetWeaponData()->BaseDamage;
+	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(WeaponData);
+	if (!RangedData) return;
 
-	FVector TraceStart = GetTraceStart(AvatarActor, Weapon);
-	FVector TraceEnd = GetTraceEnd(TraceStart, Range);
+	const FVector Start = FireStart->GetFireStartLocation();
+	const FVector End = Start + FireStart->GetFireDirection() * RangedData->Range;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(AvatarActor);
+	Params.AddIgnoredActor(SourceActor);
 
-	bool bHit = AvatarActor->GetWorld()->LineTraceSingleByChannel(
+	bool bHit = SourceActor->GetWorld()->LineTraceSingleByChannel(
 		Hit,
-		TraceStart,
-		TraceEnd,
+		Start,
+		End,
 		ECC_Visibility,
 		Params
 	);
 
 #if WITH_EDITOR
 	DrawDebugLine(
-		AvatarActor->GetWorld(),
-		TraceStart,
-		bHit ? Hit.ImpactPoint : TraceEnd,
+		SourceActor->GetWorld(),
+		Start,
+		bHit ? Hit.ImpactPoint : End,
 		FColor::Red,
 		false,
-		1.0f,
+		1.f,
 		0,
-		1.0f
+		1.f
 	);
 #endif
 
 	if (!bHit) return;
 
-	AActor* HitActor = Hit.GetActor();
-	if (!HitActor) return;
-
-	if (!DamageEffectClass) return;
-
-	FGameplayEffectSpecHandle SpecHandle =
-		ASC->MakeOutgoingSpec(DamageEffectClass, 1.f, ASC->MakeEffectContext());
-
-	if (SpecHandle.IsValid())
-	{
-		SpecHandle.Data->SetSetByCallerMagnitude(
-			FGameplayTag::RequestGameplayTag(TEXT("Data.Damage")),
-			Damage
-		);
-
-		ASC->ApplyGameplayEffectSpecToTarget(
-			*SpecHandle.Data.Get(),
-			HitActor->FindComponentByClass<UAbilitySystemComponent>()
-		);
-	}
+	ApplyDamageEffect(ActorInfo, Hit.GetActor(), RangedData->BaseDamage);
 }
 
-FVector UGA_Fire::GetTraceStart(const AActor* AvatarActor, ABaseWeapon* Weapon) const
+void UGA_Fire::ApplyDamageEffect(
+	const FGameplayAbilityActorInfo* ActorInfo,
+	AActor* Target,
+	float Damage)
 {
-	UCameraComponent* Camera = AvatarActor->FindComponentByClass<UCameraComponent>();
-	if (Camera)
-	{
-		return Camera->GetComponentLocation();
-	}
+	if (!Target) return;
 
-	return Weapon->GetWeaponMesh()->GetSocketLocation(
-		Weapon->GetMuzzleSocketName()
+	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!SourceASC) return;
+
+	UAbilitySystemComponent* TargetASC =
+		Target->FindComponentByClass<UAbilitySystemComponent>();
+	if (!TargetASC) return;
+
+	FGameplayEffectSpecHandle Spec =
+		SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.f, SourceASC->MakeEffectContext());
+
+	if (!Spec.IsValid()) return;
+
+	Spec.Data->SetSetByCallerMagnitude(
+		FGameplayTag::RequestGameplayTag(TEXT("Data.Damage")),
+		Damage
 	);
+
+	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
 }
 
-FVector UGA_Fire::GetTraceEnd(const FVector& Start, float Range) const
-{
-	return Start + (GetAvatarActorFromActorInfo()->GetActorForwardVector() * Range);
-}

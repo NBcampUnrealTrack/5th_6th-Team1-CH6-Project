@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Player/BACharacter.h"
@@ -8,32 +8,42 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "AbilitySystemComponent.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "Weapon/Rifle/WeaponRifle.h"
 
 // Sets default values
 ABACharacter::ABACharacter()
 {
-    // Tick ¼³Á¤
+    // Tick ì„¤ì •
     PrimaryActorTick.bCanEverTick = true;
 
-    // È¸Àü ¼³Á¤: Ä³¸¯ÅÍ´Â ÄÁÆ®·Ñ·¯ È¸ÀüÀ» ¹Ù·Î µû¶ó°¡Áö ¾ÊÀ½ (Ä«¸Ş¶ó¸¸ µû¶ó°¨)
+    // íšŒì „ ì„¤ì •: ìºë¦­í„°ëŠ” ì»¨íŠ¸ë¡¤ëŸ¬ íšŒì „ì„ ë°”ë¡œ ë”°ë¼ê°€ì§€ ì•ŠìŒ (ì¹´ë©”ë¼ë§Œ ë”°ë¼ê°)
     bUseControllerRotationPitch = false;
     bUseControllerRotationYaw = false;
     bUseControllerRotationRoll = false;
 
-    // ÀÌµ¿ ÄÄÆ÷³ÍÆ® ¼³Á¤: ÀÌµ¿ ¹æÇâÀ¸·Î Ä³¸¯ÅÍ°¡ ÀÚµ¿À¸·Î È¸ÀüÇÏµµ·Ï ÇÔ
+    // ì´ë™ ì»´í¬ë„ŒíŠ¸ ì„¤ì •: ì´ë™ ë°©í–¥ìœ¼ë¡œ ìºë¦­í„°ê°€ ìë™ìœ¼ë¡œ íšŒì „í•˜ë„ë¡ í•¨
     GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // È¸Àü ¼Óµµ
+    GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // íšŒì „ ì†ë„
 
-    // ½ºÇÁ¸µ ¾Ï »ı¼º ¹× ¼³Á¤
+    // ìŠ¤í”„ë§ ì•” ìƒì„± ë° ì„¤ì •
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
     CameraBoom->TargetArmLength = 400.0f;
     CameraBoom->bUsePawnControlRotation = true;
 
-    // Ä«¸Ş¶ó »ı¼º ¹× ¼³Á¤
+    // ì¹´ë©”ë¼ ìƒì„± ë° ì„¤ì •
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+    
+    //GAS
+    AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+    AbilitySystemComponent->SetIsReplicated(true);
+    AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+    //Test
 }
 
 // Called when the game starts or when spawned
@@ -49,57 +59,62 @@ void ABACharacter::Tick(float DeltaTime)
 
 }
 
-// ÀÔ·Â ¹ÙÀÎµù (¿©±â°¡ ÇÙ½É!)
+// ì…ë ¥ ë°”ì¸ë”© (ì—¬ê¸°ê°€ í•µì‹¬!)
 void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
-        // Á¡ÇÁ (Character ±âº» Á¦°ø ÇÔ¼ö »ç¿ë)
+        // ì í”„ (Character ê¸°ë³¸ ì œê³µ í•¨ìˆ˜ ì‚¬ìš©)
         if(JumpAction)
         {
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
         }
 
-        // ÀÌµ¿
+        // ì´ë™
         if(MoveAction)
         {
             EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABACharacter::Move);
         }
 
-        // ½Ã¼± Ã³¸® (¸¶¿ì½º)
+        // ì‹œì„  ì²˜ë¦¬ (ë§ˆìš°ìŠ¤)
         if(LookAction)
         {
             EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABACharacter::Look);
         }
+
+        if (AttackAction)
+        {
+            EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::Attack);
+        }
     }
 }
 
-// ÀÌµ¿ ÇÔ¼ö ±¸Çö
+// ì´ë™ í•¨ìˆ˜ êµ¬í˜„
 void ABACharacter::Move(const FInputActionValue& Value)
 {
     FVector2D MovementVector = Value.Get<FVector2D>();
     if (Controller != nullptr)
     {
-        // ÄÁÆ®·Ñ·¯°¡ º¸°í ÀÖ´Â ¹æÇâ(Yaw)À» ¾Ë¾Æ³¿
+        // ì»¨íŠ¸ë¡¤ëŸ¬ê°€ ë³´ê³  ìˆëŠ” ë°©í–¥(Yaw)ì„ ì•Œì•„ëƒ„
         const FRotator Rotation = Controller->GetControlRotation();
         const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-        // Àü¹æ ¹æÇâ (W/S) °è»ê
+        // ì „ë°© ë°©í–¥ (W/S) ê³„ì‚°
         const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-        // ¿ìÃø ¹æÇâ (A/D) °è»ê
+        // ìš°ì¸¡ ë°©í–¥ (A/D) ê³„ì‚°
         const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-        // ÀÌµ¿ Àû¿ë
+        // ì´ë™ ì ìš©
         AddMovementInput(ForwardDirection, MovementVector.Y);
         AddMovementInput(RightDirection, MovementVector.X);
     }
 }
 
-// ½Ã¼± Ã³¸® ÇÔ¼ö ±¸Çö
+// ì‹œì„  ì²˜ë¦¬ í•¨ìˆ˜ êµ¬í˜„
 void ABACharacter::Look(const FInputActionValue& Value)
 {
     FVector2D LookAxisVector = Value.Get<FVector2D>();
@@ -109,4 +124,90 @@ void ABACharacter::Look(const FInputActionValue& Value)
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
     }
+}
+
+void ABACharacter::Attack(const FInputActionValue& Value)
+{
+    if (!AbilitySystemComponent) return;
+
+    UE_LOG(LogTemp, Error, TEXT("Attack"));
+
+    FGameplayTagContainer Tag;
+    Tag.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Weapon.Fire")));
+
+    AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
+UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
+{
+    return AbilitySystemComponent;
+}
+
+void ABACharacter::PossessedBy(AController* NewController)
+{
+    Super::PossessedBy(NewController);
+
+    if (AbilitySystemComponent)
+    {
+        AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+        if (HasAuthority())
+        {
+            for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+            {
+                if (AbilityClass)
+                {
+                    FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+                    AbilitySystemComponent->GiveAbility(Spec);
+                }
+            }
+        }
+
+        AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+            .AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+    }
+
+    if (DefaultWeaponClass)
+    {
+        EquipWeapon(DefaultWeaponClass);
+    }
+}
+
+void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
+{
+    OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
+}
+
+void ABACharacter::EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass)
+{
+    if (!HasAuthority()) return;
+    if (!WeaponClass) return;
+
+    if (EquippedWeapon)
+    {
+        EquippedWeapon->UnequipWeapon(AbilitySystemComponent);
+        EquippedWeapon->Destroy();
+        EquippedWeapon = nullptr;
+    }
+
+    FActorSpawnParameters Params;
+    Params.Owner = this;
+    Params.Instigator = this;
+
+    ABaseWeapon* NewWeapon = GetWorld()->SpawnActor<ABaseWeapon>(
+        WeaponClass,
+        Params
+    );
+
+    if (!NewWeapon) return;
+
+    NewWeapon->AttachToComponent(
+        GetMesh(),
+        FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+        TEXT("WeaponSocket")
+    );
+
+    NewWeapon->EquipWeapon(AbilitySystemComponent);
+
+    EquippedWeapon = NewWeapon;
 }
