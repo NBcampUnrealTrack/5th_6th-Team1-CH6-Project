@@ -4,16 +4,22 @@
 #include "BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
 
-// Sets default values
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Data Asset이나 SpawnerManager가 할당해주기
+	AcceptanceRadius = 100.0f;
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	
 	PrimaryActorTick.bCanEverTick = false;
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 }
 
-// Called when the game starts or when spawned
+const AActor& ABaseEnemyCharacter::GetTargetActor() const
+{
+	return *TargetActor;
+}
+
 void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();

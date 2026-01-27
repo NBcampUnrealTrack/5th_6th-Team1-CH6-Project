@@ -23,7 +23,7 @@ public class BulletAnt : ModuleRules
 			"GameplayTasks",
 			
 			// AI
-			"StateTreeModule",
+			"AIModule", "StateTreeModule",
 			"GameplayStateTreeModule",
 			"NavigationSystem",
 			"MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassSpawner", "MassActors",
