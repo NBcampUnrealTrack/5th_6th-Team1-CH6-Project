@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Player/BACharacter.h"
@@ -12,25 +12,25 @@
 // Sets default values
 ABACharacter::ABACharacter()
 {
-    // Tick ¼³Á¤
+    // Tick ì„¤ì •
     PrimaryActorTick.bCanEverTick = true;
 
-    // È¸Àü ¼³Á¤: Ä³¸¯ÅÍ´Â ÄÁÆ®·Ñ·¯ È¸ÀüÀ» ¹Ù·Î µû¶ó°¡Áö ¾ÊÀ½ (Ä«¸Ş¶ó¸¸ µû¶ó°¨)
+    // ìºë¦­í„° íšŒì „ ì„¤ì •
     bUseControllerRotationPitch = false;
     bUseControllerRotationYaw = false;
     bUseControllerRotationRoll = false;
 
-    // ÀÌµ¿ ÄÄÆ÷³ÍÆ® ¼³Á¤: ÀÌµ¿ ¹æÇâÀ¸·Î Ä³¸¯ÅÍ°¡ ÀÚµ¿À¸·Î È¸ÀüÇÏµµ·Ï ÇÔ
+    // ì´ë™ ì»´í¬ë„ŒíŠ¸ ì„¤ì •
     GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // È¸Àü ¼Óµµ
+    GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // íšŒì „ ì†ë„
 
-    // ½ºÇÁ¸µ ¾Ï »ı¼º ¹× ¼³Á¤
+    // ìŠ¤í”„ë§ ì•” ìƒì„± ë° ì„¤ì •
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
     CameraBoom->TargetArmLength = 400.0f;
     CameraBoom->bUsePawnControlRotation = true;
 
-    // Ä«¸Ş¶ó »ı¼º ¹× ¼³Á¤
+    // ì¹´ë©”ë¼ ìƒì„± ë° ì„¤ì •
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
@@ -49,57 +49,70 @@ void ABACharacter::Tick(float DeltaTime)
 
 }
 
-// ÀÔ·Â ¹ÙÀÎµù (¿©±â°¡ ÇÙ½É!)
+// ì…ë ¥ ë°”ì¸ë”©
 void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
-        // Á¡ÇÁ (Character ±âº» Á¦°ø ÇÔ¼ö »ç¿ë)
+        // ì í”„
         if(JumpAction)
         {
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
         }
 
-        // ÀÌµ¿
+        // ì´ë™
         if(MoveAction)
         {
             EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABACharacter::Move);
         }
 
-        // ½Ã¼± Ã³¸® (¸¶¿ì½º)
+        // ì‹œì„  ì²˜ë¦¬ (ë§ˆìš°ìŠ¤)
         if(LookAction)
         {
             EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABACharacter::Look);
         }
+
+        // ì¡°ì¤€
+        if (AimAction)
+        {
+            EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ABACharacter::AimStart);
+            EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ABACharacter::AimStop);
+        }
+
+        //ìƒí˜¸ì‘ìš©
+        if (InteractionAction)
+        {
+            EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Triggered, this, &ABACharacter::Interaction);
+        }
     }
 }
 
-// ÀÌµ¿ ÇÔ¼ö ±¸Çö
+// ì´ë™ í•¨ìˆ˜ êµ¬í˜„
 void ABACharacter::Move(const FInputActionValue& Value)
 {
     FVector2D MovementVector = Value.Get<FVector2D>();
     if (Controller != nullptr)
     {
-        // ÄÁÆ®·Ñ·¯°¡ º¸°í ÀÖ´Â ¹æÇâ(Yaw)À» ¾Ë¾Æ³¿
+        // ì»¨íŠ¸ë¡¤ëŸ¬ê°€ ë³´ê³  ìˆëŠ” ë°©í–¥(Yaw)ì„ ì•Œì•„ëƒ„
         const FRotator Rotation = Controller->GetControlRotation();
         const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-        // Àü¹æ ¹æÇâ (W/S) °è»ê
+        // ì „ë°© ë°©í–¥ (W/S) ê³„ì‚°
         const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-        // ¿ìÃø ¹æÇâ (A/D) °è»ê
+        // ìš°ì¸¡ ë°©í–¥ (A/D) ê³„ì‚°
         const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-        // ÀÌµ¿ Àû¿ë
+        // ì´ë™ ì ìš©
         AddMovementInput(ForwardDirection, MovementVector.Y);
         AddMovementInput(RightDirection, MovementVector.X);
     }
 }
 
-// ½Ã¼± Ã³¸® ÇÔ¼ö ±¸Çö
+// ì‹œì„  ì²˜ë¦¬ í•¨ìˆ˜ êµ¬í˜„
 void ABACharacter::Look(const FInputActionValue& Value)
 {
     FVector2D LookAxisVector = Value.Get<FVector2D>();
@@ -109,4 +122,33 @@ void ABACharacter::Look(const FInputActionValue& Value)
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
     }
+}
+
+//ì¡°ì¤€ ì‹œì‘
+void ABACharacter::AimStart(const FInputActionValue& Value)
+{
+    bIsAiming = true;
+
+    //ìºë¦­í„° íšŒì „ ê³ ì •
+    bUseControllerRotationYaw = true;
+
+    GetCharacterMovement() -> bOrientRotationToMovement = false;
+    GetCharacterMovement()->MaxWalkSpeed = 300.f;
+}
+
+//ì¡°ì¤€ ë
+void ABACharacter::AimStop(const FInputActionValue& Value)
+{
+    bIsAiming = false;
+
+    //ìºë¦­í„° íšŒì „ ê³ ì •
+    bUseControllerRotationYaw = false;
+
+    GetCharacterMovement()->bOrientRotationToMovement = true;
+    GetCharacterMovement()->MaxWalkSpeed = 600.f;
+}
+
+void ABACharacter::Interaction(const FInputActionValue& Value)
+{
+
 }

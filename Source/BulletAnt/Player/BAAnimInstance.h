@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -18,18 +18,18 @@ class BULLETANT_API UBAAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	
 public:
-	// ÃÊ±âÈ­ ÇÔ¼ö
+	// ì´ˆê¸°í™” í•¨ìˆ˜
 	virtual void NativeInitializeAnimation() override;
 
-	// ¸Å ÇÁ·¹ÀÓ ½ÇÇà ÇÔ¼ö
+	// ë§¤ í”„ë ˆì„ ì‹¤í–‰ í•¨ìˆ˜
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 protected:
-	// ¸Å¹ø Cast ¾ÈÇÏ±â À§ÇÑ Æ÷ÀÎÅÍ
+	// ë§¤ë²ˆ Cast ì•ˆí•˜ê¸° ìœ„í•œ í¬ì¸í„°
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	class ABACharacter* Character;
 
-	// ¸Å¹ø Cast ¾ÈÇÏ±â À§ÇÑ Æ÷ÀÎÅÍ
+	// ë§¤ë²ˆ Cast ì•ˆí•˜ê¸° ìœ„í•œ í¬ì¸í„°
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	class UCharacterMovementComponent* Movement;
 
@@ -38,4 +38,16 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	float Direction;
+
+	// ì¡°ì¤€ ìƒíƒœ
+	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	bool bIsAiming;
+
+	// ê³µì¤‘ ìƒíƒœ
+	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	bool bIsFalling;
+
+	//ìˆ˜ì§ ì´ë™ ì†ë„
+	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	float VerticalVelocity;
 };

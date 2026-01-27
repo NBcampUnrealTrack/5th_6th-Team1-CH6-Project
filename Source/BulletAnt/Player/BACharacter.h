@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -23,7 +23,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-    // --- Ä«¸Ş¶ó °ü·Ã ÄÄÆ÷³ÍÆ® ---
+    // --- ì¹´ë©”ë¼ ê´€ë ¨ ì»´í¬ë„ŒíŠ¸ ---
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
     class USpringArmComponent* CameraBoom;
@@ -31,9 +31,8 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
     class UCameraComponent* FollowCamera;
 
-    // --- ÀÔ·Â(Enhanced Input) °ü·Ã º¯¼ö ---
+    // --- ì…ë ¥(Enhanced Input) ê´€ë ¨ ë³€ìˆ˜ ---
 public:
-    // ¿¡µğÅÍ¿¡¼­ ÇÒ´çÇÒ ÀÔ·Â ¾×¼Ç (IA)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* JumpAction;
 
@@ -43,8 +42,21 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* LookAction;
 
-    // --- ½ÇÁ¦ µ¿ÀÛ ÇÔ¼ö ---
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    class UInputAction* AimAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    class UInputAction* InteractionAction;
+
+    // --- ì‹¤ì œ ë™ì‘ í•¨ìˆ˜ ---
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
+    void AimStart(const FInputActionValue& Value);
+    void AimStop(const FInputActionValue& Value);
+    void Interaction(const FInputActionValue& Value);
+
+public:
+    UPROPERTY(BlueprintReadOnly, Category = "Input")
+    bool bIsAiming;
 };
