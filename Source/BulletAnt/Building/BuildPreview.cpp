@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Building/BuildPreview.h"
@@ -26,7 +26,12 @@ void ABuildPreview::InitWithData(UBuildingData* InData)
     if (PreviewBaseMaterial)
     {
         MID = UMaterialInstanceDynamic::Create(PreviewBaseMaterial, this);
-        MeshComp->SetMaterial(0, MID);
+        // Apply to all material slots
+        const int32 NumMaterials = MeshComp->GetNumMaterials();
+        for (int32 i = 0; i < NumMaterials; i++)
+        {
+            MeshComp->SetMaterial(i, MID);
+        }
     }
 
     SetCanPlace(false);

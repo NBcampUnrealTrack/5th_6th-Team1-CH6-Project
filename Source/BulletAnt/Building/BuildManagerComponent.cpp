@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Building/BuildManagerComponent.h"
@@ -67,6 +67,12 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         Params
     );
 
+    // If nothing was hit, hide preview or keep last position
+    if (!bHit)
+    {
+        return;
+    }
+
     // 디버그 스피어
     DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
 
@@ -90,12 +96,6 @@ void UBuildManagerComponent::EnterBuildMode()
         return;
     }
 
-    bBuildMode = true;
-    CurrentData = DefaultBuildData;
-
-    RefreshCachedRef();
-    SetComponentTickEnabled(true);
-
     UWorld* World = GetWorld();
     if (!World)
     {
@@ -103,10 +103,19 @@ void UBuildManagerComponent::EnterBuildMode()
     }
 
     PreviewActor = World->SpawnActor<ABuildPreview>(PreviewActorClass);
-    if (PreviewActor)
+    if (!PreviewActor)
     {
-        PreviewActor->InitWithData(CurrentData);
+        return;
     }
+
+    // Set state only after successful spawn
+    bBuildMode = true;
+    CurrentData = DefaultBuildData;
+
+    RefreshCachedRef();
+    SetComponentTickEnabled(true);
+
+    PreviewActor->InitWithData(CurrentData);
 }
 
 void UBuildManagerComponent::ExitBuildMode()
@@ -177,6 +186,10 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, float Radi
     if (PreviewActor) 
     {
         Params.AddIgnoredActor(PreviewActor);
+    }
+    if (CachedOwner.IsValid())
+    {
+        Params.AddIgnoredActor(CachedOwner.Get());
     }
 
     FCollisionObjectQueryParams ObjParams;
