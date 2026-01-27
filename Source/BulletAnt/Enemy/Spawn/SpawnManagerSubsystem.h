@@ -15,6 +15,7 @@ protected:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	
+	void SetSpawnDataTable();
 	void StartWave();
 	void SpawnEnemies(int32 InWaveIndex);
 	

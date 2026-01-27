@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
+#include "BulletAnt/Common/BAWorldSettings.h"
+#include "Enemy/Spawn/EnemySpawnerEntry.h"
 
 void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -22,7 +24,17 @@ void USpawnManagerSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
 	
+	SetSpawnDataTable();	
 	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+}
+
+void USpawnManagerSubsystem::SetSpawnDataTable()
+{
+	AWorldSettings* WorldSettings = GetWorld()->GetWorldSettings();
+	checkf(IsValid(WorldSettings), TEXT("SpawnManagerSubsystem : GetWorldSettings Error"));
+	ABAWorldSettings* BAWorldSettings = Cast<ABAWorldSettings>(WorldSettings);
+	checkf(IsValid(BAWorldSettings), TEXT("SpawnManagerSubsystem : Cast BAWorldSettings Error"));
+	SpawnDataTable = BAWorldSettings->SpawnTable;
 }
 
 void USpawnManagerSubsystem::StartWave()
@@ -33,4 +45,19 @@ void USpawnManagerSubsystem::StartWave()
 
 void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 {
+	if (IsValid(SpawnDataTable) == false)
+	{
+		return;
+	}
+
+	static const FString ContextString(TEXT("EnemySpawnContext"));
+	FEnemySpawnerEntry* Row = SpawnDataTable->FindRow<FEnemySpawnerEntry>(FName(TEXT("Wave1")), ContextString);
+	
+	for (int i = 0; i < Row->SpawnEnemyDataArray.Num(); i++)
+	{
+		for (int j = 0; j < Row->SpawnEnemyDataArray[i].Count(); j++)
+		{
+			// spawn
+		}
+	}
 }
