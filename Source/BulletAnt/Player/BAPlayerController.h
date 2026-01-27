@@ -16,7 +16,7 @@ class BULLETANT_API ABAPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
-	// --- [블루프린트 입력용 변수]
+	// ????? ??? ??
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputMappingContext* DefaultMappingContext;
 

@@ -1,5 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Player/BAAnimInstance.h"
 #include "Player/BACharacter.h"
@@ -26,13 +25,18 @@ void UBAAnimInstance::NativeInitializeAnimation()
 void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
-	//캐릭터 없으면 nullptr 반환
-	if (Character == nullptr || Movement == nullptr) return;
 
-	//UCharacterMovementComponent에서 Velocity 변수 가져오기
+	// ??? ??? ??
+	if (Character == nullptr || Movement == nullptr)
+	{
+		return;
+	}
+
+	// UCharacterMovementComponent?? Velocity ?? ????
 	FVector Velocity = Movement->Velocity;
 
 	GroundSpeed = Velocity.Size2D();
+	VerticalVelocity = Velocity.Z;
 
 	FRotator Rotation = Character->GetActorRotation();
 
@@ -46,9 +50,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 
 	bIsAiming = Character->bIsAiming;
-	
-	bIsFalling = Movement->IsFalling();
-
 	bIsRunning = Character->bIsRunning;
-	VerticalVelocity = Velocity.Z;
+	bIsFalling = Movement->IsFalling();
+	bIsCrouched = Character->bIsCrouched;
 }
