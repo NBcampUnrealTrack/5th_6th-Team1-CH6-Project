@@ -3,6 +3,7 @@
 
 #include "BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
+#include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -23,5 +24,8 @@ const AActor& ABaseEnemyCharacter::GetTargetActor() const
 void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+	TargetActor = SpawnManagerSubsystem->GetTargetActor();
 }
 

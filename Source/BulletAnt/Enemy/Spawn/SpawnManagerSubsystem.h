@@ -11,6 +11,9 @@ class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 	
+public:
+	 AActor* GetTargetActor() const;
+	
 protected:	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
