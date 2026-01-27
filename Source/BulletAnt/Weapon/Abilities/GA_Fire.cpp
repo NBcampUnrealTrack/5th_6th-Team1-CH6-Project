@@ -1,4 +1,4 @@
-﻿#include "GA_Fire.h"
+#include "GA_Fire.h"
 
 #include "BulletAnt/Weapon/BaseWeapon.h"
 #include "BulletAnt/Weapon/Data/WeaponDataAsset.h"
@@ -93,10 +93,11 @@ void UGA_Fire::ServerFire(const FGameplayAbilityActorInfo* ActorInfo)
 			Damage
 		);
 
-		ASC->ApplyGameplayEffectSpecToTarget(
-			*SpecHandle.Data.Get(),
-			HitActor->FindComponentByClass<UAbilitySystemComponent>()
-		);
+		UAbilitySystemComponent* TargetASC = HitActor->FindComponentByClass<UAbilitySystemComponent>();
+		if (TargetASC)
+		{
+			ASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+		}
 	}
 }
 
@@ -115,5 +116,15 @@ FVector UGA_Fire::GetTraceStart(const AActor* AvatarActor, ABaseWeapon* Weapon) 
 
 FVector UGA_Fire::GetTraceEnd(const FVector& Start, float Range) const
 {
-	return Start + (GetAvatarActorFromActorInfo()->GetActorForwardVector() * Range);
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor) return Start;
+
+	// Use camera forward direction for 3rd person aiming
+	UCameraComponent* Camera = AvatarActor->FindComponentByClass<UCameraComponent>();
+	if (Camera)
+	{
+		return Start + (Camera->GetForwardVector() * Range);
+	}
+
+	return Start + (AvatarActor->GetActorForwardVector() * Range);
 }

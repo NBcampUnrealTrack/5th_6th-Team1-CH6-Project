@@ -4,26 +4,62 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayTagContainer.h"
 #include "InputActionValue.h"
 #include "BACharacter.generated.h"
 
+class UAbilitySystemComponent;
+class UBAAttributeSet;
+class ABaseWeapon;
+
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ABACharacter();
+
+	// --- IAbilitySystemInterface ---
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
     virtual void BeginPlay() override;
+    virtual void PossessedBy(AController* NewController) override;
 
 public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-    // --- 카메라 관련 컴포넌트 ---
+	// --- GAS Components ---
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
+	TObjectPtr<UBAAttributeSet> AttributeSet;
+
+	void InitializeAttributes();
+
+	// --- Weapon ---
+public:
+	void EquipWeapon(ABaseWeapon* NewWeapon);
+	void UnequipWeapon();
+
+	FORCEINLINE ABaseWeapon* GetCurrentWeapon() const { return CurrentWeapon; }
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<ABaseWeapon> CurrentWeapon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	TSubclassOf<ABaseWeapon> DefaultWeaponClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FName WeaponSocketName = TEXT("weapon_r");
+
+    // --- Camera Components ---
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
     class USpringArmComponent* CameraBoom;
@@ -31,9 +67,8 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
     class UCameraComponent* FollowCamera;
 
-    // --- 입력(Enhanced Input) 관련 변수 ---
+    // --- Input (Enhanced Input) ---
 public:
-    // 에디터에서 할당할 입력 액션 (IA)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* JumpAction;
 
@@ -43,8 +78,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* LookAction;
 
-    // --- 실제 동작 함수 ---
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	class UInputAction* FireAction;
+
+	// Fire Ability Tag (Set in Editor)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	FGameplayTag FireAbilityTag;
+
+    // --- Input Handler Functions ---
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
+	void StartFire(const FInputActionValue& Value);
+	void StopFire(const FInputActionValue& Value);
 };

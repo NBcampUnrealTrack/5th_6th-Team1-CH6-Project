@@ -1,4 +1,4 @@
-﻿#include "BulletAnt/Weapon/BaseWeapon.h"
+#include "BulletAnt/Weapon/BaseWeapon.h"
 
 #include "AbilitySystemComponent.h"
 #include "Abilities/GameplayAbility.h"
@@ -19,7 +19,10 @@ ABaseWeapon::ABaseWeapon()
 
 void ABaseWeapon::EquipWeapon(UAbilitySystemComponent* ASC)
 {
-	if (!ASC || !ASC->GetOwner()->HasAuthority()) return;
+	if (!ASC) return;
+	
+	AActor* Owner = ASC->GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
 
 	if (GrantedAbilityHandles.Num() > 0) return;
 
@@ -37,7 +40,10 @@ void ABaseWeapon::EquipWeapon(UAbilitySystemComponent* ASC)
 
 void ABaseWeapon::UnequipWeapon(UAbilitySystemComponent* ASC)
 {
-	if (!ASC || !ASC->GetOwner()->HasAuthority()) return;
+	if (!ASC) return;
+	
+	AActor* Owner = ASC->GetOwner();
+	if (!Owner || !Owner->HasAuthority()) return;
 
 	for (const FGameplayAbilitySpecHandle& Handle : GrantedAbilityHandles)
 	{

@@ -18,18 +18,18 @@ class BULLETANT_API UBAAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	
 public:
-	// 초기화 함수
+	// Initialize animation
 	virtual void NativeInitializeAnimation() override;
 
-	// 매 프레임 실행 함수
+	// Called every frame
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 protected:
-	// 매번 Cast 안하기 위한 포인터
+	// Cached pointer to avoid casting every frame
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	class ABACharacter* Character;
 
-	// 매번 Cast 안하기 위한 포인터
+	// Cached pointer to movement component
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	class UCharacterMovementComponent* Movement;
 

@@ -26,10 +26,10 @@ void UBAAnimInstance::NativeInitializeAnimation()
 void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
-	//캐릭터 없으면 nullptr 반환
+	// Return if no movement component
 	if (Movement == nullptr) return;
 
-	//UCharacterMovementComponent에서 Velocity 변수 가져오기
+	// Get velocity from movement component
 	FVector Velocity = Movement->Velocity;
 
 	GroundSpeed = Velocity.Size2D();
