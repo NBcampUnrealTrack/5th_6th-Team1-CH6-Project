@@ -47,6 +47,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	bool bIsFalling;
 
+	// 달리기 상태
+	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	bool bIsRunning;
+
+
 	//수직 이동 속도
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	float VerticalVelocity;

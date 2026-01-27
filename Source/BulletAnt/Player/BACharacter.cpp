@@ -23,6 +23,7 @@ ABACharacter::ABACharacter()
     // 이동 컴포넌트 설정
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 
     // 스프링 암 생성 및 설정
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -34,6 +35,11 @@ ABACharacter::ABACharacter()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+    //앉기 기능 활성화
+    GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
+    bIsAiming = false;
+    bIsRunning = false;
 }
 
 // Called when the game starts or when spawned
@@ -68,7 +74,17 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         {
             EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABACharacter::Move);
         }
-
+        // 달리기
+        if (RunAction)
+        {
+            EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Started, this, &ABACharacter::StartRunning);
+            EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Completed, this, &ABACharacter::StopRunning);
+        }
+        // 앉기
+        if (CrouchAction)
+        {
+            EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &ABACharacter::CrouchInput);
+        }
         // 시선 처리 (마우스)
         if(LookAction)
         {
@@ -85,7 +101,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         //상호작용
         if (InteractionAction)
         {
-            EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Triggered, this, &ABACharacter::Interaction);
+            EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
         }
     }
 }
@@ -111,6 +127,31 @@ void ABACharacter::Move(const FInputActionValue& Value)
         AddMovementInput(RightDirection, MovementVector.X);
     }
 }
+void ABACharacter::StartRunning(const FInputActionValue& Value)
+{
+    bIsRunning = true;
+    GetCharacterMovement()->MaxWalkSpeed = RunningSpeed;
+}
+
+void ABACharacter::StopRunning(const FInputActionValue& Value)
+{
+    bIsRunning = false;
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void ABACharacter::CrouchInput(const FInputActionValue& Value)
+{
+    if(!bIsCrouched)
+    {
+        Crouch(false);
+        GetCharacterMovement()->MaxWalkSpeed = CrouchSpeed;
+    }
+    else
+    {
+        UnCrouch(false);
+        GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+    }
+}
 
 // 시선 처리 함수 구현
 void ABACharacter::Look(const FInputActionValue& Value)
@@ -133,7 +174,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
     bUseControllerRotationYaw = true;
 
     GetCharacterMovement() -> bOrientRotationToMovement = false;
-    GetCharacterMovement()->MaxWalkSpeed = 300.f;
+    GetCharacterMovement()->MaxWalkSpeed = AimSpeed;
 }
 
 //조준 끝
@@ -145,7 +186,7 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
     bUseControllerRotationYaw = false;
 
     GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->MaxWalkSpeed = 600.f;
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
 void ABACharacter::Interaction(const FInputActionValue& Value)

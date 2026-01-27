@@ -48,5 +48,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsAiming = Character->bIsAiming;
 	
 	bIsFalling = Movement->IsFalling();
+
+	bIsRunning = Character->bIsRunning;
 	VerticalVelocity = Velocity.Z;
 }
