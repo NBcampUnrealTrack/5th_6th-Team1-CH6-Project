@@ -14,23 +14,21 @@ class BULLETANT_API ABaseEnemyCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ABaseEnemyCharacter();
-	
-	const AActor& GetTargetActor() const;
+
+	// TargetActor Getter (null일 수 있음)
+	AActor* GetTargetActor() const { return TargetActor; }
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
-	float AcceptanceRadius;
-	
+	float AcceptanceRadius = 100.f;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
