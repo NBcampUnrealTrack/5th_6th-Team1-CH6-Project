@@ -9,16 +9,40 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 {
 	Super::EnterState(Context, Transition);
 	
-	UE_LOG(LogTemp, Error, TEXT("Enter"));
+	if (!IsValid(ContextActor) || !IsValid(TargetActor))
+	{
+		UE_LOG(LogTemp, Error, TEXT("UMoveToTargetActorTask : StartState Error"));
+		// 해당 몬스터 제거 후 다시 스폰
+		return EStateTreeRunStatus::Failed;
+	}
 	
-	ContextActor->OnTargetActor.AddUObject(this, &UMoveToTargetActorTask::StartState);
+	CachedAIController = ContextActor->GetController<AAIController>();
+	checkf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error"));
 	
-	return EStateTreeRunStatus::Running;
+	// 적의 이동 완료시 콜백함수 바인딩
+	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
+	StartMoveToTarget();
+	
+	// AI의 이동 요청이 받아들여졌을 경우
+	if (MoveRequestResult == EMoveRequestResult::RequestAccepted)
+	{
+		return EStateTreeRunStatus::Running;
+	}
+	//  이미 도착한 경우
+	else if (MoveRequestResult == EMoveRequestResult::AlreadyArrived)
+	{
+		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
+		return EStateTreeRunStatus::Succeeded;
+	}
+	else // 요청이 거절당한 경우
+	{
+		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
+		return EStateTreeRunStatus::Failed;
+	}
 }
 
 void UMoveToTargetActorTask::StartState()
 {
-	UE_LOG(LogTemp, Error, TEXT("Start"));
 	TargetActor = ContextActor->GetTargetActor();
 	
 	if (!IsValid(ContextActor) || !IsValid(TargetActor))
@@ -29,7 +53,7 @@ void UMoveToTargetActorTask::StartState()
 		return;
 	}
 	
-	ContextActor->OnTargetActor.RemoveAll(this);
+	// ContextActor->OnTargetActor.RemoveAll(this);
 	
 	CachedAIController = ContextActor->GetController<AAIController>();
 	checkf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error"));

@@ -8,8 +8,6 @@
 
 class UStateTreeComponent;
 
-DECLARE_MULTICAST_DELEGATE(FOnTargetActor);
-
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter
 {
@@ -36,7 +34,4 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
-	
-public:
-	FOnTargetActor OnTargetActor;
 };

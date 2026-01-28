@@ -7,13 +7,16 @@
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+	
 	// Data Asset이나 SpawnerManager가 할당해주기
 	AcceptanceRadius = 100.0f;
-	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-	
-	PrimaryActorTick.bCanEverTick = false;
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
+	StateTreeComponent->SetStartLogicAutomatically(false);
+	
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 AActor* ABaseEnemyCharacter::GetTargetActor() const
@@ -25,22 +28,23 @@ void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	UE_LOG(LogTemp, Error, TEXT("Begin"));
-	
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
+	if (HasAuthority())
+	{		
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+			if (IsValid(SpawnManagerSubsystem))
+			{
+				TargetActor = SpawnManagerSubsystem->GetTargetActor();			
+			}
+			else
+			{
+				TargetActor = nullptr;
+			}
+		}
 		
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			TargetActor = SpawnManagerSubsystem->GetTargetActor();			
-		}
-		else
-		{
-			TargetActor = nullptr;
-		}
+		StateTreeComponent->StartLogic();
 	}
-	OnTargetActor.Broadcast();
 }
 

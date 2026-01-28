@@ -35,24 +35,34 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	if (!Super::ShouldCreateSubsystem(Outer))
 	{
+		
+		UE_LOG(LogTemp, Warning, TEXT("1"))
 		return false;
 	}
 
 	UWorld* World = Cast<UWorld>(Outer);
 	if (IsValid((World)))
 	{
+		if (World->GetNetMode() == ENetMode::NM_Client)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("2"))
+			return false;
+		}
+		
 		if (!(World->IsGameWorld() || World->IsPlayInEditor()))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("3"))
 			return false;
 		}
 
 		FString LevelName = World->GetMapName();
 		if (LevelName.Contains(TEXT("TestMap")))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("4"))
 			return true; 
 		}
 	}
-
+	UE_LOG(LogTemp, Warning, TEXT("5"))
 	return false;
 }
 
@@ -88,6 +98,7 @@ void USpawnManagerSubsystem::StartWave()
 
 void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Spawn"))
 	if (IsValid(SpawnDataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
