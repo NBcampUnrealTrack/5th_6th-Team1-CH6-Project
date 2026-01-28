@@ -23,4 +23,6 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")
 	FName MuzzleSocketName;
+
+
 };

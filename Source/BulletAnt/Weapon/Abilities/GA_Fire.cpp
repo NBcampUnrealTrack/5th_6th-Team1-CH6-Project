@@ -28,7 +28,7 @@ void UGA_Fire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
+	
 	FireOnce(ActorInfo);
 
 	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
@@ -37,8 +37,8 @@ void UGA_Fire::ActivateAbility(
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
 	if (!ActorInfo) return;
-
-	AActor* SourceActor = ActorInfo->AvatarActor.Get();
+	
+	AActor* SourceActor = Cast<AActor>(GetCurrentSourceObject());
 	if (!SourceActor) return;
 
 	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
@@ -62,7 +62,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		Params
 	);
 
-#if WITH_EDITOR
 	DrawDebugLine(
 		SourceActor->GetWorld(),
 		Start,
@@ -73,7 +72,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		0,
 		1.f
 	);
-#endif
 
 	if (!bHit) return;
 
@@ -98,9 +96,9 @@ void UGA_Fire::ApplyDamageEffect(
 		SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.f, SourceASC->MakeEffectContext());
 
 	if (!Spec.IsValid()) return;
-
+	UE_LOG(LogTemp, Error, TEXT("ApplyDamageEffect 4"));
 	Spec.Data->SetSetByCallerMagnitude(
-		FGameplayTag::RequestGameplayTag(TEXT("Data.Damage")),
+		FGameplayTag::RequestGameplayTag(TEXT("Event.Combat.Hit")),
 		Damage
 	);
 

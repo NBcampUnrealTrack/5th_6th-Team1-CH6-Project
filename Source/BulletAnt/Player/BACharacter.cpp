@@ -44,6 +44,8 @@ ABACharacter::ABACharacter()
     AbilitySystemComponent->SetIsReplicated(true);
     AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
+    HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
+
     //Test
     //앉기 기능 활성화
     GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -182,8 +184,6 @@ void ABACharacter::Look(const FInputActionValue& Value)
 void ABACharacter::Attack(const FInputActionValue& Value)
 {
     if (!AbilitySystemComponent) return;
-
-    UE_LOG(LogTemp, Error, TEXT("Attack"));
 
     FGameplayTagContainer Tag;
     Tag.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Weapon.Fire")));

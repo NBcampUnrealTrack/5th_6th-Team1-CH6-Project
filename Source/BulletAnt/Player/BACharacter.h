@@ -57,6 +57,7 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* AttackAction;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     class UInputAction* AimAction;
 
