@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Building/BuildingRow.h"
 #include "BuildPreview.generated.h"
 
-class UBuildingData;
 class UStaticMeshComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
@@ -19,12 +19,12 @@ class BULLETANT_API ABuildPreview : public AActor
 public:
 	ABuildPreview();
 
-	void InitWithData(UBuildingData* InData);
+	void InitWithData(const FBuildingRow& Row);
 	void UpdateTransform(const FVector& Location, const FRotator& Rotation);
 	void SetCanPlace(bool bInCanPlace);
 
 	bool CanPlace() const { return bCanPlace; }
-	float GetPlacementRadius() const;
+	FVector GetPlacementBoxExtent() const { return PlacementBoxExtent; }
 
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -36,8 +36,6 @@ private:
 	UPROPERTY()
 	UMaterialInstanceDynamic* MID;
 
-	UPROPERTY()
-	UBuildingData* Data;
-
 	bool bCanPlace = false;
+	FVector PlacementBoxExtent = FVector::ZeroVector;
 };

@@ -4,7 +4,6 @@
 #include "Building/BuildPreview.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "BuildingData.h"
 
 ABuildPreview::ABuildPreview()
 {
@@ -14,19 +13,19 @@ ABuildPreview::ABuildPreview()
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void ABuildPreview::InitWithData(UBuildingData* InData)
+void ABuildPreview::InitWithData(const FBuildingRow& Row)
 {
-    Data = InData;
-
-    if (Data && Data->PreviewMesh)
-    {
-        MeshComp->SetStaticMesh(Data->PreviewMesh);
-    }
+    MeshComp->SetStaticMesh(Row.PreviewMesh);
+    PlacementBoxExtent = Row.PlacementBoxExtent;
 
     if (PreviewBaseMaterial)
     {
         MID = UMaterialInstanceDynamic::Create(PreviewBaseMaterial, this);
-        MeshComp->SetMaterial(0, MID);
+        const int32 NumMaterials = MeshComp->GetNumMaterials();
+        for (int32 i = 0; i < NumMaterials; ++i)
+        {
+            MeshComp->SetMaterial(i, MID);
+        }
     }
 
     SetCanPlace(false);
@@ -51,9 +50,4 @@ void ABuildPreview::SetCanPlace(bool bInCanPlace)
     const FLinearColor BlockColor(1.f, 0.f, 0.f, Opacity);
 
     MID->SetVectorParameterValue(TEXT("ActorColor"), bCanPlace ? CanColor : BlockColor);
-}
-
-float ABuildPreview::GetPlacementRadius() const
-{
-    return Data ? Data->PlacementRadius : 80.f;
 }

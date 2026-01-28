@@ -14,6 +14,15 @@ class BULLETANT_API ABaseBuilding : public AActor
 public:	
 	ABaseBuilding();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void SetPlacementBoxExtent(const FVector& InBoxExtent);
+
+public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UStaticMeshComponent* StaticMeshComp;
+
+private:
+	UPROPERTY(Replicated)
+	FVector PlacementBoxExtent = FVector(100.f, 100.f, 100.f);
 };

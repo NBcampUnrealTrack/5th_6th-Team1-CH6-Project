@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Building/BuildingData.h"
+#include "Engine/DataTable.h"
+#include "Building/BuildingRow.h"
 #include "BuildManagerComponent.generated.h"
 
 class ABuildPreview;
-class UBuildingData;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class BULLETANT_API UBuildManagerComponent : public UActorComponent
@@ -37,22 +37,27 @@ public:
 	bool IsBuildMode() const { return bBuildMode; }
 
 private:
-	bool CheckCanPlaceAt(const FVector& Location, float Radius) const;
+	UFUNCTION(Server, Reliable)
+	void ServerTryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
+
+	bool CheckCanPlaceAt(const FVector& Location, const FRotator& Rotation, const FVector& InBoxExtent) const;
 
 	void RefreshCachedRef();
 
+	void SetCurrentBuildingRow(FName NewRow);
+
 private:
-	UPROPERTY(EditDefaultsOnly, Category = "Build|Test")
-	UBuildingData* DefaultBuildData = nullptr;
+	UPROPERTY(EditDefaultsOnly, Category = "Build")
+	TObjectPtr<UDataTable> BuildingTable;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build")
 	TSubclassOf<ABuildPreview> PreviewActorClass;
 
 	UPROPERTY()
-	UBuildingData* CurrentData = nullptr;
+	FName CurrentBuildingRow;
 
 	UPROPERTY()
-	ABuildPreview* PreviewActor = nullptr;
+	TObjectPtr<ABuildPreview> PreviewActor = nullptr;
 
 	bool bBuildMode = false;
 
@@ -61,4 +66,6 @@ private:
 
 	UPROPERTY()
 	TWeakObjectPtr<APlayerController> CachedPC;
+
+	const FBuildingRow* CachedBuildingRow = nullptr;
 };

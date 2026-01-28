@@ -67,6 +67,11 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         Params
     );
 
+    if (!bHit)
+    {
+        return;
+    }
+
     // 디버그 스피어
     DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
 
@@ -79,22 +84,16 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     PreviewActor->UpdateTransform(Location, Rotation);
 
     // 설치 가능 판정
-    const bool bCanPlace = CheckCanPlaceAt(Location, PreviewActor->GetPlacementRadius());
+    const bool bCanPlace = CheckCanPlaceAt(Location, Rotation, PreviewActor->GetPlacementBoxExtent());
     PreviewActor->SetCanPlace(bCanPlace);
 }
 
 void UBuildManagerComponent::EnterBuildMode()
 {
-    if (bBuildMode || !DefaultBuildData || !PreviewActorClass)
+    if (bBuildMode || !BuildingTable || !PreviewActorClass)
     {
         return;
     }
-
-    bBuildMode = true;
-    CurrentData = DefaultBuildData;
-
-    RefreshCachedRef();
-    SetComponentTickEnabled(true);
 
     UWorld* World = GetWorld();
     if (!World)
@@ -103,20 +102,26 @@ void UBuildManagerComponent::EnterBuildMode()
     }
 
     PreviewActor = World->SpawnActor<ABuildPreview>(PreviewActorClass);
-    if (PreviewActor)
+    if (!PreviewActor)
     {
-        PreviewActor->InitWithData(CurrentData);
+        return;
     }
+
+    bBuildMode = true;
+    SetCurrentBuildingRow("TestTurret");
+    
+    RefreshCachedRef();
+    SetComponentTickEnabled(true);
 }
 
 void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
-    CurrentData = nullptr;
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;
     CachedPC = nullptr;
+    CachedBuildingRow = nullptr;
 
     if (PreviewActor)
     {
@@ -127,43 +132,56 @@ void UBuildManagerComponent::ExitBuildMode()
 
 void UBuildManagerComponent::TryPlace()
 {
-    if (!bBuildMode || !PreviewActor || !CurrentData) 
+    if (!bBuildMode)
     {
         return;
     }
 
-    if (!PreviewActor->CanPlace())
+    if (!PreviewActor || !PreviewActor->CanPlace())
     {
         return;
     }
 
-    if (!CurrentData->BuildingClass)
+    ServerTryPlace(CurrentBuildingRow, PreviewActor->GetActorLocation(), PreviewActor->GetActorRotation());
+}
+
+void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, const FVector& Location, const FRotator& Rotation)
+{
+    if (!BuildingTable)
+    {
+        return;
+    }
+
+    const FBuildingRow* Row = BuildingTable->FindRow<FBuildingRow>(BuildingRow, TEXT("ServerTryPlace"));
+    if (!Row || !Row->BuildingClass)
+    {
+        return;
+    }
+
+    if (!CheckCanPlaceAt(Location, Rotation, Row->PlacementBoxExtent))
     {
         return;
     }
 
     UWorld* World = GetWorld();
-    if (!World) 
+    if (!World)
     {
         return;
     }
-
-    const FVector SpawnLoc = PreviewActor->GetActorLocation();
-    const FRotator SpawnRot = PreviewActor->GetActorRotation();
 
     FActorSpawnParameters Params;
     Params.Owner = GetOwner();
     Params.Instigator = Cast<APawn>(GetOwner());
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-    AActor* Spawned = World->SpawnActor<AActor>(CurrentData->BuildingClass, SpawnLoc, SpawnRot, Params);
-    if (!Spawned) 
+    ABaseBuilding* Spawned = World->SpawnActor<ABaseBuilding>(Row->BuildingClass, Location, Rotation, Params);
+    if (Spawned)
     {
-        return;
+        Spawned->SetPlacementBoxExtent(Row->PlacementBoxExtent);
     }
 }
 
-bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, float Radius) const
+bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRotator& Rotation, const FVector& InBoxExtent) const
 {
     UWorld* World = GetWorld();
     if (!World)
@@ -171,7 +189,10 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, float Radi
         return false;
     }
 
-    const float UseRadius = FMath::Max(5.f, Radius);
+    FVector BoxExtent = InBoxExtent;
+    BoxExtent.X = FMath::Max(10.f, BoxExtent.X);
+    BoxExtent.Y = FMath::Max(10.f, BoxExtent.Y);
+    BoxExtent.Z = FMath::Max(10.f, BoxExtent.Z);
 
     FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildOverlap), false);
     if (PreviewActor) 
@@ -188,13 +209,17 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, float Radi
     const bool bAnyOverlap = World->OverlapMultiByObjectType(
         Overlaps,
         Location,
-        FQuat::Identity,
+        Rotation.Quaternion(),
         ObjParams,
-        FCollisionShape::MakeSphere(UseRadius),
+        FCollisionShape::MakeBox(BoxExtent),
         Params
     );
 
-    DrawDebugSphere(World, Location, UseRadius, 16, bAnyOverlap ? FColor::Red : FColor::Green, false, 0.f, 0, 1.f);
+    DrawDebugBox(
+        World, Location, BoxExtent, Rotation.Quaternion(),
+        bAnyOverlap ? FColor::Red : FColor::Green,
+        false, 0.f, 0, 2.f
+    );
 
     if (!bAnyOverlap)
     {
@@ -225,5 +250,27 @@ void UBuildManagerComponent::RefreshCachedRef()
     CachedOwner = GetOwner();
     APawn* OwnerPawn = Cast<APawn>(CachedOwner.Get());
     CachedPC = OwnerPawn ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
+}
+
+void UBuildManagerComponent::SetCurrentBuildingRow(FName NewRow)
+{
+    if (!BuildingTable) 
+    {
+        return;
+    }
+
+    const FBuildingRow* Row = BuildingTable->FindRow<FBuildingRow>(NewRow, TEXT("SetCurrentBuildingRow"));
+    if (!Row) 
+    {
+        return;
+    }
+
+    CurrentBuildingRow = NewRow;
+    CachedBuildingRow = Row;
+
+    if (PreviewActor)
+    {
+        PreviewActor->InitWithData(*CachedBuildingRow);
+    }
 }
 
