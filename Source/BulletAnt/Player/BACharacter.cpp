@@ -104,6 +104,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         if (AttackAction)
         {
             EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::Attack);
+        }
         // 조준
         if (AimAction)
         {
