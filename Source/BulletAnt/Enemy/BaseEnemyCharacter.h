@@ -8,6 +8,8 @@
 
 class UStateTreeComponent;
 
+DECLARE_MULTICAST_DELEGATE(FOnTargetActor);
+
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter
 {
@@ -17,7 +19,7 @@ public:
 	// Sets default values for this character's properties
 	ABaseEnemyCharacter();
 	
-	const AActor& GetTargetActor() const;
+	AActor* GetTargetActor() const;
 
 protected:
 	// Called when the game starts or when spawned
@@ -34,4 +36,7 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
+	
+public:
+	FOnTargetActor OnTargetActor;
 };

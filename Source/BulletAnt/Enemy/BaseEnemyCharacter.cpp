@@ -16,16 +16,31 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 }
 
-const AActor& ABaseEnemyCharacter::GetTargetActor() const
+AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
-	return *TargetActor;
+	return TargetActor;
 }
 
 void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-	TargetActor = SpawnManagerSubsystem->GetTargetActor();
+	UE_LOG(LogTemp, Error, TEXT("Begin"));
+	
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			TargetActor = SpawnManagerSubsystem->GetTargetActor();			
+		}
+		else
+		{
+			TargetActor = nullptr;
+		}
+	}
+	OnTargetActor.Broadcast();
 }
 
