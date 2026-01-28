@@ -18,14 +18,15 @@ ABACharacter::ABACharacter()
     // Tick 설정
     PrimaryActorTick.bCanEverTick = true;
 
-    // 회전 설정: 캐릭터는 컨트롤러 회전을 바로 따라가지 않음 (카메라만 따라감)
+    // 캐릭터 회전 설정
     bUseControllerRotationPitch = false;
     bUseControllerRotationYaw = false;
     bUseControllerRotationRoll = false;
 
-    // 이동 컴포넌트 설정: 이동 방향으로 캐릭터가 자동으로 회전하도록 함
+    // 이동 컴포넌트 설정
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 
     // 스프링 암 생성 및 설정
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -44,6 +45,11 @@ ABACharacter::ABACharacter()
     AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
     //Test
+    //앉기 기능 활성화
+    GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
+    bIsAiming = false;
+    bIsRunning = false;
 }
 
 // Called when the game starts or when spawned
@@ -59,14 +65,14 @@ void ABACharacter::Tick(float DeltaTime)
 
 }
 
-// 입력 바인딩 (여기가 핵심!)
+// 입력 바인딩
 void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
-        // 점프 (Character 기본 제공 함수 사용)
+        // 점프
         if(JumpAction)
         {
             EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
@@ -78,7 +84,17 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         {
             EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABACharacter::Move);
         }
-
+        // 달리기
+        if (RunAction)
+        {
+            EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Started, this, &ABACharacter::StartRunning);
+            EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Completed, this, &ABACharacter::StopRunning);
+        }
+        // 앉기
+        if (CrouchAction)
+        {
+            EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &ABACharacter::CrouchInput);
+        }
         // 시선 처리 (마우스)
         if(LookAction)
         {
@@ -88,6 +104,17 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
         if (AttackAction)
         {
             EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::Attack);
+        // 조준
+        if (AimAction)
+        {
+            EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ABACharacter::AimStart);
+            EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ABACharacter::AimStop);
+        }
+
+        //상호작용
+        if (InteractionAction)
+        {
+            EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
         }
     }
 }
@@ -111,6 +138,31 @@ void ABACharacter::Move(const FInputActionValue& Value)
         // 이동 적용
         AddMovementInput(ForwardDirection, MovementVector.Y);
         AddMovementInput(RightDirection, MovementVector.X);
+    }
+}
+void ABACharacter::StartRunning(const FInputActionValue& Value)
+{
+    bIsRunning = true;
+    GetCharacterMovement()->MaxWalkSpeed = RunningSpeed;
+}
+
+void ABACharacter::StopRunning(const FInputActionValue& Value)
+{
+    bIsRunning = false;
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void ABACharacter::CrouchInput(const FInputActionValue& Value)
+{
+    if(!bIsCrouched)
+    {
+        Crouch(false);
+        GetCharacterMovement()->MaxWalkSpeed = CrouchSpeed;
+    }
+    else
+    {
+        UnCrouch(false);
+        GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
     }
 }
 
@@ -210,4 +262,32 @@ void ABACharacter::EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass)
     NewWeapon->EquipWeapon(AbilitySystemComponent);
 
     EquippedWeapon = NewWeapon;
+}
+//조준 시작
+void ABACharacter::AimStart(const FInputActionValue& Value)
+{
+    bIsAiming = true;
+
+    //캐릭터 회전 고정
+    bUseControllerRotationYaw = true;
+
+    GetCharacterMovement() -> bOrientRotationToMovement = false;
+    GetCharacterMovement()->MaxWalkSpeed = AimSpeed;
+}
+
+//조준 끝
+void ABACharacter::AimStop(const FInputActionValue& Value)
+{
+    bIsAiming = false;
+
+    //캐릭터 회전 고정
+    bUseControllerRotationYaw = false;
+
+    GetCharacterMovement()->bOrientRotationToMovement = true;
+    GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void ABACharacter::Interaction(const FInputActionValue& Value)
+{
+
 }

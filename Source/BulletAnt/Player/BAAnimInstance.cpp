@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Player/BAAnimInstance.h"
@@ -26,10 +26,10 @@ void UBAAnimInstance::NativeInitializeAnimation()
 void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
-	//Ä³¸¯ÅÍ ¾øÀ¸¸é nullptr ¹ÝÈ¯
-	if (Movement == nullptr) return;
+	//ìºë¦­í„° ì—†ìœ¼ë©´ nullptr ë°˜í™˜
+	if (Character == nullptr || Movement == nullptr) return;
 
-	//UCharacterMovementComponent¿¡¼­ Velocity º¯¼ö °¡Á®¿À±â
+	//UCharacterMovementComponentì—ì„œ Velocity ë³€ìˆ˜ ê°€ì ¸ì˜¤ê¸°
 	FVector Velocity = Movement->Velocity;
 
 	GroundSpeed = Velocity.Size2D();
@@ -44,4 +44,11 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		Direction = 0.0f;
 	}
+
+	bIsAiming = Character->bIsAiming;
+	
+	bIsFalling = Movement->IsFalling();
+
+	bIsRunning = Character->bIsRunning;
+	VerticalVelocity = Velocity.Z;
 }
