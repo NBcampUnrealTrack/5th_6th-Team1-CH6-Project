@@ -100,10 +100,11 @@ void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 	}
 	
 	static const FString ContextString(TEXT("EnemySpawnContext"));
-	FEnemySpawnerEntry* Row = SpawnDataTable->FindRow<FEnemySpawnerEntry>(FName(TEXT("Wave1")), ContextString);
+	FName RowName = FName(*FString::Printf(TEXT("Wave%d"), InWaveIndex + 1));
+	FEnemySpawnerEntry* Row = SpawnDataTable->FindRow<FEnemySpawnerEntry>(RowName, ContextString);
 	if (Row == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : Row Error"));
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem: Row '%s' not found in DataTable"), *RowName.ToString());
 		return;
 	}
 	
