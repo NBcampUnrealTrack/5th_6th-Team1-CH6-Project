@@ -23,9 +23,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Fire")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Data")
-	TObjectPtr<URangedWeaponDataAsset> WeaponData;
-
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -37,6 +34,7 @@ protected:
 
 	void ApplyDamageEffect(const FGameplayAbilityActorInfo* ActorInfo,
 		AActor* Target,
-		float Damage);
+		float Damage,
+		FGameplayTag HitTag);
 	
 };

@@ -1,13 +1,14 @@
 ﻿#include "GA_Fire.h"
 
-#include "BulletAnt/Weapon/BaseRangedWeapon.h"
-#include "BulletAnt/Weapon/Data/WeaponDataAsset.h"
+#include "Weapon/BaseRangedWeapon.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/Actor.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "Common/DataAssetInterface.h"
+#include "Common/FireStartInterface.h" 
 
 UGA_Fire::UGA_Fire()
 {
@@ -38,13 +39,16 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
 	if (!ActorInfo) return;
 	
-	AActor* SourceActor = Cast<AActor>(GetCurrentSourceObject());
+	AActor* SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
 	if (!SourceActor) return;
 
 	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
 	if (!FireStart) return;
 
-	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(WeaponData);
+	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
+	if (!DataAssetInterface) return;
+
+	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetWeaponDataAsset());
 	if (!RangedData) return;
 
 	const FVector Start = FireStart->GetFireStartLocation();
@@ -75,13 +79,14 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 
 	if (!bHit) return;
 
-	ApplyDamageEffect(ActorInfo, Hit.GetActor(), RangedData->BaseDamage);
+	ApplyDamageEffect(ActorInfo, Hit.GetActor(), RangedData->BaseDamage, RangedData->HitEventTag);
 }
 
 void UGA_Fire::ApplyDamageEffect(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	AActor* Target,
-	float Damage)
+	float Damage,
+	FGameplayTag HitTag)
 {
 	if (!Target) return;
 
@@ -96,9 +101,9 @@ void UGA_Fire::ApplyDamageEffect(
 		SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.f, SourceASC->MakeEffectContext());
 
 	if (!Spec.IsValid()) return;
-	UE_LOG(LogTemp, Error, TEXT("ApplyDamageEffect 4"));
+
 	Spec.Data->SetSetByCallerMagnitude(
-		FGameplayTag::RequestGameplayTag(TEXT("Event.Combat.Hit")),
+		HitTag,
 		Damage
 	);
 

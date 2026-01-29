@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "AbilitySystemInterface.h"
+#include "Common/DataAssetInterface.h"
+#include "Common/FireStartInterface.h"
 #include "GameplayEffectTypes.h"
 #include "BACharacter.generated.h"
 
@@ -15,7 +17,7 @@ class ABaseWeapon;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
 {
 	GENERATED_BODY()
 
@@ -88,6 +90,9 @@ protected:
     UPROPERTY(EditAnywhere, Category = "GAS")
     TArray<TSubclassOf<UGameplayAbility>> DefaultAbility;
 
+    UPROPERTY()
+    FGameplayTag CurrentWeaponAbilityTag;
+
     virtual void PossessedBy(AController* NewController) override;
 
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
@@ -102,8 +107,13 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
+
+    virtual UWeaponDataAsset* GetWeaponDataAsset() const override;
+
+    virtual FVector GetFireStartLocation() const override;
+    virtual FVector GetFireDirection() const override;
 
 #pragma endregion
     void StartRunning(const FInputActionValue& Value);

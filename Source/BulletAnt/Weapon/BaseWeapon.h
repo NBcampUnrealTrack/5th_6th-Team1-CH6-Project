@@ -20,19 +20,17 @@ public:
 	ABaseWeapon();
 
 public:
+	FORCEINLINE UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
+	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+
 	void EquipWeapon(UAbilitySystemComponent* ASC);
 	void UnequipWeapon(UAbilitySystemComponent* ASC);
 
-	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
-	FORCEINLINE UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
-	FORCEINLINE FGameplayTag GetWeaponTag() const { return WeaponTag; }
+	
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
-	FGameplayTag WeaponTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
 	TArray<TSubclassOf<UGameplayAbility>> GrantedAbilities;

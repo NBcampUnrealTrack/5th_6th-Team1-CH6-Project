@@ -19,7 +19,6 @@ void UHealthAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
-	UE_LOG(LogTemp, Error, TEXT("PostGameplayEffectExecute"));
 
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
@@ -29,7 +28,6 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 		{
 			const float NewHealth = GetHealth() - LocalIncomingDamage;
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
-			UE_LOG(LogTemp, Error, TEXT("%s %.2f"), *Data.Target.GetName(), NewHealth);
 		}
 
 		SetIncomingDamage(0.f);

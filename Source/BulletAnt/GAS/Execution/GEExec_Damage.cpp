@@ -17,7 +17,6 @@ void UGEExec_Damage::Execute_Implementation(const FGameplayEffectCustomExecution
 		FGameplayTag::RequestGameplayTag(TEXT("Event.Combat.Hit"));
 
 	float Damage = Spec.GetSetByCallerMagnitude(DamageTag, false);
-	UE_LOG(LogTemp, Error, TEXT("Execte_Implementation %.2f"),Damage);
 	Damage = FMath::Max(Damage, 0.f);
 
 	OutExecutionOutput.AddOutputModifier(
