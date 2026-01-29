@@ -2,6 +2,7 @@
 
 
 #include "Enemy/GAS/Effect/MoveGameplayEffect.h"
+#include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
 
 UMoveGameplayEffect::UMoveGameplayEffect()
 {
@@ -9,8 +10,9 @@ UMoveGameplayEffect::UMoveGameplayEffect()
 	DurationPolicy = EGameplayEffectDurationType::Infinite;
 
 	// 2. 부여할 태그 설정
-	FGameplayTag ChaseTag = FGameplayTag::RequestGameplayTag(FName("State.AI.Move"));
-        
+	//FGameplayTag ChaseTag = FGameplayTag::RequestGameplayTag(FName("State.Enemy.Move"));
+	//UTargetTagsGameplayEffectComponent TargetTagsGameplayEffectComponent;
+	//GEComponents.Add(TargetTagsGameplayEffectComponent);
 	
 	
 	// GrantedTags에 태그 추가 (이 효과가 적용된 동안 유지됨)
@@ -24,4 +26,6 @@ UMoveGameplayEffect::UMoveGameplayEffect()
 	ModInfo.ModifierMagnitude = FScalableFloat(200.0f);
 	Modifiers.Add(ModInfo);
 	*/
+	
+	// Effect 종료 후 태그 제거
 }
