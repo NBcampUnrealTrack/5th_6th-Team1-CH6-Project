@@ -1,10 +1,12 @@
-﻿#include "GAS/Ability/GA_MeleeAttack.h"
-#include "Common/DataAssetInterface.h"
+#include "GAS/Ability/GA_MeleeAttack.h"
+#include "Weapon/BaseWeapon.h"
 #include "Weapon/Data/MeleeWeaponDataAsset.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+
+static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
@@ -26,16 +28,19 @@ void UGA_MeleeAttack::ActivateAbility(
 		return;
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
-
-	IDataAssetInterface* Interface = Cast<IDataAssetInterface>(GetAvatarActorFromActorInfo());
-	if (!Interface || !Interface->GetDataAsset())
+	ABaseWeapon* SourceWeapon = Cast<ABaseWeapon>(GetCurrentSourceObject());
+	if (!SourceWeapon)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
-	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
+	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(SourceWeapon->GetWeaponData());
+	if (!Data)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	UAbilityTask_WaitGameplayEvent* WaitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, Data->HitEventTag);
 	WaitTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnHitEventReceived);
@@ -73,27 +78,25 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
 
-	if (SourceASC && TargetASC)
+	if (!SourceASC || !TargetASC) return;
+
+	ABaseWeapon* SourceWeapon = Cast<ABaseWeapon>(GetCurrentSourceObject());
+	if (!SourceWeapon) return;
+
+	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(SourceWeapon->GetWeaponData());
+	if (!Data) return;
+
+	FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
+	ContextHandle.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
+
+	if (DamageEffectClass)
 	{
-		IDataAssetInterface* Interface = Cast<IDataAssetInterface>(ActorInfo->AvatarActor.Get());
-		if (!Interface || !Interface->GetDataAsset()) return;
+		FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
 
-		UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
-		if (!Data) return;
-
-		FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
-		ContextHandle.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
-
-		if (DamageEffectClass)
+		if (SpecHandle.IsValid())
 		{
-			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, GetAbilityLevel(), ContextHandle);
-
-			if (SpecHandle.IsValid())
-			{
-				SpecHandle.Data->SetSetByCallerMagnitude(Data->HitEventTag, Data->BaseDamage);
-
-				SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
-			}
+			SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, Data->BaseDamage);
+			SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 		}
 	}
 }

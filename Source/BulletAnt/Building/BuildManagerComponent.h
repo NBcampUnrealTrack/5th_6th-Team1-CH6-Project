@@ -1,5 +1,3 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -10,7 +8,7 @@
 class ABuildPreview;
 class UBuildingData;
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class BULLETANT_API UBuildManagerComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -24,7 +22,6 @@ protected:
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-public:
 	UFUNCTION(BlueprintCallable)
 	void EnterBuildMode();
 
@@ -38,19 +35,21 @@ public:
 
 private:
 	bool CheckCanPlaceAt(const FVector& Location, float Radius) const;
+	void RefreshCachedReferences();
 
-private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Test")
-	UBuildingData* DefaultBuildData = nullptr;
+	TObjectPtr<UBuildingData> DefaultBuildData;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build")
 	TSubclassOf<ABuildPreview> PreviewActorClass;
 
 	UPROPERTY()
-	UBuildingData* CurrentData = nullptr;
+	TObjectPtr<UBuildingData> CurrentData;
 
 	UPROPERTY()
-	ABuildPreview* PreviewActor = nullptr;
+	TObjectPtr<ABuildPreview> PreviewActor;
+
+	TWeakObjectPtr<APlayerController> CachedPC;
 
 	bool bBuildMode = false;
 };

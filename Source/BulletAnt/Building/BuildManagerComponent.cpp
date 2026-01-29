@@ -1,14 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Building/BuildManagerComponent.h"
 #include "Building/BuildPreview.h"
-#include "Building/BuildManagerComponent.h"
 #include "Building/BaseBuilding.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	SetComponentTickEnabled(false);
 }
 
 void UBuildManagerComponent::BeginPlay()
@@ -20,151 +17,109 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (!bBuildMode || !PreviewActor) 
-    {
-        return;
-    }
+	if (!bBuildMode || !PreviewActor) return;
 
-    AActor* OwnerActor = GetOwner();
-    if (!OwnerActor)
-    {
-        return;
-    }
-    APawn* PawnOwner = Cast<APawn>(OwnerActor);
-    if (!PawnOwner) 
-    {
-        return;
-    }
-    APlayerController* PC = Cast<APlayerController>(PawnOwner->GetController());
-    if (!PC) 
-    {
-        return;
-    }
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor) return;
 
-    // 화면 중앙
-    int32 SizeX = 0, SizeY = 0;
-    PC->GetViewportSize(SizeX, SizeY);
+	APlayerController* PC = CachedPC.Get();
+	if (!PC) return;
 
-    FVector WorldPos, WorldDir;
-    const bool bDeprojectOK = PC->DeprojectScreenPositionToWorld(
-        SizeX * 0.5f,
-        SizeY * 0.5f,
-        WorldPos,
-        WorldDir
-    );
-    if (!bDeprojectOK) 
-    {
-        return;
-    }
+	int32 SizeX = 0, SizeY = 0;
+	PC->GetViewportSize(SizeX, SizeY);
 
-    const FVector Start = WorldPos;
-    const FVector End = Start + WorldDir * 5000.f;
+	FVector WorldPos, WorldDir;
+	if (!PC->DeprojectScreenPositionToWorld(SizeX * 0.5f, SizeY * 0.5f, WorldPos, WorldDir))
+	{
+		return;
+	}
 
-    // 라인트레이스
-    FHitResult Hit;
-    FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildTrace), false);
-    Params.AddIgnoredActor(OwnerActor);
+	const FVector Start = WorldPos;
+	const FVector End = Start + WorldDir * 5000.f;
 
-    const bool bHit = GetWorld()->LineTraceSingleByChannel(
-        Hit,
-        Start,
-        End,
-        ECC_Visibility,
-        Params
-    );
+	FHitResult Hit;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildTrace), false);
+	Params.AddIgnoredActor(OwnerActor);
 
-    // 디버그 스피어
-    DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
+	if (!GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	{
+		return;
+	}
 
-    // 프리뷰 이동/회전
-    const FVector Location = Hit.ImpactPoint;
+	DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
 
-    const float Yaw = PC->GetControlRotation().Yaw;
-    const FRotator Rotation(0.f, Yaw, 0.f);
+	const FVector Location = Hit.ImpactPoint;
+	const FRotator Rotation(0.f, PC->GetControlRotation().Yaw, 0.f);
 
-    PreviewActor->UpdateTransform(Location, Rotation);
-
-    // 설치 가능 판정
-    const bool bCanPlace = CheckCanPlaceAt(Location, PreviewActor->GetPlacementRadius());
-    PreviewActor->SetCanPlace(bCanPlace);
+	PreviewActor->UpdateTransform(Location, Rotation);
+	PreviewActor->SetCanPlace(CheckCanPlaceAt(Location, PreviewActor->GetPlacementRadius()));
 }
 
 void UBuildManagerComponent::EnterBuildMode()
 {
-    if (bBuildMode || !DefaultBuildData || !PreviewActorClass)
-    {
-        return;
-    }
+	if (bBuildMode || !DefaultBuildData || !PreviewActorClass) return;
 
-    bBuildMode = true;
-    CurrentData = DefaultBuildData;
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return;
-    }
+	PreviewActor = World->SpawnActor<ABuildPreview>(PreviewActorClass);
+	if (!PreviewActor) return;
 
-    PreviewActor = World->SpawnActor<ABuildPreview>(PreviewActorClass);
-    if (PreviewActor)
-    {
-        PreviewActor->InitWithData(CurrentData);
-    }
+	bBuildMode = true;
+	CurrentData = DefaultBuildData;
+	
+	RefreshCachedReferences();
+	SetComponentTickEnabled(true);
+
+	PreviewActor->InitWithData(CurrentData);
 }
 
 void UBuildManagerComponent::ExitBuildMode()
 {
-    bBuildMode = false;
-    CurrentData = nullptr;
+	bBuildMode = false;
+	CurrentData = nullptr;
+	CachedPC = nullptr;
+	SetComponentTickEnabled(false);
 
-    if (PreviewActor)
-    {
-        PreviewActor->Destroy();
-        PreviewActor = nullptr;
-    }
+	if (PreviewActor)
+	{
+		PreviewActor->Destroy();
+		PreviewActor = nullptr;
+	}
 }
 
 void UBuildManagerComponent::TryPlace()
 {
-    if (!bBuildMode || !PreviewActor || !CurrentData) 
-    {
-        return;
-    }
+	if (!bBuildMode || !PreviewActor || !CurrentData) return;
+	if (!PreviewActor->CanPlace()) return;
+	if (!CurrentData->BuildingClass) return;
 
-    if (!PreviewActor->CanPlace())
-    {
-        return;
-    }
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-    if (!CurrentData->BuildingClass)
-    {
-        return;
-    }
+	FActorSpawnParameters Params;
+	Params.Owner = GetOwner();
+	Params.Instigator = Cast<APawn>(GetOwner());
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-    UWorld* World = GetWorld();
-    if (!World) 
-    {
-        return;
-    }
-
-    const FVector SpawnLoc = PreviewActor->GetActorLocation();
-    const FRotator SpawnRot = PreviewActor->GetActorRotation();
-
-    FActorSpawnParameters Params;
-    Params.Owner = GetOwner();
-    Params.Instigator = Cast<APawn>(GetOwner());
-    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-    AActor* Spawned = World->SpawnActor<AActor>(CurrentData->BuildingClass, SpawnLoc, SpawnRot, Params);
-    if (!Spawned) 
-    {
-        return;
-    }
+	World->SpawnActor<AActor>(
+		CurrentData->BuildingClass,
+		PreviewActor->GetActorLocation(),
+		PreviewActor->GetActorRotation(),
+		Params
+	);
 }
 
 bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, float Radius) const
 {
-    // 임시
-    return true;
+	return true;
+}
+
+void UBuildManagerComponent::RefreshCachedReferences()
+{
+	APawn* PawnOwner = Cast<APawn>(GetOwner());
+	if (!PawnOwner) return;
+
+	CachedPC = Cast<APlayerController>(PawnOwner->GetController());
 }
 

@@ -1,14 +1,12 @@
-﻿#include "GA_Fire.h"
-
+#include "GA_Fire.h"
 #include "Weapon/BaseRangedWeapon.h"
+#include "Weapon/BaseWeapon.h"
 #include "AbilitySystemComponent.h"
-#include "GameFramework/Actor.h"
-#include "Camera/CameraComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
-#include "Common/DataAssetInterface.h"
-#include "Common/FireStartInterface.h" 
+#include "Common/FireStartInterface.h"
+
+static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage")); 
 
 UGA_Fire::UGA_Fire()
 {
@@ -42,13 +40,16 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 	AActor* SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
 	if (!SourceActor) return;
 
-	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
+	UObject* SourceObject = GetCurrentSourceObject();
+	if (!SourceObject) return;
+
+	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceObject);
 	if (!FireStart) return;
 
-	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
-	if (!DataAssetInterface) return;
+	ABaseWeapon* SourceWeapon = Cast<ABaseWeapon>(SourceObject);
+	if (!SourceWeapon) return;
 
-	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
+	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(SourceWeapon->GetWeaponData());
 	if (!RangedData) return;
 
 	const FVector Start = FireStart->GetFireStartLocation();
@@ -102,10 +103,7 @@ void UGA_Fire::ApplyDamageEffect(
 
 	if (!Spec.IsValid()) return;
 
-	Spec.Data->SetSetByCallerMagnitude(
-		HitTag,
-		Damage
-	);
+	Spec.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, Damage);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
 }
