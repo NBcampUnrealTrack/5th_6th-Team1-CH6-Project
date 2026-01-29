@@ -48,7 +48,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
 	if (!DataAssetInterface) return;
 
-	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetWeaponDataAsset());
+	URangedWeaponDataAsset* RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
 	if (!RangedData) return;
 
 	const FVector Start = FireStart->GetFireStartLocation();

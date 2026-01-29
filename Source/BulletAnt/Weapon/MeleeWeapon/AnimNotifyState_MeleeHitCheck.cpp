@@ -17,7 +17,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshCom
 
 	if (IDataAssetInterface* Interface = Cast<IDataAssetInterface>(OwnerActor))
 	{
-		Data = Cast<UMeleeWeaponDataAsset>(Interface->GetWeaponDataAsset());
+		Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		if (!Data) return;
 	}
 
@@ -40,7 +40,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 	{
 		if (IDataAssetInterface* Interface = Cast<IDataAssetInterface>(OwnerActor))
 		{
-			Data = Cast<UMeleeWeaponDataAsset>(Interface->GetWeaponDataAsset());
+			Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		}
 	}
 	if (!Data) return;

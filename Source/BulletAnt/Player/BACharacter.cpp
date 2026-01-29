@@ -146,7 +146,7 @@ void ABACharacter::Move(const FInputActionValue& Value)
 	}
 }
 
-UWeaponDataAsset* ABACharacter::GetWeaponDataAsset() const
+UDataAsset* ABACharacter::GetDataAsset() const
 {
 	return EquippedWeapon->GetWeaponData();
 }

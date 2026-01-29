@@ -19,5 +19,5 @@ class BULLETANT_API IDataAssetInterface
 	GENERATED_BODY()
 
 public:
-	virtual UWeaponDataAsset* GetWeaponDataAsset() const = 0;
+	virtual UDataAsset* GetDataAsset() const = 0;
 };

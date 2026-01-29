@@ -29,13 +29,13 @@ void UGA_MeleeAttack::ActivateAbility(
 	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
 
 	IDataAssetInterface* Interface = Cast<IDataAssetInterface>(GetAvatarActorFromActorInfo());
-	if (!Interface || !Interface->GetWeaponDataAsset())
+	if (!Interface || !Interface->GetDataAsset())
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
-	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetWeaponDataAsset());
+	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 
 	UAbilityTask_WaitGameplayEvent* WaitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, Data->HitEventTag);
 	WaitTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnHitEventReceived);
@@ -76,9 +76,9 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 	if (SourceASC && TargetASC)
 	{
 		IDataAssetInterface* Interface = Cast<IDataAssetInterface>(ActorInfo->AvatarActor.Get());
-		if (!Interface || !Interface->GetWeaponDataAsset()) return;
+		if (!Interface || !Interface->GetDataAsset()) return;
 
-		UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetWeaponDataAsset());
+		UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		if (!Data) return;
 
 		FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();

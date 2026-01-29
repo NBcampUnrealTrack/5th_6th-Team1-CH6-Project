@@ -110,7 +110,7 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
-    virtual UWeaponDataAsset* GetWeaponDataAsset() const override;
+    virtual UDataAsset* GetDataAsset() const override;
 
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
