@@ -36,8 +36,8 @@ void ABaseBuilding::SetPlacementBoxExtent(const FVector& InBoxExtent)
 		PlacementBoxExtent,
 		GetActorQuat(),
 		FColor::Cyan,
-		true,     // Persistent Lines
-		-1.f,     // Infinite lifetime
+		true,
+		-1.f,
 		0,
 		2.f
 	);

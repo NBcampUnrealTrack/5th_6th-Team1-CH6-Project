@@ -34,6 +34,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TryPlace();
 
+	UFUNCTION(BlueprintCallable)
+	void RotatePreviewByWheel(float WheelAxisValue);
+
 	bool IsBuildMode() const { return bBuildMode; }
 
 private:
@@ -47,10 +50,10 @@ private:
 	void SetCurrentBuildingRow(FName NewRow);
 
 private:
-	UPROPERTY(EditDefaultsOnly, Category = "Build")
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	TObjectPtr<UDataTable> BuildingTable;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Build")
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	TSubclassOf<ABuildPreview> PreviewActorClass;
 
 	UPROPERTY()
@@ -68,4 +71,9 @@ private:
 	TWeakObjectPtr<APlayerController> CachedPC;
 
 	const FBuildingRow* CachedBuildingRow = nullptr;
+
+	float CurrentYaw = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Rotate")
+	float WheelYawStep = 15.f;
 };

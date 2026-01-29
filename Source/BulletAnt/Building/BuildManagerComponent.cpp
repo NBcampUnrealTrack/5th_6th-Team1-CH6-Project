@@ -51,8 +51,9 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         return;
     }
 
+    const float MaxDist = 1000.f;
     const FVector Start = WorldPos;
-    const FVector End = Start + WorldDir * 5000.f;
+    const FVector End = Start + WorldDir * MaxDist;
 
     // 라인트레이스
     FHitResult Hit;
@@ -67,25 +68,52 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         Params
     );
 
-    if (!bHit)
-    {
-        return;
-    }
-
     // 디버그 스피어
     DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
 
     // 프리뷰 이동/회전
-    const FVector Location = Hit.ImpactPoint;
+    FVector Location;
+    bool bHasValidSurface = false;
 
+    if (bHit)
+    {
+        Location = Hit.ImpactPoint;
+        bHasValidSurface = true;
+    }
+    else
+    {
+        Location = End;
+        bHasValidSurface = false;
+    }
+    
     const float Yaw = PC->GetControlRotation().Yaw;
-    const FRotator Rotation(0.f, Yaw, 0.f);
+    const FRotator Rotation(0.f, Yaw + CurrentYaw, 0.f);
 
     PreviewActor->UpdateTransform(Location, Rotation);
 
     // 설치 가능 판정
-    const bool bCanPlace = CheckCanPlaceAt(Location, Rotation, PreviewActor->GetPlacementBoxExtent());
+    bool bCanPlace;
+    if (bHasValidSurface)
+    {
+        bCanPlace = CheckCanPlaceAt(Location, Rotation, PreviewActor->GetPlacementBoxExtent());
+    }
+    else
+    {
+        bCanPlace = false;
+    }
     PreviewActor->SetCanPlace(bCanPlace);
+
+    DrawDebugBox(
+        GetWorld(),
+        Location,
+        PreviewActor->GetPlacementBoxExtent(),
+        Rotation.Quaternion(),
+        bCanPlace ? FColor::Green : FColor::Red,
+        false,
+        0.f,
+        0,
+        2.f
+    );
 }
 
 void UBuildManagerComponent::EnterBuildMode()
@@ -111,6 +139,8 @@ void UBuildManagerComponent::EnterBuildMode()
     SetCurrentBuildingRow("TestTurret");
     
     RefreshCachedRef();
+    CurrentYaw = 0.f;
+
     SetComponentTickEnabled(true);
 }
 
@@ -122,6 +152,7 @@ void UBuildManagerComponent::ExitBuildMode()
     CachedOwner = nullptr;
     CachedPC = nullptr;
     CachedBuildingRow = nullptr;
+    CurrentYaw = 0.f;
 
     if (PreviewActor)
     {
@@ -143,6 +174,25 @@ void UBuildManagerComponent::TryPlace()
     }
 
     ServerTryPlace(CurrentBuildingRow, PreviewActor->GetActorLocation(), PreviewActor->GetActorRotation());
+}
+
+void UBuildManagerComponent::RotatePreviewByWheel(float WheelAxisValue)
+{
+    if (!bBuildMode || !PreviewActor)
+    {
+        return;
+    }
+
+    if (FMath::IsNearlyZero(WheelAxisValue))
+    {
+        return;
+    }
+
+    CurrentYaw = FMath::Fmod(CurrentYaw + FMath::Sign(WheelAxisValue) * WheelYawStep, 360.f);
+    if (CurrentYaw < 0.f) 
+    {
+        CurrentYaw += 360.f;
+    }
 }
 
 void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, const FVector& Location, const FRotator& Rotation)
@@ -213,12 +263,6 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
         ObjParams,
         FCollisionShape::MakeBox(BoxExtent),
         Params
-    );
-
-    DrawDebugBox(
-        World, Location, BoxExtent, Rotation.Quaternion(),
-        bAnyOverlap ? FColor::Red : FColor::Green,
-        false, 0.f, 0, 2.f
     );
 
     if (!bAnyOverlap)
