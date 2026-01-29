@@ -21,5 +21,5 @@ public:
     UStaticMesh* PreviewMesh;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    FVector PlacementBoxExtent = FVector(100.f, 100.f, 100.f);
+    FVector BuildingBoxExtent = FVector(10.f, 10.f, 10.f);
 };

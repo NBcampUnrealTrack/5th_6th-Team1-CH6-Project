@@ -3,30 +3,33 @@
 
 #include "Building/BuildPreview.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/BoxComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 ABuildPreview::ABuildPreview()
 {
-	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
-	SetRootComponent(MeshComp);
+    bReplicates = false;
 
-	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    BuildingBounds->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    BuildingBounds->SetGenerateOverlapEvents(false);
 }
 
 void ABuildPreview::InitWithData(const FBuildingRow& Row)
 {
-    MeshComp->SetStaticMesh(Row.PreviewMesh);
-    PlacementBoxExtent = Row.PlacementBoxExtent;
-
+    StaticMeshComp->SetStaticMesh(Row.PreviewMesh);
     if (PreviewBaseMaterial)
     {
         MID = UMaterialInstanceDynamic::Create(PreviewBaseMaterial, this);
-        const int32 NumMaterials = MeshComp->GetNumMaterials();
+        const int32 NumMaterials = StaticMeshComp->GetNumMaterials();
         for (int32 i = 0; i < NumMaterials; ++i)
         {
-            MeshComp->SetMaterial(i, MID);
+            StaticMeshComp->SetMaterial(i, MID);
         }
     }
+
+    ApplyBuildingBounds(Row.BuildingBoxExtent);
 
     SetCanPlace(false);
 }

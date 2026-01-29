@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "BaseBuilding.generated.h"
 
+class UBoxComponent;
+
 UCLASS()
 class BULLETANT_API ABaseBuilding : public AActor
 {
@@ -16,13 +18,22 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void SetPlacementBoxExtent(const FVector& InBoxExtent);
+	void ApplyBuildingBounds(const FVector& InBoxExtent);
+	FVector GetBuildingBoxExtent() const { return BuildingBoxExtent; }
+	void SetBuildingBoxExtent(const FVector& InBoxExtent);
+
+private:
+	UFUNCTION()
+	void OnRep_BuildingBoxExtent();
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UStaticMeshComponent* StaticMeshComp;
+	TObjectPtr<UStaticMeshComponent> StaticMeshComp;
 
-private:
-	UPROPERTY(Replicated)
-	FVector PlacementBoxExtent = FVector(100.f, 100.f, 100.f);
+	UPROPERTY(VisibleAnywhere, Category = "Build")
+	TObjectPtr<UBoxComponent> BuildingBounds;
+
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_BuildingBoxExtent, VisibleAnywhere, Category = "Build")
+	FVector BuildingBoxExtent;
 };

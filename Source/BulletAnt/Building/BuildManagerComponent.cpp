@@ -26,68 +26,16 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
         return;
     }
 
-    PreviewActor->SetCanPlace(false);
-
-    AActor* OwnerActor = CachedOwner.Get();
-    APlayerController* PC = CachedPC.Get();
-    if (!OwnerActor || !PC)
-    {
-        return;
-    }
-
-    // 화면 중앙
-    int32 SizeX = 0, SizeY = 0;
-    PC->GetViewportSize(SizeX, SizeY);
-
-    FVector WorldPos, WorldDir;
-    const bool bDeprojectOK = PC->DeprojectScreenPositionToWorld(
-        SizeX * 0.5f,
-        SizeY * 0.5f,
-        WorldPos,
-        WorldDir
-    );
-    if (!bDeprojectOK) 
-    {
-        return;
-    }
-
-    const float MaxDist = 1000.f;
-    const FVector Start = WorldPos;
-    const FVector End = Start + WorldDir * MaxDist;
-
-    // 라인트레이스
-    FHitResult Hit;
-    FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildTrace), false);
-    Params.AddIgnoredActor(OwnerActor);
-
-    const bool bHit = GetWorld()->LineTraceSingleByChannel(
-        Hit,
-        Start,
-        End,
-        ECC_Visibility,
-        Params
-    );
-
-    // 디버그 스피어
-    DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
-
     // 프리뷰 이동/회전
     FVector Location;
-    bool bHasValidSurface = false;
-
-    if (bHit)
-    {
-        Location = Hit.ImpactPoint;
-        bHasValidSurface = true;
-    }
-    else
-    {
-        Location = End;
-        bHasValidSurface = false;
-    }
+    FRotator Rotation;
+    bool bHasValidSurface = false;   
     
-    const float Yaw = PC->GetControlRotation().Yaw;
-    const FRotator Rotation(0.f, Yaw + CurrentYaw, 0.f);
+    if (!ComputePreviewPlacement(Location, Rotation, bHasValidSurface))
+    {
+        PreviewActor->SetCanPlace(false);
+        return;
+    }
 
     PreviewActor->UpdateTransform(Location, Rotation);
 
@@ -95,25 +43,13 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     bool bCanPlace;
     if (bHasValidSurface)
     {
-        bCanPlace = CheckCanPlaceAt(Location, Rotation, PreviewActor->GetPlacementBoxExtent());
+        bCanPlace = CheckCanPlaceAt(Location, Rotation, PreviewActor->GetBuildingBoxExtent());
     }
     else
     {
         bCanPlace = false;
     }
     PreviewActor->SetCanPlace(bCanPlace);
-
-    DrawDebugBox(
-        GetWorld(),
-        Location,
-        PreviewActor->GetPlacementBoxExtent(),
-        Rotation.Quaternion(),
-        bCanPlace ? FColor::Green : FColor::Red,
-        false,
-        0.f,
-        0,
-        2.f
-    );
 }
 
 void UBuildManagerComponent::EnterBuildMode()
@@ -195,6 +131,58 @@ void UBuildManagerComponent::RotatePreviewByWheel(float WheelAxisValue)
     }
 }
 
+bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface)
+{
+    UWorld* World = GetWorld();
+    AActor* OwnerActor = CachedOwner.Get();
+    APlayerController* PC = CachedPC.Get();
+
+    if (!World || !OwnerActor || !PC)
+    {
+        return false;
+    }
+
+    // 화면 중앙
+    int32 SizeX = 0;
+    int32 SizeY = 0;
+    PC->GetViewportSize(SizeX, SizeY);
+
+    FVector WorldPos;
+    FVector WorldDir;
+    if (!PC->DeprojectScreenPositionToWorld(SizeX * 0.5f, SizeY * 0.5f, WorldPos, WorldDir))
+    {
+        return false;
+    }
+
+    // 라인트레이스
+    const float MaxDist = 1000.f;
+    const FVector Start = WorldPos;
+    const FVector End = Start + WorldDir * MaxDist;
+
+    FHitResult Hit;
+    FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildTrace), false);
+    Params.AddIgnoredActor(OwnerActor);
+
+    if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+    {
+        OutLocation = Hit.ImpactPoint;
+        bOutHasValidSurface = true;
+
+        // 디버그 스피어
+        DrawDebugSphere(GetWorld(), Hit.ImpactPoint, 12.f, 12, FColor::Yellow, false, 0.f);
+    }
+    else
+    {
+        OutLocation = End;
+        bOutHasValidSurface = false;
+    }
+
+    const float BaseYaw = PC->GetControlRotation().Yaw;
+    OutRotation = FRotator(0.f, BaseYaw + CurrentYaw, 0.f);
+
+    return true;
+}
+
 void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, const FVector& Location, const FRotator& Rotation)
 {
     if (!BuildingTable)
@@ -208,7 +196,7 @@ void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, co
         return;
     }
 
-    if (!CheckCanPlaceAt(Location, Rotation, Row->PlacementBoxExtent))
+    if (!CheckCanPlaceAt(Location, Rotation, Row->BuildingBoxExtent))
     {
         return;
     }
@@ -227,7 +215,7 @@ void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, co
     ABaseBuilding* Spawned = World->SpawnActor<ABaseBuilding>(Row->BuildingClass, Location, Rotation, Params);
     if (Spawned)
     {
-        Spawned->SetPlacementBoxExtent(Row->PlacementBoxExtent);
+        Spawned->SetBuildingBoxExtent(Row->BuildingBoxExtent);
     }
 }
 
@@ -258,7 +246,7 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
     TArray<FOverlapResult> Overlaps;
     const bool bAnyOverlap = World->OverlapMultiByObjectType(
         Overlaps,
-        Location,
+        Location + FVector(0, 0, BoxExtent.Z),
         Rotation.Quaternion(),
         ObjParams,
         FCollisionShape::MakeBox(BoxExtent),

@@ -40,6 +40,8 @@ public:
 	bool IsBuildMode() const { return bBuildMode; }
 
 private:
+	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);
+
 	UFUNCTION(Server, Reliable)
 	void ServerTryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
 
@@ -60,7 +62,7 @@ private:
 	FName CurrentBuildingRow;
 
 	UPROPERTY()
-	TObjectPtr<ABuildPreview> PreviewActor = nullptr;
+	TObjectPtr<ABuildPreview> PreviewActor;
 
 	bool bBuildMode = false;
 
