@@ -16,7 +16,6 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	WaveIndex = 0;
 	AliveEnemyCount = 0;
-	EnemySpawnHandle.DataTable = SpawnDataTable;
 	
 	checkf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL"));
 	GetWorld()->GetTimerManager().SetTimer(SpawnTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
@@ -73,8 +72,8 @@ void USpawnManagerSubsystem::SetSpawnDataTable()
 	checkf(IsValid(WorldSettings), TEXT("SpawnManagerSubsystem : GetWorldSettings Error"));
 	ABAWorldSettings* BAWorldSettings = Cast<ABAWorldSettings>(WorldSettings);
 	checkf(IsValid(BAWorldSettings), TEXT("SpawnManagerSubsystem : Cast BAWorldSettings Error"));
-	SpawnDataTable = BAWorldSettings->SpawnTable;
-	checkf(IsValid(SpawnDataTable), TEXT("SpawnManagerSubsystem : SetSpawnDataTable Error"));
+	EnemySpawnHandle.DataTable = BAWorldSettings->SpawnTable;
+	checkf(IsValid(EnemySpawnHandle.DataTable), TEXT("SpawnManagerSubsystem : SetSpawnDataTable Error"));
 }
 
 void USpawnManagerSubsystem::StartWave()
@@ -89,7 +88,7 @@ void USpawnManagerSubsystem::StartWave()
 		}
 	}
 	
-	if (IsValid(SpawnDataTable) == false)
+	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		SetSpawnDataTable();
 	}
@@ -100,7 +99,7 @@ void USpawnManagerSubsystem::StartWave()
 void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Spawn"))
-	if (IsValid(SpawnDataTable) == false)
+	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
 		return;
