@@ -27,23 +27,32 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     }
 
     // 프리뷰 이동/회전
-    FVector Location;
+    FVector FreeLocation;
     FRotator Rotation;
     bool bHasValidSurface = false;   
     
-    if (!ComputePreviewPlacement(Location, Rotation, bHasValidSurface))
+    if (!ComputePreviewPlacement(FreeLocation, Rotation, bHasValidSurface))
     {
         PreviewActor->SetCanPlace(false);
         return;
     }
 
-    PreviewActor->UpdateTransform(Location, Rotation);
+    // 스냅 체크
+    PreviewActor->UpdateTransform(FreeLocation, Rotation);
+    FVector FinalLocation = FreeLocation;
+    if (bSnapMode)
+    {
+        TrySnapPreview(FinalLocation);
+    }
+
+    PreviewActor->UpdateTransform(FinalLocation, Rotation);
+    PreviewActor->DrawSnapPointsDebug(false, 0.02f);
 
     // 설치 가능 판정
     bool bCanPlace;
     if (bHasValidSurface)
     {
-        bCanPlace = CheckCanPlaceAt(Location, Rotation, PreviewActor->GetBuildingBoxExtent());
+        bCanPlace = CheckCanPlaceAt(FinalLocation, Rotation, PreviewActor->GetBuildingBoxExtent());
     }
     else
     {
@@ -131,6 +140,11 @@ void UBuildManagerComponent::RotatePreviewByWheel(float WheelAxisValue)
     }
 }
 
+void UBuildManagerComponent::ToggleSnapMode()
+{
+    bSnapMode = !bSnapMode;
+}
+
 bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface)
 {
     UWorld* World = GetWorld();
@@ -183,6 +197,84 @@ bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRota
     return true;
 }
 
+bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation) const
+{
+    UWorld* World = GetWorld();
+    if (!World || !PreviewActor)
+    {
+        return false;
+    }
+
+    // 주변 빌딩 후보 찾기 (차후에 빌딩 채널로 빌딩들만 체크할 예정)
+    FCollisionQueryParams Params(SCENE_QUERY_STAT(SnapSearch), false);
+    Params.AddIgnoredActor(PreviewActor);
+
+    FCollisionObjectQueryParams ObjParams;
+    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
+
+    TArray<FOverlapResult> Overlaps;
+    const bool bAnyOverlap = World->OverlapMultiByObjectType(
+        Overlaps,
+        InOutLocation,
+        FQuat::Identity,
+        ObjParams,
+        FCollisionShape::MakeSphere(SnapSearchRadius),
+        Params
+    );
+
+    if (!bAnyOverlap)
+    {
+        return false;
+    }
+
+    // 프리뷰 스냅 포인트들
+    TArray<FVector> PreviewSnapPoints;
+    PreviewActor->GetSnapPointsWorld(PreviewSnapPoints);
+
+    float BestDistSq = SnapMaxDistance * SnapMaxDistance;
+    FVector BestDelta = FVector::ZeroVector;
+    bool bFound = false;
+
+    // 각 후보 빌딩의 스냅 포인트와 매칭
+    for (const FOverlapResult& R : Overlaps)
+    {
+        ABaseBuilding* OtherBuilding = Cast<ABaseBuilding>(R.GetActor());
+        if (!OtherBuilding)
+        {
+            continue;
+        }
+
+        TArray<FVector> OtherSnapPoints;
+        OtherBuilding->GetSnapPointsWorld(OtherSnapPoints);
+
+        for (const FVector& PPrev : PreviewSnapPoints)
+        {
+            for (const FVector& POther : OtherSnapPoints)
+            {
+                FVector Delta = POther - PPrev;
+
+                const float DistSq = Delta.SizeSquared();
+                if (DistSq < BestDistSq)
+                {
+                    BestDistSq = DistSq;
+                    BestDelta = Delta;
+                    bFound = true;
+                }
+            }
+        }
+    }
+
+    if (!bFound)
+    {
+        return false;
+    }
+
+    // 적용
+    InOutLocation += BestDelta;
+    return true;
+}
+
 void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, const FVector& Location, const FRotator& Rotation)
 {
     if (!BuildingTable)
@@ -216,6 +308,7 @@ void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, co
     if (Spawned)
     {
         Spawned->SetBuildingBoxExtent(Row->BuildingBoxExtent);
+        Spawned->DrawSnapPointsDebug(true, -1.f);
     }
 }
 
@@ -227,10 +320,10 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
         return false;
     }
 
-    FVector BoxExtent = InBoxExtent;
-    BoxExtent.X = FMath::Max(10.f, BoxExtent.X);
-    BoxExtent.Y = FMath::Max(10.f, BoxExtent.Y);
-    BoxExtent.Z = FMath::Max(10.f, BoxExtent.Z);
+    FVector BoxExtent = InBoxExtent.ComponentMax(FVector(10.f));
+    const FVector Center = Location + FVector(0, 0, BoxExtent.Z);
+    const FQuat RotQ = Rotation.Quaternion();
+    const FCollisionShape BoxShape = FCollisionShape::MakeBox(BoxExtent);
 
     FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildOverlap), false);
     if (PreviewActor) 
@@ -246,10 +339,10 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
     TArray<FOverlapResult> Overlaps;
     const bool bAnyOverlap = World->OverlapMultiByObjectType(
         Overlaps,
-        Location + FVector(0, 0, BoxExtent.Z),
-        Rotation.Quaternion(),
+        Center,
+        RotQ,
         ObjParams,
-        FCollisionShape::MakeBox(BoxExtent),
+        BoxShape,
         Params
     );
 
@@ -261,7 +354,9 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
     for (const FOverlapResult& R : Overlaps)
     {
         AActor* Other = R.GetActor();
-        if (!Other) 
+        UPrimitiveComponent* OtherComp = R.GetComponent();
+
+        if (!Other || !OtherComp)
         {
             continue;
         }
@@ -271,7 +366,13 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
             continue;
         }
 
-        return false;
+        // 작은 오차의 겹침은 허용
+        FMTDResult MTD;
+        const bool bHasMTD = OtherComp->ComputePenetration(MTD, BoxShape, Center, RotQ);
+        if (bHasMTD && MTD.Distance > 1.f)
+        {
+            return false;
+        }
     }
 
     return true;

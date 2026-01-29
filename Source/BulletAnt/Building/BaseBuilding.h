@@ -22,9 +22,15 @@ public:
 	FVector GetBuildingBoxExtent() const { return BuildingBoxExtent; }
 	void SetBuildingBoxExtent(const FVector& InBoxExtent);
 
+	void GetSnapPointsWorld(TArray<FVector>& OutPoints) const;
+
+	void DrawSnapPointsDebug(bool bPersistentLines, float LifeTime) const;
+
 private:
 	UFUNCTION()
 	void OnRep_BuildingBoxExtent();
+
+	void GetSnapPointsLocal(TArray<FVector>& OutPoints) const;
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)

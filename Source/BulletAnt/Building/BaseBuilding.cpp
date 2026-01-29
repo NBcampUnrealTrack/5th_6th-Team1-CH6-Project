@@ -50,7 +50,52 @@ void ABaseBuilding::SetBuildingBoxExtent(const FVector& InBoxExtent)
 	}
 }
 
+void ABaseBuilding::GetSnapPointsWorld(TArray<FVector>& OutPoints) const
+{
+	TArray<FVector> Local;
+	GetSnapPointsLocal(Local);
+
+	OutPoints.Reset(Local.Num());
+
+	const FTransform T = GetActorTransform();
+	for (const FVector& P : Local)
+	{
+		OutPoints.Add(T.TransformPosition(P));
+	}
+}
+
+void ABaseBuilding::DrawSnapPointsDebug(bool bPersistentLines, float LifeTime) const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	TArray<FVector> SnapPoints;
+	GetSnapPointsWorld(SnapPoints);
+
+	for (const FVector& P : SnapPoints)
+	{
+		DrawDebugSphere(World, P, 12.f, 8, FColor::Yellow, bPersistentLines, LifeTime, 0, 1.5f);
+	}
+}
+
 void ABaseBuilding::OnRep_BuildingBoxExtent()
 {
 	ApplyBuildingBounds(BuildingBoxExtent);
+}
+
+void ABaseBuilding::GetSnapPointsLocal(TArray<FVector>& OutPoints) const
+{
+	OutPoints.Reset();
+
+	const float X = BuildingBoxExtent.X;
+	const float Y = BuildingBoxExtent.Y;
+
+	// 바닥 4면 꼭지점
+	OutPoints.Add(FVector(+X, +Y, 0.f));
+	OutPoints.Add(FVector(+X, -Y, 0.f));
+	OutPoints.Add(FVector(-X, +Y, 0.f));
+	OutPoints.Add(FVector(-X, -Y, 0.f));
 }

@@ -37,10 +37,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void RotatePreviewByWheel(float WheelAxisValue);
 
+	UFUNCTION(BlueprintCallable)
+	void ToggleSnapMode();
+
 	bool IsBuildMode() const { return bBuildMode; }
 
 private:
 	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);
+
+	bool TrySnapPreview(FVector& InOutLocation) const;
 
 	UFUNCTION(Server, Reliable)
 	void ServerTryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
@@ -78,4 +83,12 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Rotate")
 	float WheelYawStep = 15.f;
+
+	bool bSnapMode = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
+	float SnapSearchRadius = 400.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
+	float SnapMaxDistance = 40.f;
 };
