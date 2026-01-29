@@ -30,6 +30,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UDataTable> SpawnDataTable;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
+	FDataTableRowHandle EnemySpawnHandle;	
+	
 	int32 WaveIndex;
 	int32 AliveEnemyCount;
 	

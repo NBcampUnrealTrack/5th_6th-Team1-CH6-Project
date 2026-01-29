@@ -16,6 +16,7 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	WaveIndex = 0;
 	AliveEnemyCount = 0;
+	EnemySpawnHandle.DataTable = SpawnDataTable;
 	
 	checkf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL"));
 	GetWorld()->GetTimerManager().SetTimer(SpawnTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
@@ -36,7 +37,7 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 	if (!Super::ShouldCreateSubsystem(Outer))
 	{
 		
-		UE_LOG(LogTemp, Warning, TEXT("1"))
+		// UE_LOG(LogTemp, Warning, TEXT("1"))
 		return false;
 	}
 
@@ -45,24 +46,24 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 	{
 		if (World->GetNetMode() == ENetMode::NM_Client)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("2"))
+			// UE_LOG(LogTemp, Warning, TEXT("2"))
 			return false;
 		}
 		
 		if (!(World->IsGameWorld() || World->IsPlayInEditor()))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("3"))
+			// UE_LOG(LogTemp, Warning, TEXT("3"))
 			return false;
 		}
 
 		FString LevelName = World->GetMapName();
 		if (LevelName.Contains(TEXT("TestMap")))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("4"))
+			// UE_LOG(LogTemp, Warning, TEXT("4"))
 			return true; 
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("5"))
+	// UE_LOG(LogTemp, Warning, TEXT("5"))
 	return false;
 }
 
@@ -111,8 +112,9 @@ void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 	}
 	
 	static const FString ContextString(TEXT("EnemySpawnContext"));
-	FName RowName = FName(*FString::Printf(TEXT("Wave%d"), InWaveIndex + 1));
-	FEnemySpawnerEntry* Row = SpawnDataTable->FindRow<FEnemySpawnerEntry>(RowName, ContextString);
+	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), InWaveIndex + 1));
+	EnemySpawnHandle.RowName = RowName;
+	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(ContextString); 
 	if (Row == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem: Row '%s' not found in DataTable"), *RowName.ToString());
