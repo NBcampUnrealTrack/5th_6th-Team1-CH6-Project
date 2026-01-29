@@ -4,25 +4,25 @@
 
 #include "CoreMinimal.h"	
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
+class UBaseEnemyDataAsset;
 
 UCLASS()
-class BULLETANT_API ABaseEnemyCharacter : public ACharacter
+class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ABaseEnemyCharacter();
 	
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	AActor* GetTargetActor() const;
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
 	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
@@ -32,6 +32,15 @@ public:
 	float AcceptanceRadius;
 	
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+	
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS")
+	// TArray<TSubclassOf<class UGameplayAbility>> DefaultAbilities;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
 };
