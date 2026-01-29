@@ -10,9 +10,9 @@
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 				"Engine",
+				"GameplayAbilities",
 				"MassSpawner",
-				"StateTreeModule",
-				"GameplayAbilities"
+				"StateTreeModule"
 			]
 		}
 	],

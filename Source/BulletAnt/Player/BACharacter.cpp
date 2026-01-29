@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Player/BACharacter.h"
@@ -8,38 +8,58 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "AbilitySystemComponent.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "Weapon/BaseRangedWeapon.h"
+#include "Weapon/Data/WeaponDataAsset.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 // Sets default values
 ABACharacter::ABACharacter()
 {
-    // Tick ¼³Á¤
-    PrimaryActorTick.bCanEverTick = true;
+	// Tick ì„¤ì •
+	PrimaryActorTick.bCanEverTick = true;
 
-    // È¸Àü ¼³Á¤: Ä³¸¯ÅÍ´Â ÄÁÆ®·Ñ·¯ È¸ÀüÀ» ¹Ù·Î µû¶ó°¡Áö ¾ÊÀ½ (Ä«¸Ş¶ó¸¸ µû¶ó°¨)
-    bUseControllerRotationPitch = false;
-    bUseControllerRotationYaw = false;
-    bUseControllerRotationRoll = false;
+	// ìºë¦­í„° íšŒì „ ì„¤ì •
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
 
-    // ÀÌµ¿ ÄÄÆ÷³ÍÆ® ¼³Á¤: ÀÌµ¿ ¹æÇâÀ¸·Î Ä³¸¯ÅÍ°¡ ÀÚµ¿À¸·Î È¸ÀüÇÏµµ·Ï ÇÔ
-    GetCharacterMovement()->bOrientRotationToMovement = true;
-    GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // È¸Àü ¼Óµµ
+	// ì´ë™ ì»´í¬ë„ŒíŠ¸ ì„¤ì •
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // íšŒì „ ì†ë„
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 
-    // ½ºÇÁ¸µ ¾Ï »ı¼º ¹× ¼³Á¤
-    CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-    CameraBoom->SetupAttachment(RootComponent);
-    CameraBoom->TargetArmLength = 400.0f;
-    CameraBoom->bUsePawnControlRotation = true;
+	// ìŠ¤í”„ë§ ì•” ìƒì„± ë° ì„¤ì •
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->TargetArmLength = 400.0f;
+	CameraBoom->bUsePawnControlRotation = true;
 
-    // Ä«¸Ş¶ó »ı¼º ¹× ¼³Á¤
-    FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-    FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-    FollowCamera->bUsePawnControlRotation = false;
+	// ì¹´ë©”ë¼ ìƒì„± ë° ì„¤ì •
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->bUsePawnControlRotation = false;
+
+	//GAS
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
+
+	//Test
+	//ì•‰ê¸° ê¸°ëŠ¥ í™œì„±í™”
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
+	bIsAiming = false;
+	bIsRunning = false;
 }
 
 // Called when the game starts or when spawned
 void ABACharacter::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 }
 
 // Called every frame
@@ -49,64 +69,264 @@ void ABACharacter::Tick(float DeltaTime)
 
 }
 
-// ÀÔ·Â ¹ÙÀÎµù (¿©±â°¡ ÇÙ½É!)
+// ì…ë ¥ ë°”ì¸ë”©
 void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-    Super::SetupPlayerInputComponent(PlayerInputComponent);
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
-        // Á¡ÇÁ (Character ±âº» Á¦°ø ÇÔ¼ö »ç¿ë)
-        if(JumpAction)
-        {
-            EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-            EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-        }
+		// ì í”„
+		if (JumpAction)
+		{
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		}
 
-        // ÀÌµ¿
-        if(MoveAction)
-        {
-            EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABACharacter::Move);
-        }
+		// ì´ë™
+		if (MoveAction)
+		{
+			EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABACharacter::Move);
+		}
+		// ë‹¬ë¦¬ê¸°
+		if (RunAction)
+		{
+			EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Started, this, &ABACharacter::StartRunning);
+			EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Completed, this, &ABACharacter::StopRunning);
+		}
+		// ì•‰ê¸°
+		if (CrouchAction)
+		{
+			EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &ABACharacter::CrouchInput);
+		}
+		// ì‹œì„  ì²˜ë¦¬ (ë§ˆìš°ìŠ¤)
+		if (LookAction)
+		{
+			EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABACharacter::Look);
+		}
 
-        // ½Ã¼± Ã³¸® (¸¶¿ì½º)
-        if(LookAction)
-        {
-            EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABACharacter::Look);
-        }
-    }
+		if (AttackAction)
+		{
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::Attack);
+		}
+		// ì¡°ì¤€
+		if (AimAction)
+		{
+			EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &ABACharacter::AimStart);
+			EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ABACharacter::AimStop);
+		}
+
+		//ìƒí˜¸ì‘ìš©
+		if (InteractionAction)
+		{
+			EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
+		}
+	}
 }
 
-// ÀÌµ¿ ÇÔ¼ö ±¸Çö
+// ì´ë™ í•¨ìˆ˜ êµ¬í˜„
 void ABACharacter::Move(const FInputActionValue& Value)
 {
-    FVector2D MovementVector = Value.Get<FVector2D>();
-    if (Controller != nullptr)
-    {
-        // ÄÁÆ®·Ñ·¯°¡ º¸°í ÀÖ´Â ¹æÇâ(Yaw)À» ¾Ë¾Æ³¿
-        const FRotator Rotation = Controller->GetControlRotation();
-        const FRotator YawRotation(0, Rotation.Yaw, 0);
+	FVector2D MovementVector = Value.Get<FVector2D>();
+	if (Controller != nullptr)
+	{
+		// ì»¨íŠ¸ë¡¤ëŸ¬ê°€ ë³´ê³  ìˆëŠ” ë°©í–¥(Yaw)ì„ ì•Œì•„ëƒ„
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-        // Àü¹æ ¹æÇâ (W/S) °è»ê
-        const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		// ì „ë°© ë°©í–¥ (W/S) ê³„ì‚°
+		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-        // ¿ìÃø ¹æÇâ (A/D) °è»ê
-        const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		// ìš°ì¸¡ ë°©í–¥ (A/D) ê³„ì‚°
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-        // ÀÌµ¿ Àû¿ë
-        AddMovementInput(ForwardDirection, MovementVector.Y);
-        AddMovementInput(RightDirection, MovementVector.X);
-    }
+		// ì´ë™ ì ìš©
+		AddMovementInput(ForwardDirection, MovementVector.Y);
+		AddMovementInput(RightDirection, MovementVector.X);
+	}
 }
 
-// ½Ã¼± Ã³¸® ÇÔ¼ö ±¸Çö
+UDataAsset* ABACharacter::GetDataAsset() const
+{
+	return EquippedWeapon->GetWeaponData();
+}
+
+void ABACharacter::StartRunning(const FInputActionValue& Value)
+{
+	bIsRunning = true;
+	GetCharacterMovement()->MaxWalkSpeed = RunningSpeed;
+}
+
+void ABACharacter::StopRunning(const FInputActionValue& Value)
+{
+	bIsRunning = false;
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void ABACharacter::CrouchInput(const FInputActionValue& Value)
+{
+	if (!bIsCrouched)
+	{
+		Crouch(false);
+		GetCharacterMovement()->MaxWalkSpeed = CrouchSpeed;
+	}
+	else
+	{
+		UnCrouch(false);
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	}
+}
+
+// ì‹œì„  ì²˜ë¦¬ í•¨ìˆ˜ êµ¬í˜„
 void ABACharacter::Look(const FInputActionValue& Value)
 {
-    FVector2D LookAxisVector = Value.Get<FVector2D>();
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-    if (Controller != nullptr)
-    {
-        AddControllerYawInput(LookAxisVector.X);
-        AddControllerPitchInput(LookAxisVector.Y);
-    }
+	if (Controller != nullptr)
+	{
+		AddControllerYawInput(LookAxisVector.X);
+		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void ABACharacter::Attack(const FInputActionValue& Value)
+{
+	if (!AbilitySystemComponent) return;
+
+	FGameplayTagContainer Tag;
+
+	const FGameplayTag& AttackTag = EquippedWeapon->GetWeaponData()->WeaponTag;
+	Tag.AddTag(AttackTag);
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
+UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+void ABACharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		if (HasAuthority())
+		{
+			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+			{
+				if (AbilityClass)
+				{
+					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+					AbilitySystemComponent->GiveAbility(Spec);
+				}
+			}
+		}
+
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+	}
+
+	if (DefaultWeaponClass)
+	{
+		EquipWeapon(DefaultWeaponClass);
+	}
+}
+
+void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
+{
+	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
+}
+
+void ABACharacter::EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass)
+{
+	if (!HasAuthority()) return;
+	if (!WeaponClass) return;
+
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->UnequipWeapon(AbilitySystemComponent);
+		EquippedWeapon->Destroy();
+		EquippedWeapon = nullptr;
+	}
+
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.Instigator = this;
+
+	ABaseWeapon* NewWeapon = GetWorld()->SpawnActor<ABaseWeapon>(
+		WeaponClass,
+		Params
+	);
+
+	if (!NewWeapon) return;
+
+	NewWeapon->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+		TEXT("WeaponSocket")
+	);
+
+	NewWeapon->EquipWeapon(AbilitySystemComponent);
+
+	EquippedWeapon = NewWeapon;
+}
+
+FVector ABACharacter::GetFireStartLocation() const
+{
+	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+	{
+		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
+		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->MuzzleSocketName))
+		{
+			return WeaponMesh->GetSocketLocation(Weapon->MuzzleSocketName);
+		}
+	}
+
+	return GetActorLocation();
+}
+
+FVector ABACharacter::GetFireDirection() const
+{
+	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+	{
+		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
+		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->MuzzleSocketName))
+		{
+			return WeaponMesh->GetSocketRotation(Weapon->MuzzleSocketName).Vector();
+		}
+	}
+
+	return GetActorRotation().Vector();
+}
+//ì¡°ì¤€ ì‹œì‘
+void ABACharacter::AimStart(const FInputActionValue& Value)
+{
+	bIsAiming = true;
+
+	//ìºë¦­í„° íšŒì „ ê³ ì •
+	bUseControllerRotationYaw = true;
+
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->MaxWalkSpeed = AimSpeed;
+}
+
+//ì¡°ì¤€ ë
+void ABACharacter::AimStop(const FInputActionValue& Value)
+{
+	bIsAiming = false;
+
+	//ìºë¦­í„° íšŒì „ ê³ ì •
+	bUseControllerRotationYaw = false;
+
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void ABACharacter::Interaction(const FInputActionValue& Value)
+{
+
 }
