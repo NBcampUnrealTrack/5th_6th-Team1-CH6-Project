@@ -86,6 +86,8 @@ protected:
 
 	TArray<int32> LODDistance = { 1, 3, 5 };
 
+	static const FIntVector NeighborOffsets[6];
+
 #pragma endregion
 
 #pragma region Props

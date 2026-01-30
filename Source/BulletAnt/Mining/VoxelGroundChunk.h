@@ -6,19 +6,8 @@
 
 struct FNeighborLOD
 {
-	// X, Y, Z 방향 이웃의 LOD Level
-	int32 XPos, XNeg, YPos, YNeg, ZPos, ZNeg;
-
-	// 생성자 기본값은 내 LOD로 해서 혹시 모를 상황 대비
-	//FNeighborLOD(int32 MyLOD) : XPos(MyLOD), XNeg(MyLOD), YPos(MyLOD), YNeg(MyLOD), ZPos(MyLOD), ZNeg(MyLOD) {}
-};
-
-enum class ETransitionDir : uint8
-{
-	None,
-	XPos, XNeg,
-	YPos, YNeg,
-	ZPos, ZNeg
+	// 면 방향 : XNeg, XPos, YNeg, YPos, ZNeg, ZPos
+	int32 LODs[6];
 };
 
 struct FChunkMeshData

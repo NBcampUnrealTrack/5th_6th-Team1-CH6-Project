@@ -40,24 +40,13 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 
 			int32 Step = GetStepByLODLevel(LocalLODLevel);
 
-			int32 MinX = 0, MinY = 0, MinZ = 0;
-			int32 MaxX = LocalGridSize, MaxY = LocalGridSize, MaxZ = LocalGridSize;
+			int32 MaxSize = LocalGridSize - Step;
 
 			// -X, +X, -Y, +Y, -Z, +Z 방향 TransitionCell 존재 여부
-			const bool TransitionFlags[6] =
-			{
-				LocalLODLevel > NeighborLOD.XNeg,
-				LocalLODLevel > NeighborLOD.XPos,
-				LocalLODLevel > NeighborLOD.YNeg,
-				LocalLODLevel > NeighborLOD.YPos,
-				LocalLODLevel > NeighborLOD.ZNeg,
-				LocalLODLevel > NeighborLOD.ZPos
-			};
-
 			uint8 NeighborMask = 0;
 			for (int32 Idx = 0; Idx < 6; ++Idx)
 			{
-				if (TransitionFlags[Idx] == true)
+				if (LocalLODLevel > NeighborLOD.LODs[Idx])
 				{
 					NeighborMask |= (1 << Idx);
 				}
@@ -70,44 +59,47 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 
 			auto CallGenerateTransition = [&](int32 X, int32 Y, int32 Z, int32 FaceIdx)
 				{
-					GenerateTransitionCell(FaceIdx, X, Y, Z, LocalLODLevel, Step, NeighborMask, MeshData, VertexCache, LocalDensity, LocalVoxelSize, LocalGridSize, LocalIsoLevel);
+					if (NeighborMask & (1 << FaceIdx))
+					{
+						GenerateTransitionCell(FaceIdx, X, Y, Z, LocalLODLevel, Step, NeighborMask, MeshData, VertexCache, LocalDensity, LocalVoxelSize, LocalGridSize, LocalIsoLevel);
+					}
 				};
 
 			// 내부 RegularCell
-			for (int32 Z = 0; Z < LocalGridSize; Z += Step)
+			for (int32 Z = 0; Z <= MaxSize; Z += Step)
 			{
-				for (int32 Y = 0; Y < LocalGridSize; Y += Step)
+				for (int32 Y = 0; Y <= MaxSize; Y += Step)
 				{
-					for (int32 X = 0; X < LocalGridSize; X += Step)
+					for (int32 X = 0; X <= MaxSize; X += Step)
 					{
 						CallGenerateRegular(X, Y, Z);
 
-						if (X == 0 && TransitionFlags[0])
+						if (X == 0)
 						{
 							CallGenerateTransition(X, Y, Z, 0);
 						}
 
-						if (X == LocalGridSize - Step && TransitionFlags[1])
+						if (X == MaxSize)
 						{
 							CallGenerateTransition(X, Y, Z, 1);
 						}
 
-						if (Y == 0 && TransitionFlags[2])
+						if (Y == 0)
 						{
 							CallGenerateTransition(X, Y, Z, 2);
 						}
 
-						if (Y == LocalGridSize - Step && TransitionFlags[3])
+						if (Y == MaxSize)
 						{
 							CallGenerateTransition(X, Y, Z, 3);
 						}
 
-						if (Z == 0 && TransitionFlags[4])
+						if (Z == 0)
 						{
 							CallGenerateTransition(X, Y, Z, 4);
 						}
 
-						if (Z == LocalGridSize - Step && TransitionFlags[5])
+						if (Z == MaxSize)
 						{
 							CallGenerateTransition(X, Y, Z, 5);
 						}
@@ -292,38 +284,58 @@ FVector UVoxelGroundChunk::GetVirtualPosition(FVector PrimaryPos, int32 LODIndex
 	float S = (float)LocalGridSize / (1 << LODIndex);
 	float CellSize = (float)(1 << LODIndex) * LocalVoxelSize;
 	float W = FMath::Pow(2.0f, K - 2.0f) * LocalVoxelSize;
+	float MaxPos = (float)(LocalGridSize) * LocalVoxelSize;;
 
 	FVector Offset(0, 0, 0);
 	const float Epsilon = 0.001f;
 
+	bool bXNeg = (PrimaryPos.X < Epsilon);
+	bool bXPos = (PrimaryPos.X > MaxPos - Epsilon);
+	bool bYNeg = (PrimaryPos.Y < Epsilon);
+	bool bYPos = (PrimaryPos.Y > MaxPos - Epsilon);
+	bool bZNeg = (PrimaryPos.Z < Epsilon);
+	bool bZPos = (PrimaryPos.Z > MaxPos - Epsilon);
+
 	// X축 수축: -X 방향, +X 방향
-	if ((NeighborMask & (1 << 0)) && PrimaryPos.X < CellSize + Epsilon)
+	if ((bYNeg == false || (NeighborMask & (1 << 2))) && (bYPos == false || (NeighborMask & (1 << 3))) &&
+		(bZNeg == false || (NeighborMask & (1 << 4))) && (bZPos == false || (NeighborMask & (1 << 5))))
 	{
-		Offset.X = (1.0f - (PrimaryPos.X / CellSize)) * W;
-	}
-	else if ((NeighborMask & (1 << 1)) && PrimaryPos.X > CellSize * (S - 1.0f) - Epsilon)
-	{
-		Offset.X = ((S - 1.0f) - (PrimaryPos.X / CellSize)) * W;
+		if ((NeighborMask & (1 << 0)) && bXNeg)
+		{
+			Offset.X = (1.0f - (PrimaryPos.X / CellSize)) * W;
+		}
+		else if ((NeighborMask & (1 << 1)) && bXPos)
+		{
+			Offset.X = ((S - 1.0f) - (PrimaryPos.X / CellSize)) * W;
+		}
 	}
 
 	// Y축 수축: -Y 방향, +Y 방향
-	if ((NeighborMask & (1 << 2)) && PrimaryPos.Y < CellSize + Epsilon)
+	if ((bXNeg == false || (NeighborMask & (1 << 0))) && (bXPos == false || (NeighborMask & (1 << 1))) &&
+		(bZNeg == false || (NeighborMask & (1 << 4))) && (bZPos == false || (NeighborMask & (1 << 5))))
 	{
-		Offset.Y = (1.0f - (PrimaryPos.Y / CellSize)) * W;
+		if ((NeighborMask & (1 << 2)) && bYNeg)
+		{
+			Offset.Y = (1.0f - (PrimaryPos.Y / CellSize)) * W;
+		}
+		else if ((NeighborMask & (1 << 3)) && bYPos)
+		{
+			Offset.Y = ((S - 1.0f) - (PrimaryPos.Y / CellSize)) * W;
+		}
 	}
-	else if ((NeighborMask & (1 << 3)) && PrimaryPos.Y > CellSize * (S - 1.0f) - Epsilon)
-	{
-		Offset.Y = ((S - 1.0f) - (PrimaryPos.Y / CellSize)) * W;
-	} 
 
 	// Z축 수축: -Z 방향, +Z 방향
-	if ((NeighborMask & (1 << 4)) && PrimaryPos.Z < CellSize + Epsilon)
+	if ((bXNeg == false || (NeighborMask & (1 << 0))) && (bXPos == false || (NeighborMask & (1 << 1))) &&
+		(bYNeg == false || (NeighborMask & (1 << 2))) && (bYPos == false || (NeighborMask & (1 << 3))))
 	{
-		Offset.Z = (1.0f - (PrimaryPos.Z / CellSize)) * W;
-	}
-	else if ((NeighborMask & (1 << 5)) && PrimaryPos.Z > CellSize * (S - 1.0f) - Epsilon)
-	{
-		Offset.Z = ((S - 1.0f) - (PrimaryPos.Z / CellSize)) * W;
+		if ((NeighborMask & (1 << 4)) && bZNeg)
+		{
+			Offset.Z = (1.0f - (PrimaryPos.Z / CellSize)) * W;
+		}
+		else if ((NeighborMask & (1 << 5)) && bZPos)
+		{
+			Offset.Z = ((S - 1.0f) - (PrimaryPos.Z / CellSize)) * W;
+		}
 	}
 
 	return PrimaryPos + Offset;

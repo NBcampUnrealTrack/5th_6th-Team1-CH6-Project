@@ -3,6 +3,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 
+// -X, +X, -Y, +Y, -Z, +Z
+const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
+
 AVoxelGround::AVoxelGround()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -205,7 +208,8 @@ void AVoxelGround::InitializeChunkData(int32 ChunkIdx)
 	std::atomic<bool> bAtomicHasAir(false);
 	std::atomic<bool> bAtomicHasGround(false);
 
-	FVector GroundRange = FVector(GroundSize.X * 0.5f, GroundSize.Y * 0.5f, GroundSize.Z);
+	const FVector GroundMinRange = FVector(-GroundSize.X * 0.45f, -GroundSize.Y * 0.45f, -GroundSize.Z);
+	const FVector GroundMaxRange = FVector(GroundSize.X * 0.45f, GroundSize.Y * 0.45f, -400.0f);
 	ParallelFor(ChunkPoints, [&](int32 Z)
 		{
 			bool bHasAir = false;
@@ -219,10 +223,10 @@ void AVoxelGround::InitializeChunkData(int32 ChunkIdx)
 
 					uint8 FinalDensity = 0;
 
-					bool bGround =
-						WorldPos.X >= -GroundRange.X * 0.9f && WorldPos.X <= GroundRange.X * 0.9f &&
-						WorldPos.Y >= -GroundRange.Y * 0.9f && WorldPos.Y <= GroundRange.Y * 0.9f &&
-						WorldPos.Z >= -GroundRange.Z * 0.9f && WorldPos.Z < -400.0f;
+					bool bGround = 
+						WorldPos.X >= GroundMinRange.X && WorldPos.X <= GroundMaxRange.X &&
+						WorldPos.Y >= GroundMinRange.Y && WorldPos.Y <= GroundMaxRange.Y &&
+						WorldPos.Z >= GroundMinRange.Z && WorldPos.Z <= GroundMaxRange.Z;
 
 					// 땅이면 Cave, Tunnel 확률적 생성 및 Density 설정
 					if (bGround == true)
@@ -233,7 +237,7 @@ void AVoxelGround::InitializeChunkData(int32 ChunkIdx)
 						float CaveDensity = 127.5f + (CaveThreshold - CaveValue) * 255.0f;
 
 						Density = FMath::Min(Density, CaveDensity);
-						FinalDensity = uint8(FMath::Clamp(FMath::RoundToInt(Density), 0, 255));
+						FinalDensity = (uint8)FMath::Clamp(FMath::RoundToInt(Density), 0, 255);
 					}
 
 					int32 PointIdx = Z * ChunkPoints * ChunkPoints + Y * ChunkPoints + X;
@@ -334,13 +338,12 @@ int32 AVoxelGround::GetChunkLODLevel(int32 ChunkIdx)
 
 FNeighborLOD AVoxelGround::GetNeighborLOD(const FIntVector& ChunkCoord)
 {
-	FNeighborLOD NeighborLOD;
-	NeighborLOD.XPos = GetChunkLODLevel(ChunkCoord + FIntVector(1, 0, 0));
-	NeighborLOD.YPos = GetChunkLODLevel(ChunkCoord + FIntVector(0, 1, 0));
-	NeighborLOD.ZPos = GetChunkLODLevel(ChunkCoord + FIntVector(0, 0, 1));
-	NeighborLOD.XNeg = GetChunkLODLevel(ChunkCoord + FIntVector(-1, 0, 0));
-	NeighborLOD.YNeg = GetChunkLODLevel(ChunkCoord + FIntVector(0, -1, 0));
-	NeighborLOD.ZNeg = GetChunkLODLevel(ChunkCoord + FIntVector(0, 0, -1));
+	FNeighborLOD NeighborLOD{};
+
+	for (int32 Idx = 0; Idx < 6; ++Idx)
+	{
+		NeighborLOD.LODs[Idx] = GetChunkLODLevel(ChunkCoord + NeighborOffsets[Idx]);
+	}
 	return NeighborLOD;
 }
 
@@ -354,12 +357,10 @@ void AVoxelGround::AddChunkAndNeighbors(int32 ChunkIdx, TSet<int32>& ChunkIdxs)
 	ChunkIdxs.Add(ChunkIdx);
 
 	FIntVector ChunkCoord = GetChunkCoord(ChunkIdx);
-	ChunkIdxs.Add(GetChunkIndex(ChunkCoord.X - 1, ChunkCoord.Y, ChunkCoord.Z));
-	ChunkIdxs.Add(GetChunkIndex(ChunkCoord.X + 1, ChunkCoord.Y, ChunkCoord.Z));
-	ChunkIdxs.Add(GetChunkIndex(ChunkCoord.X, ChunkCoord.Y - 1, ChunkCoord.Z));
-	ChunkIdxs.Add(GetChunkIndex(ChunkCoord.X, ChunkCoord.Y + 1, ChunkCoord.Z));
-	ChunkIdxs.Add(GetChunkIndex(ChunkCoord.X, ChunkCoord.Y, ChunkCoord.Z - 1));
-	ChunkIdxs.Add(GetChunkIndex(ChunkCoord.X, ChunkCoord.Y, ChunkCoord.Z + 1));
+	for (int32 Idx = 0; Idx < 6; ++Idx)
+	{
+		ChunkIdxs.Add(GetChunkIndex(ChunkCoord + NeighborOffsets[Idx]));
+	}
 }
 
 void AVoxelGround::SpawnChunk(int32 ChunkIdx)
