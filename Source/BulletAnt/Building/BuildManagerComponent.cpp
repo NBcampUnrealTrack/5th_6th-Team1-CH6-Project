@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Building/BuildManagerComponent.h"
@@ -81,7 +81,7 @@ void UBuildManagerComponent::EnterBuildMode()
     }
 
     bBuildMode = true;
-    SetCurrentBuildingRow("TestTurret");
+    SetCurrentBuildingRow(DefaultBuildingRow);
     
     RefreshCachedRef();
     CurrentYaw = 0.f;
@@ -169,9 +169,8 @@ bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRota
     }
 
     // 라인트레이스
-    const float MaxDist = 1000.f;
     const FVector Start = WorldPos;
-    const FVector End = Start + WorldDir * MaxDist;
+    const FVector End = Start + WorldDir * MaxBuildDistance;
 
     FHitResult Hit;
     FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildTrace), false);
@@ -361,7 +360,7 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
             continue;
         }
 
-        if (Other->ActorHasTag("Ground")) 
+        if (Other->ActorHasTag(GroundActorTag)) 
         {
             continue;
         }
@@ -369,7 +368,7 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
         // 작은 오차의 겹침은 허용
         FMTDResult MTD;
         const bool bHasMTD = OtherComp->ComputePenetration(MTD, BoxShape, Center, RotQ);
-        if (bHasMTD && MTD.Distance > 1.f)
+        if (bHasMTD && MTD.Distance > AllowedPenetrationDistance)
         {
             return false;
         }
