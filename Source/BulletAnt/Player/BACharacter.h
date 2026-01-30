@@ -7,6 +7,9 @@
 #include "InputActionValue.h"
 #include "BACharacter.generated.h"
 
+class USpringArmComponent;
+class UCameraComponent;
+class UInputAction;
 UCLASS()
 class BULLETANT_API ABACharacter : public ACharacter
 {
@@ -15,6 +18,7 @@ class BULLETANT_API ABACharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	ABACharacter();
+
 
 protected:
     virtual void BeginPlay() override;
@@ -26,33 +30,35 @@ public:
     // --- 카메라 관련 컴포넌트 ---
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-    class USpringArmComponent* CameraBoom;
+    TObjectPtr<USpringArmComponent> CameraBoom;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-    class UCameraComponent* FollowCamera;
+    TObjectPtr<UCameraComponent> FollowCamera;
 
-    // --- 입력(Enhanced Input) 관련 변수 ---
+
+
 public:
+    // --- 입력(Enhanced Input) 관련 변수 ---
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* JumpAction;
+    UInputAction* JumpAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* MoveAction;
+    UInputAction* MoveAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* RunAction;
+    UInputAction* RunAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* CrouchAction;
+    UInputAction* CrouchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* LookAction;
+    UInputAction* LookAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* AimAction;
+    UInputAction* AimAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* InteractionAction;
+    UInputAction* InteractionAction;
 
     // --- 실제 동작 함수 ---
 protected:
@@ -64,6 +70,10 @@ protected:
     void AimStart(const FInputActionValue& Value);
     void AimStop(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
+
+    // 상태에 따른 이동속도
+    float UpdateMovementSpeed();
+
 
 public:
     //조준상태
@@ -83,4 +93,16 @@ public:
     float RunningSpeed = 800.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
+
+    //최대 조준시 좌우 시선 회전 각도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float AimTurn = 45.f;
+    //최대 좌우 시선 회전 각도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float IdleTurn = 90.f;
+    //시선에 따른 자세 회전 속도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float TurnRate = 30.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float LineTraceRange = 500.f;
 };
