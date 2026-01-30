@@ -16,9 +16,10 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	WaveIndex = 0;
 	AliveEnemyCount = 0;
+	SpawnEnemyDataIdx = 0;
 	
 	checkf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL"));
-	GetWorld()->GetTimerManager().SetTimer(SpawnTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
 }
 
 void USpawnManagerSubsystem::Deinitialize()
@@ -78,13 +79,17 @@ void USpawnManagerSubsystem::SetSpawnDataTable()
 
 void USpawnManagerSubsystem::StartWave()
 {
-	GetWorld()->GetTimerManager().ClearTimer(SpawnTimer);
+	GetWorld()->GetTimerManager().ClearTimer(WaveTimer);
 	
 	if (TargetActor == nullptr)
 	{
 		if (IsValid(GetWorld()->GetFirstPlayerController()))
 		{
 			TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("USpawnManagerSubsystem-StartWave : TargetActor Error"))
 		}
 	}
 	
@@ -93,12 +98,14 @@ void USpawnManagerSubsystem::StartWave()
 		SetSpawnDataTable();
 	}
 	
-	SpawnEnemies(WaveIndex);
+	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), WaveIndex + 1));
+	EnemySpawnHandle.RowName = RowName;
+	
+	SpawnEnemies();
 }
 
-void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Spawn"))
+void USpawnManagerSubsystem::SpawnEnemies()
+{	
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
@@ -110,41 +117,57 @@ void USpawnManagerSubsystem::SpawnEnemies(int32 InWaveIndex)
 		return;
 	}
 	
-	static const FString ContextString(TEXT("EnemySpawnContext"));
-	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), InWaveIndex + 1));
-	EnemySpawnHandle.RowName = RowName;
-	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(ContextString); 
+	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(SpawnContextString); 
 	if (Row == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem: Row '%s' not found in DataTable"), *RowName.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem-SpawnEnemies : GetRow Error"));
 		return;
 	}
 	
-	for (int32 i = 0; i < Row->SpawnEnemyDataArray.Num(); i++)
+	if (SpawnEnemyDataIdx >= Row->SpawnEnemyDataArray.Num())
 	{
-		TSubclassOf<ABaseEnemyCharacter> EnemyClass = Row->SpawnEnemyDataArray[i].EnemyClass;
-		if (EnemyClass == nullptr)
-		{
-			continue;
-		}
-		const int32 Count = Row->SpawnEnemyDataArray[i].Count;
-		const int32 MinDistance = Row->SpawnMinDistance;
-		const int32 MaxDistance = Row->SpawnMaxDistance;
-			
-		for (int32 j = 0; j < Count; j++)
-		{
-			FVector RandomDirection = FMath::VRand();
-			RandomDirection.Z = 0.0f; 
-			RandomDirection.Normalize();
-			float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
-			
-			FVector SpawnLocation = TargetActor->GetActorLocation() + (RandomDirection * RandomDistance);
-			
-			ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
-				EnemyClass,
-				SpawnLocation,
-				FRotator::ZeroRotator
-			);
-		}
+		SpawnEnemyDataIdx = 0;
+		return;
 	}
+	
+	TSubclassOf<ABaseEnemyCharacter> EnemyClass = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].EnemyClass;
+	if (EnemyClass == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem-SpawnEnemies : EnemyClass Error"));
+		return;
+	}
+	
+	const int32 Count = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].Count;
+	const int32 MinDistance = Row->SpawnMinDistance;
+	const int32 MaxDistance = Row->SpawnMaxDistance;
+		
+	for (int32 j = 0; j < Count; j++)
+	{
+		FVector RandomDirection = FMath::VRand();
+		RandomDirection.Z = 0.0f; 
+		RandomDirection.Normalize();
+		float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
+		
+		FVector SpawnLocation = TargetActor->GetActorLocation() + (RandomDirection * RandomDistance);
+		
+		ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
+			EnemyClass,
+			SpawnLocation,
+			FRotator::ZeroRotator
+		);
+	}
+	
+	SpawnEnemyDataIdx++;
+	if (SpawnEnemyDataIdx == Row->SpawnEnemyDataArray.Num())
+	{
+		SpawnEnemyDataIdx = 0;
+		return;
+	}
+	
+	GetWorld()->GetTimerManager().SetTimer(
+		SpawnTimer,
+		this, 
+		&USpawnManagerSubsystem::SpawnEnemies, 
+		Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].SpawnInterval, 
+		false);
 }
