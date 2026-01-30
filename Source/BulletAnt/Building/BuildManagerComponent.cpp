@@ -302,7 +302,7 @@ void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, co
     FActorSpawnParameters Params;
     Params.Owner = GetOwner();
     Params.Instigator = Cast<APawn>(GetOwner());
-    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
     ABaseBuilding* Spawned = World->SpawnActor<ABaseBuilding>(Row->BuildingClass, Location, Rotation, Params);
     if (Spawned)
