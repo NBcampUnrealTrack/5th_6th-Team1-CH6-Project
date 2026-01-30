@@ -1,11 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Enemy/StateTree/MoveToTargetActorTask.h"
+#include "Components/StateTreeComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "AIController.h"
 #include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemyDataAsset.h"
 
 EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContext& Context,
-	const FStateTreeTransitionResult& Transition)
+                                                       const FStateTreeTransitionResult& Transition)
 {
 	Super::EnterState(Context, Transition);
 	
@@ -14,6 +18,14 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 		UE_LOG(LogTemp, Error, TEXT("UMoveToTargetActorTask : StartState Error"));
 		// 해당 몬스터 제거 후 다시 스폰
 		return EStateTreeRunStatus::Failed;
+	}
+	
+	checkf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UMoveToTargetActorTask : DataAsset Error"));
+	checkf(IsValid(ContextActor->BaseEnemyDataAsset->MoveEffect), TEXT("UMoveToTargetActorTask : MoveEffect Error"));
+	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
+	{
+		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+		ActiveGEHandle = ASC->ApplyGameplayEffectToSelf(ContextActor->BaseEnemyDataAsset->MoveEffect->GetDefaultObject<UGameplayEffect>(), 1.0f, EffectContext);
 	}
 	
 	CachedAIController = ContextActor->GetController<AAIController>();
@@ -103,6 +115,21 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 	MoveRequestResult = EMoveRequestResult::Failed;
 	CachedAIController = nullptr;
 	
+	// 적용했던 GE_Move 제거
+	if (ActiveGEHandle.IsValid())
+	{
+		if (!IsValid(ContextActor))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UMoveToTargetActorTask-ExitState : ContextActor"));
+			return;
+		}
+		if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
+		{
+			ASC->RemoveActiveGameplayEffect(ActiveGEHandle);
+		}
+		ActiveGEHandle.Invalidate();
+	}
+	
 	Super::ExitState(Context, Transition);
 }
 
@@ -142,13 +169,25 @@ void UMoveToTargetActorTask::OnMoveCompleted(FAIRequestID RequestID, EPathFollow
 	}
 
 	MoveRequestResult = EMoveRequestResult::Failed;
+	
+	if (!IsValid(ContextActor))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UMoveToTargetActorTask-OnMoveCompleted : ContextActor"));
+		return;
+	}
+	if (!IsValid(ContextActor->GetStateTreeComponent()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UMoveToTargetActorTask-OnMoveCompleted : StateTree"));
+		return;
+	}
 
 	// 목표 도착
 	if (Result == EPathFollowingResult::Success)
 	{
+		// Attack State로 전환
 		if (IsValid(TargetActor))
 		{
-			// 공격 State로 전환
+			ContextActor->GetStateTreeComponent()->SendStateTreeEvent(ToAttack);
 		}
 	}
 	// 경로 문제일 경우 (1초 뒤 재시도)
@@ -166,7 +205,6 @@ void UMoveToTargetActorTask::OnMoveCompleted(FAIRequestID RequestID, EPathFollow
 			}, 1.f, false);
 		}
 	}
-	// Aborted는 ExitState에서 StopMovement 호출 시 발생 - 무시
 }
 
 

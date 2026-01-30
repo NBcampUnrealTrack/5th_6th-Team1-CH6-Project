@@ -16,11 +16,14 @@ class BULLETANT_API UBaseEnemyDataAsset : public UPrimaryDataAsset
 	GENERATED_BODY()
 	
 public:	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
-
-	UPROPERTY(EditDefaultsOnly, Category = "GAS") 
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities") 
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;	
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
+	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
+	TSubclassOf<UGameplayEffect> MoveEffect;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Tag")
 	FGameplayTag MoveStateTag;

@@ -33,6 +33,11 @@ UAbilitySystemComponent* ABaseEnemyCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
+{
+	return StateTreeComponent;
+}
+
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
 	return TargetActor;

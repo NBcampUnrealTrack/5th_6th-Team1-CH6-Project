@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffect.h"
 #include "Blueprint/StateTreeTaskBlueprintBase.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "MoveToTargetActorTask.generated.h"
@@ -45,11 +46,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	float AcceptanceRadius;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FStateTreeEvent ToAttack;
+	
 protected:
 	TWeakObjectPtr<AAIController> CachedAIController;
 
 	FAIRequestID CurrentRequestID;
 	EMoveRequestResult MoveRequestResult;
+	
+	FActiveGameplayEffectHandle ActiveGEHandle;
 	
 	FTimerHandle RetryTimer;
 };
