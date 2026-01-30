@@ -57,7 +57,10 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 			uint8 NeighborMask = 0;
 			for (int32 Idx = 0; Idx < 6; ++Idx)
 			{
-				NeighborMask |= (1 << Idx);
+				if (TransitionFlags[Idx] == true)
+				{
+					NeighborMask |= (1 << Idx);
+				}
 			}
 
 			auto CallGenerateRegular = [&](int32 X, int32 Y, int32 Z)
