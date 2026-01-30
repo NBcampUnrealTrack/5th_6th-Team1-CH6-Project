@@ -1,0 +1,43 @@
+﻿#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
+#include "GameplayAbilitySpec.h"
+#include "BaseWeapon.generated.h"
+
+class USkeletalMeshComponent;
+class UAbilitySystemComponent;
+class UGameplayAbility;
+class UWeaponDataAsset;
+
+UCLASS(Abstract)
+class BULLETANT_API ABaseWeapon : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	ABaseWeapon();
+
+public:
+	FORCEINLINE UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
+	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+
+	void EquipWeapon(UAbilitySystemComponent* ASC);
+	void UnequipWeapon(UAbilitySystemComponent* ASC);
+
+	
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
+	TArray<TSubclassOf<UGameplayAbility>> GrantedAbilities;
+
+	UPROPERTY()
+	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")
+	TObjectPtr<UWeaponDataAsset> WeaponData;
+};
