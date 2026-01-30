@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 using UnrealBuildTool;
 
@@ -8,7 +8,27 @@ public class BulletAnt : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AnimGraphRuntime" });
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput", 
+			"AnimGraphRuntime",
+			
+			// GAS
+			"GameplayAbilities", 
+			"GameplayTags", 
+			"GameplayTasks",
+			
+			// AI
+			"AIModule", "StateTreeModule",
+			"GameplayStateTreeModule",
+			"NavigationSystem",
+			"MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassSpawner", "MassActors",
+			"MassAIBehavior", "MassRepresentation", "MassLOD", "MassSignals"
+		});
 
 		PublicIncludePaths.AddRange(new string[] {
             "BulletAnt" });
