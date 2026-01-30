@@ -44,54 +44,13 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 	else if (MoveRequestResult == EMoveRequestResult::AlreadyArrived)
 	{
 		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
-		return EStateTreeRunStatus::Succeeded;
+		OnMoveCompleted(CurrentRequestID, EPathFollowingResult::Success);
+		return EStateTreeRunStatus::Running;
 	}
 	else // 요청이 거절당한 경우
 	{
 		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
 		return EStateTreeRunStatus::Failed;
-	}
-}
-
-void UMoveToTargetActorTask::StartState()
-{
-	TargetActor = ContextActor->GetTargetActor();
-	
-	if (!IsValid(ContextActor) || !IsValid(TargetActor))
-	{
-		UE_LOG(LogTemp, Error, TEXT("%s"), *ContextActor->GetName());
-		UE_LOG(LogTemp, Error, TEXT("UMoveToTargetActorTask : StartState Error"));
-		// 해당 몬스터 제거 후 다시 스폰
-		return;
-	}
-	
-	// ContextActor->OnTargetActor.RemoveAll(this);
-	
-	CachedAIController = ContextActor->GetController<AAIController>();
-	checkf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error"));
-	
-	// 적의 이동 완료시 콜백함수 바인딩
-	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
-	StartMoveToTarget();
-	
-	// AI의 이동 요청이 받아들여졌을 경우
-	if (MoveRequestResult == EMoveRequestResult::RequestAccepted)
-	{
-		// return EStateTreeRunStatus::Running;
-		return;	
-	}
-	//  이미 도착한 경우
-	else if (MoveRequestResult == EMoveRequestResult::AlreadyArrived)
-	{
-		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
-		// return EStateTreeRunStatus::Succeeded;
-		return;	// 공격 State로 전환
-	}
-	else // 요청이 거절당한 경우
-	{
-		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
-		// return EStateTreeRunStatus::Failed;
-		return;	// 몬스터 제거 후 다시 스폰
 	}
 }
 
@@ -135,6 +94,7 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 
 void UMoveToTargetActorTask::StartMoveToTarget()
 {
+	UE_LOG(LogTemp, Warning, TEXT("StartMoveToTarget"))
 	if (!CachedAIController.IsValid() || !IsValid(TargetActor))
 	{
 		MoveRequestResult = EMoveRequestResult::Failed;
@@ -146,15 +106,19 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 
 	if (Result == EPathFollowingRequestResult::RequestSuccessful)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("RequestSuccessful"))
 		MoveRequestResult = EMoveRequestResult::RequestAccepted;
 		CurrentRequestID = CachedAIController->GetCurrentMoveRequestID();
 	}
 	else if (Result == EPathFollowingRequestResult::AlreadyAtGoal)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("AlreadyAtGoal"))
 		MoveRequestResult = EMoveRequestResult::AlreadyArrived;
+		CurrentRequestID = CachedAIController->GetCurrentMoveRequestID();
 	}
 	else	// Failed
 	{
+		UE_LOG(LogTemp, Warning, TEXT("else"))
 		MoveRequestResult = EMoveRequestResult::Failed;
 	}
 }
@@ -162,6 +126,7 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 // 도착 또는 멈췄을 시의 콜백함수
 void UMoveToTargetActorTask::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
+	UE_LOG(LogTemp, Warning, TEXT("OnMoveCompleted"))
 	// 이 Task가 요청한 움직일 때만 처리
 	if (RequestID != CurrentRequestID)
 	{

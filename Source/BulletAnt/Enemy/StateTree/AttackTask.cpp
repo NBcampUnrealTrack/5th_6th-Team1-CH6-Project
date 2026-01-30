@@ -27,10 +27,25 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 		ActiveGEHandle = ASC->ApplyGameplayEffectToSelf(ContextActor->BaseEnemyDataAsset->AttackEffect->GetDefaultObject<UGameplayEffect>(), 1.0f, EffectContext);
 	}
 	
-	return EStateTreeRunStatus::Succeeded;
+	return EStateTreeRunStatus::Running;
 }
 
 void UAttackTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
-{
+{	
+	// 적용했던 GE_BEAttack 제거
+	if (ActiveGEHandle.IsValid())
+	{
+		if (!IsValid(ContextActor))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UAttackTask-ExitState : ContextActor"));
+			return;
+		}
+		if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
+		{
+			ASC->RemoveActiveGameplayEffect(ActiveGEHandle);
+		}
+		ActiveGEHandle.Invalidate();
+	}
+	
 	Super::ExitState(Context, Transition);
 }
