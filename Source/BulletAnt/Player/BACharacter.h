@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -16,6 +16,7 @@ class UCameraComponent;
 class UInputAction;
 class UHealthAttributeSet;
 class ABaseWeapon;
+class UParkourComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 
@@ -50,28 +51,28 @@ protected:
 public:
     // --- 입력(Enhanced Input) 관련 변수 ---
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    UInputAction* JumpAction;
+    TObjectPtr<UInputAction> JumpAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    UInputAction* MoveAction;
+    TObjectPtr<UInputAction> MoveAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    UInputAction* RunAction;
+    TObjectPtr<UInputAction> RunAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    UInputAction* CrouchAction;
+    TObjectPtr<UInputAction> CrouchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    UInputAction* LookAction;
+    TObjectPtr<UInputAction> LookAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* AttackAction;
+    TObjectPtr<UInputAction> AttackAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* AimAction;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> AimAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* InteractionAction;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    TObjectPtr<UInputAction> InteractionAction;
 
 #pragma endregion
 
@@ -89,23 +90,10 @@ protected:
     void AimStop(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
 
-    //파쿠르 관련
-    void StartClimb(FVector TargetLocation);
-    void EndClimb();
-
-
-    FVector ClimbStartLocation;
-    FVector ClimbEndLocation;
-    float ClimbDuration;
-    float ClimbTimer;
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
-    bool bIsClimbing;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
-    float TraceDistance = 100.f;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
-    float EyeHeight = 50.f;
+    // 파쿠르 컴포넌트
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parkour")
+    TObjectPtr<UParkourComponent> ParkourComponent;
 
 #pragma endregion
 
@@ -119,10 +107,10 @@ public:
 
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UAbilitySystemComponent* AbilitySystemComponent;
+    TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
     UPROPERTY()
-    UHealthAttributeSet* HealthAttributeSet;
+    TObjectPtr<UHealthAttributeSet> HealthAttributeSet;
 
     UPROPERTY(EditAnywhere, Category = "GAS")
     TArray<TSubclassOf<UGameplayAbility>> DefaultAbility;

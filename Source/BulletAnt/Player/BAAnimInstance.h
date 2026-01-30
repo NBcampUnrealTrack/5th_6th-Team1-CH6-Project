@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -36,7 +36,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GroundSpeed;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AnimCharacter")
 	FRotator DeltaRot;
+
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float AOPitch;
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")

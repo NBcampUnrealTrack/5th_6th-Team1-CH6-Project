@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Player/BACharacter.h"
@@ -18,6 +18,7 @@
 #include "Weapon/BaseRangedWeapon.h"
 #include "Weapon/Data/WeaponDataAsset.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Player/ParkourComponent.h"
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -55,14 +56,14 @@ ABACharacter::ABACharacter()
 
 	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
 
-	//Test
+	// 파쿠르 컴포넌트
+	ParkourComponent = CreateDefaultSubobject<UParkourComponent>(TEXT("ParkourComponent"));
+
 	//앉기 기능 활성화
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
 	bIsAiming = false;
 	bIsRunning = false;
-	bIsClimbing = false;
-	ClimbDuration = 1.f;
 }
 
 // Called when the game starts or when spawned
@@ -99,28 +100,6 @@ void ABACharacter::Tick(float DeltaTime)
         }
     }
 
-   /* DrawDebugLine(
-        GetWorld(),
-        FollowCamera->GetComponentLocation(),
-        FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * LineTraceRange),
-        FColor::Red,
-        false,
-        -1.f,
-        0,
-        1.f
-    );*/
-	if (bIsClimbing)
-	{
-		ClimbTimer += DeltaTime;
-
-		float Alpha = ClimbTimer / ClimbDuration;
-		FVector NewLocation = FMath::Lerp(ClimbStartLocation, ClimbEndLocation, Alpha);
-
-		SetActorLocation(NewLocation);
-
-		if (Alpha >= 1.f)
-			EndClimb();
-	}
 }
 
 // 입력 바인딩
@@ -214,6 +193,10 @@ void ABACharacter::Move(const FInputActionValue& Value)
 
 UDataAsset* ABACharacter::GetDataAsset() const
 {
+	if (!EquippedWeapon)
+	{
+		return nullptr;
+	}
 	return EquippedWeapon->GetWeaponData();
 }
 
@@ -258,11 +241,13 @@ void ABACharacter::Look(const FInputActionValue& Value)
 void ABACharacter::Attack(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
+	if (!EquippedWeapon) return;
+
+	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
+	if (!WeaponData) return;
 
 	FGameplayTagContainer Tag;
-
-	const FGameplayTag& AttackTag = EquippedWeapon->GetWeaponData()->WeaponTag;
-	Tag.AddTag(AttackTag);
+	Tag.AddTag(WeaponData->WeaponTag);
 
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
 }
@@ -416,26 +401,3 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
     }
 }
 
-
-void ABACharacter::StartClimb(FVector TargetLocation)
-{
-	if (bIsClimbing) return;
-
-	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-	// 벽과 충돌을 꺼야 할 경우
-	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	bIsClimbing = true;
-	ClimbStartLocation = GetActorLocation();
-	ClimbEndLocation = TargetLocation;
-	ClimbTimer = 0.f;
-}
-
-void ABACharacter::EndClimb()
-{
-	bIsClimbing = false;
-
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-	// 벽과 충돌을 꺼야 할 경우
-	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-}

@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Player/BAAnimInstance.h"
@@ -47,8 +47,6 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	bIsFalling = Movement->IsFalling();
 	bIsCrouch = Character->bIsCrouched;
-	if(bIsCrouch)
-		UE_LOG(LogTemp, Warning, TEXT("앉기 true"));
 	bIsRunning = Character->bIsRunning;
 	VerticalVelocity = Velocity.Z;
 }
