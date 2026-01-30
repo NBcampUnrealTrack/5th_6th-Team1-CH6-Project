@@ -45,6 +45,7 @@ protected:
     TObjectPtr<UCameraComponent> FollowCamera;
 
 
+#pragma region InputAction
 
 public:
     // --- 입력(Enhanced Input) 관련 변수 ---
@@ -72,11 +73,41 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractionAction;
 
+#pragma endregion
+
+#pragma region Action Function
+
     // --- 실제 동작 함수 ---
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void Attack(const FInputActionValue& Value);
+    void StartRunning(const FInputActionValue& Value);
+    void StopRunning(const FInputActionValue& Value);
+    void CrouchInput(const FInputActionValue& Value);
+    void AimStart(const FInputActionValue& Value);
+    void AimStop(const FInputActionValue& Value);
+    void Interaction(const FInputActionValue& Value);
+
+    //파쿠르 관련
+    void StartClimb(FVector TargetLocation);
+    void EndClimb();
+
+
+    FVector ClimbStartLocation;
+    FVector ClimbEndLocation;
+    float ClimbDuration;
+    float ClimbTimer;
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    bool bIsClimbing;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    float TraceDistance = 100.f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    float EyeHeight = 50.f;
+
+#pragma endregion
 
 #pragma region GAS 
 
@@ -122,12 +153,7 @@ public:
     virtual FVector GetFireDirection() const override;
 
 #pragma endregion
-    void StartRunning(const FInputActionValue& Value);
-    void StopRunning(const FInputActionValue& Value);
-    void CrouchInput(const FInputActionValue& Value);
-    void AimStart(const FInputActionValue& Value);
-    void AimStop(const FInputActionValue& Value);
-    void Interaction(const FInputActionValue& Value);
+    
 
     // 상태에 따른 이동속도
     float UpdateMovementSpeed();

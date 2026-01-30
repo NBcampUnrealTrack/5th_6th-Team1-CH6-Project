@@ -10,7 +10,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
-#include "DrawDebugHelpers.h"//디버그 용 빨간 선
+//#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
 #include "AbilitySystemComponent.h"
@@ -61,6 +61,8 @@ ABACharacter::ABACharacter()
 
 	bIsAiming = false;
 	bIsRunning = false;
+	bIsClimbing = false;
+	ClimbDuration = 1.f;
 }
 
 // Called when the game starts or when spawned
@@ -97,7 +99,7 @@ void ABACharacter::Tick(float DeltaTime)
         }
     }
 
-    DrawDebugLine(
+   /* DrawDebugLine(
         GetWorld(),
         FollowCamera->GetComponentLocation(),
         FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * LineTraceRange),
@@ -106,7 +108,19 @@ void ABACharacter::Tick(float DeltaTime)
         -1.f,
         0,
         1.f
-    );
+    );*/
+	if (bIsClimbing)
+	{
+		ClimbTimer += DeltaTime;
+
+		float Alpha = ClimbTimer / ClimbDuration;
+		FVector NewLocation = FMath::Lerp(ClimbStartLocation, ClimbEndLocation, Alpha);
+
+		SetActorLocation(NewLocation);
+
+		if (Alpha >= 1.f)
+			EndClimb();
+	}
 }
 
 // 입력 바인딩
@@ -222,12 +236,10 @@ void ABACharacter::CrouchInput(const FInputActionValue& Value)
         Crouch(false);
         if(bIsRunning)
             bIsRunning = false;
-        UE_LOG(LogTemp, Warning, TEXT("앉기 함수 실행"));
     }
     else
     {
         UnCrouch(false);
-        UE_LOG(LogTemp, Warning, TEXT("앉기 종료 실행"));
     }
 }
 
@@ -356,6 +368,8 @@ FVector ABACharacter::GetFireDirection() const
 
 	return GetActorRotation().Vector();
 }
+
+
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
@@ -400,4 +414,28 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
             IBAItemInterface::Execute_Use(HitActor, this);
         }
     }
+}
+
+
+void ABACharacter::StartClimb(FVector TargetLocation)
+{
+	if (bIsClimbing) return;
+
+	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	// 벽과 충돌을 꺼야 할 경우
+	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	bIsClimbing = true;
+	ClimbStartLocation = GetActorLocation();
+	ClimbEndLocation = TargetLocation;
+	ClimbTimer = 0.f;
+}
+
+void ABACharacter::EndClimb()
+{
+	bIsClimbing = false;
+
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	// 벽과 충돌을 꺼야 할 경우
+	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 }
