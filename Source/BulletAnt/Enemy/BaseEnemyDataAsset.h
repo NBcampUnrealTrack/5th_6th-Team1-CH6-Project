@@ -22,19 +22,24 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
 	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|AttritubeSet")
+	TArray<TSubclassOf<UAttributeSet>> DefaultAttributeSets;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Move")
 	TSubclassOf<UGameplayEffect> MoveEffect;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Tag")
+	UPROPERTY(EditDefaultsOnly, Category = "Move")
 	FGameplayTag MoveStateTag;
-
-	// 공격 키를 눌렀을 때의 Tag 설정
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Tag")
-	FGameplayTag AttackStateTag;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UAttributeSet>> DefaultAttributeSets;	
-	
-	UPROPERTY(EditDefaultsOnly, Category = "Default")
+	UPROPERTY(EditDefaultsOnly, Category = "Move")
 	float AcceptanceRadius = 100.f;	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	TSubclassOf<UGameplayEffect> AttackEffect;	
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack")
+	FGameplayTag AttackStateTag;	
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Attack")
+	UAnimMontage* AttackMontage;	
 };
