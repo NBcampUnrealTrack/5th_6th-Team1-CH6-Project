@@ -56,6 +56,7 @@ protected:
 	void UpdateChunkLODs();
 
 	int32 GetChunkIndex(int32 X, int32 Y, int32 Z) const;
+	int32 GetChunkIndex(const FIntVector ChunkCoord) const;
 	FIntVector GetChunkCoord(int32 ChunkIdx) const;
 	FVector GetChunkOffset(int32 X, int32 Y, int32 Z) const;
 	int32 GetLODLevelByPlayer(const FIntVector& ChunkCoord, const FIntVector& PlayerChunkCoord);
@@ -63,6 +64,7 @@ protected:
 	int32 GetChunkLODLevel(int32 ChunkIdx);
 	FNeighborLOD GetNeighborLOD(const FIntVector& ChunkCoord);
 	FNeighborLOD GetNeighborLOD(int32 ChunkIdx);
+	void AddChunkAndNeighbors(int32 ChunkIdx, TSet<int32>& ChunkIdxs);
 
 #pragma region GroundSetting
 
@@ -82,12 +84,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	float CaveThreshold = 0.6f;
 
-	TArray<int32> LODDistance = { 1, 2, 3 };
+	TArray<int32> LODDistance = { 1, 3, 5 };
 
 #pragma endregion
 
 #pragma region Props
 
+protected:
 	UPROPERTY()
 	TArray<FVoxelGroundChunkData> ChunkDatas;
 	UPROPERTY()
@@ -99,6 +102,8 @@ protected:
 
 	FIntVector LastPlayerChunkCoord;
 	FTimerHandle UpdateChunkLODTimerHandle;
+
+	TSet<int32> LastNearByChunkIdxs;
 
 #pragma endregion
 };

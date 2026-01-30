@@ -7,10 +7,18 @@
 struct FNeighborLOD
 {
 	// X, Y, Z 방향 이웃의 LOD Level
-	int32 XPlus, XMinus, YPlus, YMinus, ZPlus, ZMinus;
+	int32 XPos, XNeg, YPos, YNeg, ZPos, ZNeg;
 
 	// 생성자 기본값은 내 LOD로 해서 혹시 모를 상황 대비
-	//FNeighborLOD(int32 MyLOD) : XPlus(MyLOD), XMinus(MyLOD), YPlus(MyLOD), YMinus(MyLOD), ZPlus(MyLOD), ZMinus(MyLOD) {}
+	//FNeighborLOD(int32 MyLOD) : XPos(MyLOD), XNeg(MyLOD), YPos(MyLOD), YNeg(MyLOD), ZPos(MyLOD), ZNeg(MyLOD) {}
+};
+
+enum class ETransitionDir : uint8
+{
+	None,
+	XPos, XNeg,
+	YPos, YNeg,
+	ZPos, ZNeg
 };
 
 struct FChunkMeshData
@@ -25,7 +33,7 @@ class BULLETANT_API UVoxelGroundChunk : public UDynamicMeshComponent
 	GENERATED_BODY()
 
 public:
-	void InitializeChunk(int32 InGridSize, float InVoxelSize, float InIsoLevel);
+	void InitializeChunk(int32 InGridSize, float InVoxelSize, uint8 InIsoLevel);
 	void UpdateMeshAsync(const TArray<uint8>& DensityValues, const FNeighborLOD& NeighborLOD, int32 LODLevel = -1);
 
 	FORCEINLINE int32 GetCurrentLODLevel() const { return CurrentLODLevel; }
@@ -33,8 +41,39 @@ public:
 	static void SetMaxLODLevel(int32 InMaxLODLevel);
 
 protected:
-	static FVector Interpolate(FVector P1, float V1, FVector P2, float V2, int32 InIsoLevel);
+	static FVector Interpolate(FVector P1, float V1, FVector P2, float V2, uint8 InIsoLevel);
 	static int32 GetIndex(int32 X, int32 Y, int32 Z, int32 InGridSize);
+	static int32 GetIndex(const FIntVector& Vec, int32 InGridSize);
+	static int32 GetStepByLODLevel(int32 LODLevel);
+
+	static void GenerateRegularCell(
+		int32 X, int32 Y, int32 Z,
+		int32 LocalLODLevel, int32 Step,
+		uint8 NeighborMask,
+		FChunkMeshData& MeshData, 
+		TMap<FVector, int32>& VertexCache,
+		const TArray<uint8>& LocalDensity,
+		float LocalVoxelSize,
+		int32 LocalGridSize,
+		uint8 LocalIsoLevel);
+
+	static void GenerateTransitionCell(
+		int32 FaceIdx,
+		int32 X, int32 Y, int32 Z,
+		int32 LocalLODLevel, int32 Step,
+		uint8 NeighborMask,
+		FChunkMeshData& MeshData,
+		TMap<FVector, int32>& VertexCache,
+		const TArray<uint8>& LocalDensity,
+		float LocalVoxelSize,
+		int32 LocalGridSize,
+		uint8 LocalIsoLevel);
+
+	// TransitionCell을 위해 안쪽으로 수축된 가상의 정점 위치
+	// TransitionCell이 있는 RegularCell에서는 안쪽의 정점들은 해당 위치를 이용해야 함.
+	static FVector GetVirtualPosition(FVector PrimaryPos, int32 LODIndex, uint8 NeighborMask, float LocalVoxelSize, int32 LocalGridSize);
+
+	static FIntVector GetSwizzledPos(int32 FaceIdx, int32 U, int32 V, int32 Step);
 	void GenerateMesh(const FChunkMeshData& MeshData);
 
 protected:
@@ -42,6 +81,13 @@ protected:
 	float VoxelSize = 50.0f;								// 복셀 간격
 	uint8 IsoLevel = 100;									// 지표면 임계값
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	int32 CurrentLODLevel = -1;
 	static int32 MaxLODLevel;
+
+public:
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
+	FIntVector CoordV;					// 임시
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	int32 ChunkIdxV;					// 임시
 };
