@@ -19,12 +19,16 @@ public:
 	ABaseEnemyCharacter();
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	UStateTreeComponent* GetStateTreeComponent() const;
 	AActor* GetTargetActor() const;
 
 protected:
 	virtual void BeginPlay() override;
 	
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
 	
@@ -40,7 +44,4 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
-	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
 };

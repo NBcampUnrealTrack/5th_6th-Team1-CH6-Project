@@ -33,6 +33,11 @@ UAbilitySystemComponent* ABaseEnemyCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
+{
+	return StateTreeComponent;
+}
+
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
 	return TargetActor;
@@ -59,7 +64,22 @@ void ABaseEnemyCharacter::BeginPlay()
 				}
 			}
 			
-			// 태그 부여
+			for (const TSubclassOf<UGameplayEffect>& EffectClass : BaseEnemyDataAsset->DefaultEffects)
+			{
+				if (EffectClass)
+				{
+					FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+					EffectContext.AddSourceObject(this);
+
+					// GE의 Spec(인스턴스 같은 것)을 생성
+					FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
+
+					if (SpecHandle.IsValid())
+					{
+						AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
+			}
 		}
 		
 		UWorld* World = GetWorld();
