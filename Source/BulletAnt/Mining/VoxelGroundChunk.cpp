@@ -33,10 +33,10 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 	uint8 LocalIsoLevel = IsoLevel;
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
-		[WeakThis, LocalDensity, NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel, this]()
+		[WeakThis, LocalDensity, NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
 		{
 			FChunkMeshData MeshData;
-			TMap<FVector, int32> VertexCache;
+			TMap<uint64, int32> VertexCache;
 
 			int32 Step = GetStepByLODLevel(LocalLODLevel);
 
@@ -143,15 +143,31 @@ int32 UVoxelGroundChunk::GetStepByLODLevel(int32 LODLevel)
 	return 1 << LODLevel;;
 }
 
-void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 LocalLODLevel, int32 Step, uint8 NeighborMask, FChunkMeshData& MeshData, TMap<FVector, int32>& VertexCache, const TArray<uint8>& LocalDensity, float LocalVoxelSize, int32 LocalGridSize, uint8 LocalIsoLevel)
+uint32 UVoxelGroundChunk::GetVertexInfoForKey(int32 X, int32 Y, int32 Z, uint8 ShrinkDir)
+{
+	// 청크의 한 변에 현재 16 ~ 32개씩 정점 저장 중
+	// 최대 128개를 넘지 않을 거 같아서, (X/Y/Z 8bit씩 + ShrinkMask 8bit = 32bit)로 VertexKey 만듬
+	// X, Y, Z 자료형은 일단 signed 상태로 써서 7bit까지만 쓰고(유지하고), 나중에 부족하면 바꿀 예정 (청크는 정점을 너무 많이 가지면 비효율적이어서 안 커질 듯)
+	return ((uint32)X << 20) | ((uint32)Y << 13) | ((uint32)Z << 6) | ((uint32)X << ShrinkDir);
+}
+
+uint64 UVoxelGroundChunk::GetVertexKey(uint32 VertexInfo0, uint32 VertexInfo1)
+{
+	return ((uint64)VertexInfo0 << 32) | ((uint64)VertexInfo1);
+}
+
+void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 LocalLODLevel, int32 Step, uint8 NeighborMask, FChunkMeshData& MeshData, TMap<uint64, int32>& VertexCache, const TArray<uint8>& LocalDensity, float LocalVoxelSize, int32 LocalGridSize, uint8 LocalIsoLevel)
 {
 	FVector Pos[8]{};
 	uint8 Density[8]{};
+	uint32 VertexInfo[8]{};
 	for (int32 Idx = 0; Idx < 8; ++Idx)
 	{
 		FIntVector Corner(X + CornerTable[Idx][0] * Step, Y + CornerTable[Idx][1] * Step, Z + CornerTable[Idx][2] * Step);
-		Pos[Idx] = FVector(Corner.X, Corner.Y, Corner.Z) * LocalVoxelSize;
+		FVector LocalPos = FVector(Corner.X, Corner.Y, Corner.Z) * LocalVoxelSize;
 		Density[Idx] = LocalDensity[GetIndex(Corner.X, Corner.Y, Corner.Z, LocalGridSize)];
+		uint8 ShrinkMask = GetAdjustedPosition(LocalPos, Pos[Idx], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
+		VertexInfo[Idx] = GetVertexInfoForKey(Corner.X, Corner.Y, Corner.Z, ShrinkMask);
 	}
 
 	int32 CubeIdx = 0;
@@ -176,20 +192,20 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 Loc
 			int32 E1 = EdgeIndexTable[EdgeIdx][0];
 			int32 E2 = EdgeIndexTable[EdgeIdx][1];
 
-			// 버텍스의 위치를 보간해서 너무 각지지 않고 부드러워 보이게 함
-			FVector P1 = GetVirtualPosition(Pos[E1], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
-			FVector P2 = GetVirtualPosition(Pos[E2], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
-			FVector FinalPos = Interpolate(P1, Density[E1], P2, Density[E2], LocalIsoLevel);
+			uint64 VertexKey = GetVertexKey(VertexInfo[E1], VertexInfo[E2]);
 
-			int32* CachedIdx = VertexCache.Find(FinalPos);
+			int32* CachedIdx = VertexCache.Find(VertexKey);
 			if (CachedIdx != nullptr)
 			{
 				NewTriangle[TriangleIdx] = *CachedIdx;
 			}
 			else
 			{
+				// 버텍스의 위치를 보간해서 너무 각지지 않고 부드러워 보이게 함e);
+				FVector FinalPos = Interpolate(Pos[E1], Density[E1], Pos[E2], Density[E2], LocalIsoLevel);
+
 				int32 VertexIdx = MeshData.Vertices.Add(FinalPos);
-				VertexCache.Add(FinalPos, VertexIdx);
+				VertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
 			}
 		}
@@ -198,10 +214,12 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 Loc
 	}
 }
 
-void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, int32 Z, int32 LocalLODLevel, int32 Step, uint8 NeighborMask, FChunkMeshData& MeshData, TMap<FVector, int32>& VertexCache, const TArray<uint8>& LocalDensity, float LocalVoxelSize, int32 LocalGridSize, uint8 LocalIsoLevel)
+void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, int32 Z, int32 LocalLODLevel, int32 Step, uint8 NeighborMask, FChunkMeshData& MeshData, TMap<uint64, int32>& VertexCache, const TArray<uint8>& LocalDensity, float LocalVoxelSize, int32 LocalGridSize, uint8 LocalIsoLevel)
 {
+	FIntVector VIdx[9]{};
 	FVector Pos[13]{};
 	uint8 Density[13]{};
+	uint32 VertexInfo[13]{};
 	int32 CaseCode = 0;
 
 	int32 HalfStep = Step / 2;
@@ -213,19 +231,24 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 		FIntVector SwizzledPos = GetSwizzledPos(FaceIdx, U, V, Step);
 		checkf(SwizzledPos.X >= 0, TEXT("TransitionCell Wrong Swizzled Pos"));
 
-		FIntVector P = FIntVector(X, Y, Z) + SwizzledPos;
-		Pos[Idx] = FVector(P.X, P.Y, P.Z) * LocalVoxelSize;
-		Density[Idx] = LocalDensity[GetIndex(P.X, P.Y, P.Z, LocalGridSize)];
+		VIdx[Idx] = FIntVector(X, Y, Z) + SwizzledPos;
+		Pos[Idx] = FVector(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z) * LocalVoxelSize;
+		Density[Idx] = LocalDensity[GetIndex(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, LocalGridSize)];
+		VertexInfo[Idx] = GetVertexInfoForKey(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, 0);
 	}
 
-	Pos[9] = GetVirtualPosition(Pos[0], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
-	Pos[10] = GetVirtualPosition(Pos[2], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
-	Pos[11] = GetVirtualPosition(Pos[6], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
-	Pos[12] = GetVirtualPosition(Pos[8], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
-	Density[9] = Density[0];
-	Density[10] = Density[2];
-	Density[11] = Density[6];
-	Density[12] = Density[8];
+	auto SetVertexInfoTransition =
+		[&](int32 Idx, int32 IdxSource)
+		{
+			uint8 ShrinkMask = GetAdjustedPosition(Pos[IdxSource], Pos[Idx], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
+			Density[Idx] = Density[IdxSource];
+			VertexInfo[Idx] = GetVertexInfoForKey(VIdx[IdxSource].X, VIdx[IdxSource].Y, VIdx[IdxSource].Z, ShrinkMask);
+		};
+
+	SetVertexInfoTransition(9, 0);
+	SetVertexInfoTransition(10, 2);
+	SetVertexInfoTransition(11, 6);
+	SetVertexInfoTransition(12, 8);
 
 	static const uint8 CaseTable[9] = { 0, 1, 2, 5, 8, 7, 6, 3, 4 };
 	for (int32 i = 0; i < 9; ++i)
@@ -255,17 +278,20 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 			uint16 EdgeData = TransitionVertexData[CaseCode][EdgeIdx];
 			int32 Edge0 = (EdgeData >> 4) & 0x0F;
 			int32 Edge1 = EdgeData & 0x0F;
-			FVector FinalPos = Interpolate(Pos[Edge0], Density[Edge0], Pos[Edge1], Density[Edge1], LocalIsoLevel);
 
-			int32* CachedIdx = VertexCache.Find(FinalPos);
+			uint64 VertexKey = GetVertexKey(VertexInfo[Edge0], VertexInfo[Edge1]);
+
+			int32* CachedIdx = VertexCache.Find(VertexKey);
 			if (CachedIdx != nullptr)
 			{
 				NewTriangle[TriangleIdx] = *CachedIdx;
 			}
 			else
 			{
+				FVector FinalPos = Interpolate(Pos[Edge0], Density[Edge0], Pos[Edge1], Density[Edge1], LocalIsoLevel);
+
 				int32 VertexIdx = MeshData.Vertices.Add(FinalPos);
-				VertexCache.Add(FinalPos, VertexIdx);
+				VertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
 			}
 		}
@@ -274,10 +300,15 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	}
 }
 
-FVector UVoxelGroundChunk::GetVirtualPosition(FVector PrimaryPos, int32 LODIndex, uint8 NeighborMask, float LocalVoxelSize, int32 LocalGridSize)
+uint8 UVoxelGroundChunk:: GetAdjustedPosition(const FVector& PrimaryPos, FVector& OutFinalPos, int32 LODIndex, uint8 NeighborMask, float LocalVoxelSize, int32 LocalGridSize)
 {
 	if (NeighborMask == 0)
-		return PrimaryPos;
+	{
+		OutFinalPos = PrimaryPos;
+		return 0;
+	}
+
+	uint8 ShrinkMask = 0;
 
 	// Eric-Lengyel 'Voxel-Based Terrain For Real-Time Virtual Simulations'의 식 4.2를 활용하여 수축할 정점의 위치 계산
 	float K = (float)LODIndex;
@@ -302,10 +333,13 @@ FVector UVoxelGroundChunk::GetVirtualPosition(FVector PrimaryPos, int32 LODIndex
 	{
 		if ((NeighborMask & (1 << 0)) && bXNeg)
 		{
+			ShrinkMask |= (1 << 0);
 			Offset.X = (1.0f - (PrimaryPos.X / CellSize)) * W;
 		}
 		else if ((NeighborMask & (1 << 1)) && bXPos)
 		{
+
+			ShrinkMask |= (1 << 1);
 			Offset.X = ((S - 1.0f) - (PrimaryPos.X / CellSize)) * W;
 		}
 	}
@@ -316,10 +350,12 @@ FVector UVoxelGroundChunk::GetVirtualPosition(FVector PrimaryPos, int32 LODIndex
 	{
 		if ((NeighborMask & (1 << 2)) && bYNeg)
 		{
+			ShrinkMask |= (1 << 2);
 			Offset.Y = (1.0f - (PrimaryPos.Y / CellSize)) * W;
 		}
 		else if ((NeighborMask & (1 << 3)) && bYPos)
 		{
+			ShrinkMask |= (1 << 3);
 			Offset.Y = ((S - 1.0f) - (PrimaryPos.Y / CellSize)) * W;
 		}
 	}
@@ -330,15 +366,18 @@ FVector UVoxelGroundChunk::GetVirtualPosition(FVector PrimaryPos, int32 LODIndex
 	{
 		if ((NeighborMask & (1 << 4)) && bZNeg)
 		{
+			ShrinkMask |= (1 << 4);
 			Offset.Z = (1.0f - (PrimaryPos.Z / CellSize)) * W;
 		}
 		else if ((NeighborMask & (1 << 5)) && bZPos)
 		{
+			ShrinkMask |= (1 << 5);
 			Offset.Z = ((S - 1.0f) - (PrimaryPos.Z / CellSize)) * W;
 		}
 	}
 
-	return PrimaryPos + Offset;
+	OutFinalPos = PrimaryPos + Offset;
+	return ShrinkMask;
 }
 
 FIntVector UVoxelGroundChunk::GetSwizzledPos(int32 FaceIdx, int32 U, int32 V, int32 Step)

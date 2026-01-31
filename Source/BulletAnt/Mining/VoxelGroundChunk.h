@@ -35,12 +35,15 @@ protected:
 	static int32 GetIndex(const FIntVector& Vec, int32 InGridSize);
 	static int32 GetStepByLODLevel(int32 LODLevel);
 
+	static uint32 GetVertexInfoForKey(int32 X, int32 Y, int32 Z, uint8 ShrinkDir);
+	static uint64 GetVertexKey(uint32 VertexInfo0, uint32 VertexInfo1);
+
 	static void GenerateRegularCell(
 		int32 X, int32 Y, int32 Z,
 		int32 LocalLODLevel, int32 Step,
 		uint8 NeighborMask,
 		FChunkMeshData& MeshData, 
-		TMap<FVector, int32>& VertexCache,
+		TMap<uint64, int32>& VertexCache,
 		const TArray<uint8>& LocalDensity,
 		float LocalVoxelSize,
 		int32 LocalGridSize,
@@ -52,7 +55,7 @@ protected:
 		int32 LocalLODLevel, int32 Step,
 		uint8 NeighborMask,
 		FChunkMeshData& MeshData,
-		TMap<FVector, int32>& VertexCache,
+		TMap<uint64, int32>& VertexCache,
 		const TArray<uint8>& LocalDensity,
 		float LocalVoxelSize,
 		int32 LocalGridSize,
@@ -60,7 +63,7 @@ protected:
 
 	// TransitionCell을 위해 안쪽으로 수축된 가상의 정점 위치
 	// TransitionCell이 있는 RegularCell에서는 안쪽의 정점들은 해당 위치를 이용해야 함.
-	static FVector GetVirtualPosition(FVector PrimaryPos, int32 LODIndex, uint8 NeighborMask, float LocalVoxelSize, int32 LocalGridSize);
+	static uint8 GetAdjustedPosition(const FVector& PrimaryPos, FVector& OutFinalPos, int32 LODIndex, uint8 NeighborMask, float LocalVoxelSize, int32 LocalGridSize);
 
 	static FIntVector GetSwizzledPos(int32 FaceIdx, int32 U, int32 V, int32 Step);
 	void GenerateMesh(const FChunkMeshData& MeshData);
