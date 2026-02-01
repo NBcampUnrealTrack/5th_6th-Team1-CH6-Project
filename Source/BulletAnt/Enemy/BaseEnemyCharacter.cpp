@@ -6,6 +6,11 @@
 #include "AbilitySystemComponent.h"
 #include "BaseEnemyDataAsset.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+
+void ABaseEnemyCharacter::OnDeath()
+{
+}
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -21,6 +26,8 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+	
+	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthAttributeSet"));
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 	StateTreeComponent->SetStartLogicAutomatically(false);

@@ -22,9 +22,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
 	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|AttritubeSet")
-	TArray<TSubclassOf<UAttributeSet>> DefaultAttributeSets;
-	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Move")
 	TSubclassOf<UGameplayEffect> MoveEffect;
 	
