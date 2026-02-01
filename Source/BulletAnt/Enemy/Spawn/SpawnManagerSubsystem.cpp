@@ -155,6 +155,10 @@ void USpawnManagerSubsystem::SpawnEnemies()
 			SpawnLocation,
 			FRotator::ZeroRotator
 		);
+		if (IsValid(Enemy))
+		{
+			AliveEnemyCount++;
+		}
 	}
 	
 	SpawnEnemyDataIdx++;

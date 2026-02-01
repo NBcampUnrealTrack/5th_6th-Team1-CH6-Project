@@ -10,6 +10,7 @@
 
 void ABaseEnemyCharacter::OnDeath()
 {
+	
 }
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
