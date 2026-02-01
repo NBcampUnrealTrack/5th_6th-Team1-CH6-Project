@@ -19,8 +19,14 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 		return EStateTreeRunStatus::Failed;
 	}
 	
-	checkf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UAttackTask-EnterState : DataAsset Error"));
-	checkf(IsValid(ContextActor->BaseEnemyDataAsset->AttackEffect), TEXT("UMoveToTargetActorTask : AttackEffect Error"));
+	if (!ensureMsgf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UAttackTask-EnterState : DataAsset Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	if (!ensureMsgf(IsValid(ContextActor->BaseEnemyDataAsset->AttackEffect), TEXT("UAttackTask-EnterState : AttackEffect Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
 	{
 		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
@@ -33,13 +39,8 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 void UAttackTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {	
 	// 적용했던 GE_BEAttack 제거
-	if (ActiveGEHandle.IsValid())
+	if (ActiveGEHandle.IsValid() && IsValid(ContextActor))
 	{
-		if (!IsValid(ContextActor))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("UAttackTask-ExitState : ContextActor"));
-			return;
-		}
 		if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
 		{
 			ASC->RemoveActiveGameplayEffect(ActiveGEHandle);

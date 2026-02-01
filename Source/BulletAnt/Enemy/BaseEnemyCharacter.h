@@ -33,7 +33,7 @@ public:
 	TObjectPtr<AActor> TargetActor;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
-	float AcceptanceRadius;
+	float AcceptanceRadius = 100.f;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")

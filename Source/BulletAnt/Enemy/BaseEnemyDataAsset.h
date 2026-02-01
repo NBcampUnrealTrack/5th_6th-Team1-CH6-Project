@@ -41,5 +41,5 @@ public:
 	FGameplayTag AttackStateTag;	
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
-	UAnimMontage* AttackMontage;	
+	TObjectPtr<UAnimMontage> AttackMontage;	
 };
