@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -27,6 +25,8 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    
+    virtual void PossessedBy(AController* NewController) override;
 
 public:
     virtual void Tick(float DeltaTime) override;
@@ -60,6 +60,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* AttackAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    class UInputAction* SwitchAction;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     class UInputAction* AimAction;
 
@@ -71,6 +74,32 @@ protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void Attack(const FInputActionValue& Value);
+    void StartRunning(const FInputActionValue& Value);
+    void StopRunning(const FInputActionValue& Value);
+    void CrouchInput(const FInputActionValue& Value);
+    void AimStart(const FInputActionValue& Value);
+    void AimStop(const FInputActionValue& Value);
+    void Interaction(const FInputActionValue& Value);
+    void StartSwitchWeapon(const FInputActionValue& Value);
+
+public:
+    //조준상태
+    UPROPERTY(BlueprintReadOnly, Category = "Input")
+    bool bIsAiming;
+
+    //달리기 상태
+    UPROPERTY(BlueprintReadOnly, Category = "Input")
+    bool bIsRunning;
+
+    // --- 에디터 수정 가능 ---
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float WalkSpeed = 400.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float AimSpeed = 350.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float RunningSpeed = 800.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float CrouchSpeed = 300.f;
 
 #pragma region GAS 
 
@@ -93,14 +122,17 @@ protected:
     UPROPERTY()
     FGameplayTag CurrentWeaponAbilityTag;
 
-    virtual void PossessedBy(AController* NewController) override;
-
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
 
 #pragma endregion
 
 #pragma region Weapon
 public:
+    virtual UDataAsset* GetDataAsset() const override;
+
+    virtual FVector GetFireStartLocation() const override;
+    virtual FVector GetFireDirection() const override;
+
     UFUNCTION()
     void EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
@@ -110,35 +142,9 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
-    virtual UDataAsset* GetDataAsset() const override;
-
-    virtual FVector GetFireStartLocation() const override;
-    virtual FVector GetFireDirection() const override;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
 #pragma endregion
-    void StartRunning(const FInputActionValue& Value);
-    void StopRunning(const FInputActionValue& Value);
-    void CrouchInput(const FInputActionValue& Value);
-    void AimStart(const FInputActionValue& Value);
-    void AimStop(const FInputActionValue& Value);
-    void Interaction(const FInputActionValue& Value);
-
-public:
-    //조준상태
-    UPROPERTY(BlueprintReadOnly, Category = "Input")
-    bool bIsAiming;
-
-    //달리기 상태
-    UPROPERTY(BlueprintReadOnly, Category = "Input")
-    bool bIsRunning;
-
-    // --- 에디터 수정 가능 ---
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float WalkSpeed = 400.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float AimSpeed = 350.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float RunningSpeed = 800.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float CrouchSpeed = 300.f;
+    
 };

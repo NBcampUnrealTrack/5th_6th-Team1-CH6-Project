@@ -2,13 +2,12 @@
 
 #include "Weapon/BaseRangedWeapon.h"
 #include "AbilitySystemComponent.h"
-#include "GameFramework/Actor.h"
-#include "Camera/CameraComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h" 
+
+static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 
 UGA_Fire::UGA_Fire()
 {
@@ -29,7 +28,6 @@ void UGA_Fire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-	
 	FireOnce(ActorInfo);
 
 	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
@@ -103,7 +101,7 @@ void UGA_Fire::ApplyDamageEffect(
 	if (!Spec.IsValid()) return;
 
 	Spec.Data->SetSetByCallerMagnitude(
-		HitTag,
+		TAG_Data_Combat_Damage,
 		Damage
 	);
 
