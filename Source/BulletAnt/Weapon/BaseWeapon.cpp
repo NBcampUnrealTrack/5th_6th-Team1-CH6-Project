@@ -5,6 +5,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
 
+static const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
 
 ABaseWeapon::ABaseWeapon()
 {
@@ -19,25 +20,23 @@ ABaseWeapon::ABaseWeapon()
 
 void ABaseWeapon::EquipWeapon(UAbilitySystemComponent* ASC)
 {
-	if (!ASC || !ASC->GetOwner()->HasAuthority()) return;
+	if (!ASC) return;
+	AActor* OwnerActor = ASC->GetOwner();
+	if (!OwnerActor || !OwnerActor->HasAuthority()) return;
 
-	if (GrantedAbilityHandles.Num() > 0) return;
+	FGameplayEventData Payload;
+	Payload.EventTag = TAG_Event_Weapon_Switch;
+	Payload.OptionalObject = this;
+	Payload.Instigator = ASC->GetOwner();
 
-	for (const TSubclassOf<UGameplayAbility>& AbilityClass : GrantedAbilities)
-	{
-		if (!AbilityClass) continue;
-
-		FGameplayAbilitySpec AbilitySpec(AbilityClass, 1);
-		AbilitySpec.SourceObject = this;
-
-		FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(AbilitySpec);
-		GrantedAbilityHandles.Add(Handle);
-	}
+	ASC->HandleGameplayEvent(TAG_Event_Weapon_Switch, &Payload);
 }
 
 void ABaseWeapon::UnequipWeapon(UAbilitySystemComponent* ASC)
 {
-	if (!ASC || !ASC->GetOwner()->HasAuthority()) return;
+	if (!ASC) return;
+	AActor* OwnerActor = ASC->GetOwner();
+	if (!OwnerActor || !OwnerActor->HasAuthority()) return;
 
 	for (const FGameplayAbilitySpecHandle& Handle : GrantedAbilityHandles)
 	{
