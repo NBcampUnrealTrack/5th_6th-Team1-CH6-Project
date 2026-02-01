@@ -99,3 +99,8 @@ void ABaseEnemyCharacter::BeginPlay()
 		StateTreeComponent->StartLogic();
 	}
 }
+
+UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
+{
+	return BaseEnemyAttackDataAsset;
+}

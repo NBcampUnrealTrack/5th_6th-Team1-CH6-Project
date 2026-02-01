@@ -34,9 +34,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Move")
 	float AcceptanceRadius = 100.f;	
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
-	TSubclassOf<UGameplayEffect> AttackEffect;	
-
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	FGameplayTag AttackStateTag;	
 	

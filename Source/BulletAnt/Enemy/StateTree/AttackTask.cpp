@@ -6,6 +6,8 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "enemy/BaseEnemyDataAsset.h"
+#include "GameplayTagContainer.h"
+#include "Weapon/Data/WeaponDataAsset.h"
 
 EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
@@ -20,11 +22,13 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 	}
 	
 	checkf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UAttackTask-EnterState : DataAsset Error"));
-	checkf(IsValid(ContextActor->BaseEnemyDataAsset->AttackEffect), TEXT("UMoveToTargetActorTask : AttackEffect Error"));
 	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
 	{
-		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-		ActiveGEHandle = ASC->ApplyGameplayEffectToSelf(ContextActor->BaseEnemyDataAsset->AttackEffect->GetDefaultObject<UGameplayEffect>(), 1.0f, EffectContext);
+		UWeaponDataAsset* WeaponDataAsset = Cast<UWeaponDataAsset>(ContextActor->GetDataAsset());
+		if (IsValid(WeaponDataAsset))
+		{
+			ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(WeaponDataAsset->WeaponTag));
+		}
 	}
 	
 	return EStateTreeRunStatus::Running;
@@ -32,20 +36,5 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 
 void UAttackTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {	
-	// 적용했던 GE_BEAttack 제거
-	if (ActiveGEHandle.IsValid())
-	{
-		if (!IsValid(ContextActor))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("UAttackTask-ExitState : ContextActor"));
-			return;
-		}
-		if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
-		{
-			ASC->RemoveActiveGameplayEffect(ActiveGEHandle);
-		}
-		ActiveGEHandle.Invalidate();
-	}
-	
 	Super::ExitState(Context, Transition);
 }
