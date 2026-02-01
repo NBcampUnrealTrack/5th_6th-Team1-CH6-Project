@@ -35,4 +35,5 @@ protected:
 		float Damage,
 		FGameplayTag HitTag);
 	
+	const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 };

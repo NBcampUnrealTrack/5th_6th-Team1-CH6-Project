@@ -18,4 +18,5 @@ public:
 		FGameplayEffectCustomExecutionOutput& OutExecutionOutput
 	) const override;
 
+	const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 };

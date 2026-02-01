@@ -13,7 +13,7 @@ class UOnDeathInterface : public UInterface
 class BULLETANT_API IOnDeathInterface
 {
 	GENERATED_BODY()
-
+	
 public:
 	UFUNCTION()
 	virtual void OnDeath() = 0;

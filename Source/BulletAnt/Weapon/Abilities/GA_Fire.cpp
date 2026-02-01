@@ -7,8 +7,6 @@
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h" 
 
-static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
-
 UGA_Fire::UGA_Fire()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;

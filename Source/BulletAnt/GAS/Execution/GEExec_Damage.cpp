@@ -1,8 +1,6 @@
 ﻿#include "GAS/Execution/GEExec_Damage.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 
-static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
-
 UGEExec_Damage::UGEExec_Damage()
 {
 }

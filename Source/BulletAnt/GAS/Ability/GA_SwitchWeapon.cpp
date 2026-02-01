@@ -3,9 +3,6 @@
 #include "Player/BACharacter.h"
 #include "AbilitySystemComponent.h"
 
-static const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
-static const FGameplayTag TAG_Weapon_Equipped = FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped"));
-
 UGA_SwitchWeapon::UGA_SwitchWeapon()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
