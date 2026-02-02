@@ -7,6 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
+#include "BAPlayerController.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -15,6 +16,8 @@
 #include "Weapon/BaseRangedWeapon.h"
 #include "Weapon/Data/WeaponDataAsset.h"
 #include "Kismet/KismetSystemLibrary.h"
+//건축
+#include "Building/BuildManagerComponent.h"
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -60,6 +63,8 @@ ABACharacter::ABACharacter()
 	bIsRunning = false;
 	bIsClimbing = false;
 	ClimbDuration = 1.f;
+
+	BuildManager = CreateDefaultSubobject<UBuildManagerComponent>(TEXT("BuildManager"));
 }
 
 // Called when the game starts or when spawned
@@ -176,6 +181,27 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (SwitchAction)
 		{
 			EnhancedInputComponent->BindAction(SwitchAction, ETriggerEvent::Started, this, &ABACharacter::StartSwitchWeapon);
+		}
+
+		if (EnterBuildModeAction)
+		{
+			EnhancedInputComponent->BindAction(EnterBuildModeAction, ETriggerEvent::Started, this, &ABACharacter::EnterBuildMode);
+		}
+		if (ExitBuildModeAction)
+		{
+			EnhancedInputComponent->BindAction(ExitBuildModeAction, ETriggerEvent::Started, this, &ABACharacter::ExitBuildMode);
+		}
+		if (PlaceBuildingAction)
+		{
+			EnhancedInputComponent->BindAction(PlaceBuildingAction, ETriggerEvent::Started, this, &ABACharacter::PlaceBuilding);
+		}
+		if (RotateBuildingAction)
+		{
+			EnhancedInputComponent->BindAction(RotateBuildingAction, ETriggerEvent::Started, this, &ABACharacter::RotateBuilding);
+		}
+		if (ToggleSnapModeAction)
+		{
+			EnhancedInputComponent->BindAction(ToggleSnapModeAction, ETriggerEvent::Started, this, &ABACharacter::ToggleSnapMode);
 		}
 	}
 }
@@ -418,6 +444,42 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
             IBAItemInterface::Execute_Use(HitActor, this);
         }
     }
+}
+
+void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
+{
+	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
+	BuildManager->EnterBuildMode();
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+	if (PC)
+	{
+		PC->SwitchingMode();
+	}
+}
+
+void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
+{
+	BuildManager->ExitBuildMode();
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+	if (PC)
+	{
+		PC->SwitchingMode();
+	}
+}
+
+void ABACharacter::PlaceBuilding(const FInputActionValue& Value)
+{
+	BuildManager->TryPlace();
+}
+
+void ABACharacter::RotateBuilding(const FInputActionValue& Value)
+{
+	//BuildManager->RotatePreviewByWheel(Value);
+}
+
+void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
+{
+	BuildManager->ToggleSnapMode();
 }
 
 
