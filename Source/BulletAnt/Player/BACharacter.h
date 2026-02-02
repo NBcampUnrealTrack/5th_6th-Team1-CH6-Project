@@ -132,6 +132,20 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
 
+    // 상태에 따른 이동속도
+    float UpdateMovementSpeed();
+
+    //최대 조준시 좌우 시선 회전 각도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float AimTurn = 45.f;
+    //최대 좌우 시선 회전 각도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float IdleTurn = 90.f;
+    //시선에 따른 자세 회전 속도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float TurnRate = 30.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float LineTraceRange = 500.f;
 #pragma region GAS 
 
 public:
@@ -179,38 +193,5 @@ public:
 #pragma endregion
     
 
-    // 상태에 따른 이동속도
-    float UpdateMovementSpeed();
-
-
-public:
-    //조준상태
-    UPROPERTY(BlueprintReadOnly, Category = "Input")
-    bool bIsAiming;
-
-    //달리기 상태
-    UPROPERTY(BlueprintReadOnly, Category = "Input")
-    bool bIsRunning;
-
-    // --- 에디터 수정 가능 ---
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float WalkSpeed = 400.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float AimSpeed = 350.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float RunningSpeed = 800.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float CrouchSpeed = 300.f;
-
-    //최대 조준시 좌우 시선 회전 각도
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
-    float AimTurn = 45.f;
-    //최대 좌우 시선 회전 각도
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
-    float IdleTurn = 90.f;
-    //시선에 따른 자세 회전 속도
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
-    float TurnRate = 30.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
-    float LineTraceRange = 500.f;
+   
 };
