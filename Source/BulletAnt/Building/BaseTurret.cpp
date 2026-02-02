@@ -7,14 +7,24 @@
 #include "Net/UnrealNetwork.h"
 #include "Weapon/Abilities/GA_Fire.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "Components/SphereComponent.h"
 
 ABaseTurret::ABaseTurret()
 {
 	bReplicates = true;
+	PrimaryActorTick.bCanEverTick = true;
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
 	ASC->SetIsReplicated(true);
 	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	TargetSerchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSerchingSphere"));
+	TargetSerchingSphere->SetupAttachment(RootComponent);
+
+	TargetSerchingSphere->SetSphereRadius(SerchingSphereRadius);
+	TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TargetSerchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	TargetSerchingSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
 void ABaseTurret::BeginPlay()
@@ -27,7 +37,59 @@ void ABaseTurret::BeginPlay()
 		GiveDefaultAbilities();
 
 		StartAutoFire();
+
+		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(
+			this, &ABaseTurret::OnTargetBeginOverlap);
+
+		TargetSerchingSphere->OnComponentEndOverlap.AddDynamic(
+			this, &ABaseTurret::OnTargetEndOverlap);
+
+		GetWorldTimerManager().SetTimer(
+			TargetSearchTimer,
+			this,
+			&ABaseTurret::UpdateCurrentTarget,
+			TargetSearchInterval,
+			true
+		);
 	}
+}
+
+void ABaseTurret::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (!CurrentTarget.IsValid())
+	{
+		return;
+	}
+
+	// ===== 타겟 방향 계산 =====
+	const FVector MyLoc = GetActorLocation();
+	const FVector TargetLoc = CurrentTarget->GetActorLocation();
+
+	FVector Dir = TargetLoc - MyLoc;
+	Dir.Z = 0.f;
+	if (Dir.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator DesiredRot = Dir.Rotation();
+	const FRotator CurrentRot = StaticMeshComp->GetComponentRotation();
+
+	const FRotator NewRot = FMath::RInterpConstantTo(
+		CurrentRot,
+		DesiredRot,
+		DeltaSeconds,
+		TurnSpeedDegPerSec
+	);
+
+	StaticMeshComp->SetWorldRotation(NewRot);
 }
 
 UAbilitySystemComponent* ABaseTurret::GetAbilitySystemComponent() const
@@ -97,4 +159,56 @@ void ABaseTurret::Server_FireTick()
 		ASC->TryActivateAbilitiesByTag(AbilityTags);
 	}
 	
+}
+
+void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor || OtherActor == this)
+	{
+		return;
+	}
+
+	TargetCandidates.AddUnique(OtherActor);
+}
+
+void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	TargetCandidates.Remove(OtherActor);
+
+	if (CurrentTarget == OtherActor)
+	{
+		CurrentTarget = nullptr;
+	}
+}
+
+void ABaseTurret::UpdateCurrentTarget()
+{
+	AActor* BestTarget = nullptr;
+	float BestDistSq = FLT_MAX;
+
+	const FVector MyLoc = GetActorLocation();
+
+	for (int32 i = TargetCandidates.Num() - 1; i >= 0; --i)
+	{
+		AActor* Candidate = TargetCandidates[i].Get();
+		
+		if (!IsValid(Candidate))
+		{
+			TargetCandidates.RemoveAt(i);
+			continue;
+		}
+
+		const float DistSq = FVector::DistSquared(
+			MyLoc,
+			Candidate->GetActorLocation()
+		);
+
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestTarget = Candidate;
+		}
+	}
+
+	CurrentTarget = BestTarget;
 }
