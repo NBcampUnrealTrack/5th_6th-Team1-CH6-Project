@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameplayEffectExecutionCalculation.h"
@@ -20,4 +18,5 @@ public:
 		FGameplayEffectCustomExecutionOutput& OutExecutionOutput
 	) const override;
 
+	const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 };
