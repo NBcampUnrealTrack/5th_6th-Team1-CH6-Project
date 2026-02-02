@@ -1,5 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿
 #pragma once
 
 #include "CoreMinimal.h"
@@ -63,6 +62,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	TSubclassOf<ABuildPreview> PreviewActorClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
+	FName DefaultBuildingRow = TEXT("TestTurret");
+
 	UPROPERTY()
 	FName CurrentBuildingRow;
 
@@ -91,4 +93,13 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
 	float SnapMaxDistance = 40.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
+	float MaxBuildDistance = 1000.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
+	float AllowedPenetrationDistance = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
+	FName GroundActorTag = TEXT("Ground");
 };
