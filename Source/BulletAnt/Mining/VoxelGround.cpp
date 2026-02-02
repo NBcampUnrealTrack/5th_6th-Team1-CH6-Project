@@ -8,7 +8,7 @@ const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 },
 
 AVoxelGround::AVoxelGround()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 }
 
@@ -16,7 +16,7 @@ void AVoxelGround::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UVoxelGroundChunk::SetMaxLODLevel(LODDistance.Num() - 1);
+	UVoxelGroundChunk::SetMaxLODLevel(LODDistance.Num());
 	
 	InitializeGround();
 
@@ -24,8 +24,16 @@ void AVoxelGround::BeginPlay()
 		UpdateChunkLODTimerHandle,
 		this,
 		&ThisClass::UpdateChunkLODs,
-		1.0f,
+		0.5f,
 		true);
+
+	GetWorldTimerManager().SetTimer(
+		UpdateDirtyChunkTimerHandle,
+		this,
+		&ThisClass::UpdateDirtyChunks,
+		1.0f,
+		true,
+		0.25f);
 }
 
 void AVoxelGround::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -33,6 +41,27 @@ void AVoxelGround::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearAllTimersForObject(this);
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AVoxelGround::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	int32 UpdateCount = 0;
+	while (ChunkUpdateResultQueue.IsEmpty() == false && UpdateCount < MaxUpdatePerFrame)
+	{
+		FChunkUpdateResult Result;
+		ChunkUpdateResultQueue.Dequeue(Result);
+
+		UVoxelGroundChunk* TargetChunk = Chunks[Result.TargetChunkIdx];
+		if (IsValid(TargetChunk) == false || Result.UpdateID <= TargetChunk->GetLastUpdateID())
+			continue;
+
+		bool bIsNearPlayer = (GetChunkLODLevel(Result.TargetChunkIdx) == 0);
+		TargetChunk->UpdateChunk(Result.UpdateID, Result.MeshData, bIsNearPlayer);
+
+		++UpdateCount;
+	}
 }
 
 void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
@@ -137,9 +166,14 @@ void AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 
 		if (IsValid(Chunks[ChunkIdx]) == true)
 		{
-			Chunks[ChunkIdx]->UpdateMeshAsync(ChunkDatas[ChunkIdx].DensityValues, GetNeighborLOD(ChunkIdx));
+			UpdateChunkMeshImmediately(ChunkIdx, false);
 		}
 	}
+}
+
+void AVoxelGround::EnqueueChunkUpdateResult(FChunkUpdateResult&& Result)
+{
+	ChunkUpdateResultQueue.Enqueue(Forward<FChunkUpdateResult>(Result));
 }
 
 void AVoxelGround::InitializeGround()
@@ -162,6 +196,8 @@ void AVoxelGround::InitializeGround()
 
 	ChunkDatas.SetNum(ChunkCount);
 	Chunks.SetNum(ChunkCount);
+	ChunkMeshDirties.Init(false, ChunkCount);
+	PriorityChunkMeshDirties.Init(false, ChunkCount);
 
 	for (int32 Z = ChunkRangeMin.Z; Z <= ChunkRangeMax.Z; ++Z)
 	{
@@ -183,6 +219,7 @@ void AVoxelGround::InitializeGround()
 			{
 				int32 ChunkIdx = GetChunkIndex(X, Y, Z);
 				SpawnChunk(ChunkIdx);
+				UpdateChunkMeshImmediately(ChunkIdx, false);
 			}
 		}
 	}
@@ -201,7 +238,7 @@ void AVoxelGround::InitializeChunkData(int32 ChunkIdx)
 	TArray<uint8> TempDensities;
 	TempDensities.SetNumUninitialized(ChunkPoints * ChunkPoints * ChunkPoints);
 
-	ChunkDatas[ChunkIdx].LODLevel = LODDistance.Num() - 1;
+	ChunkDatas[ChunkIdx].LODLevel = LODDistance.Num();
 	ChunkDatas[ChunkIdx].ChunkState = EChunkState::Ground;
 
 	// 쓰레드 안전을 위해 Atomic 사용
@@ -307,19 +344,25 @@ FVector AVoxelGround::GetChunkOffset(int32 X, int32 Y, int32 Z) const
 	return FVector(X, Y, Z) * ChunkSize;
 }
 
-int32 AVoxelGround::GetLODLevelByPlayer(const FIntVector& ChunkCoord, const FIntVector& PlayerChunkCoord)
+int32 AVoxelGround::GetLODLevelByPlayer(const FIntVector& ChunkCoord, const FIntVector& PlayerChunkCoord, int32 CurrentLODLevel)
 {
 	int32 DistX = FMath::Abs(ChunkCoord.X - PlayerChunkCoord.X);
 	int32 DistY = FMath::Abs(ChunkCoord.Y - PlayerChunkCoord.Y);
 	int32 DistZ = FMath::Abs(ChunkCoord.Z - PlayerChunkCoord.Z);
-	int32 Distance = FMath::Max(DistX, FMath::Max(DistY, DistZ));
+	int32 Distance = DistX * DistX + DistY * DistY + DistZ * DistZ;
 
 	for (int32 Idx = 0; Idx < LODDistance.Num(); ++Idx)
 	{
-		if (Distance <= LODDistance[Idx])
+		int32 Threshold = LODDistance[Idx];
+		if (CurrentLODLevel <= Idx)
+		{
+			Threshold += LODDistMargin;
+		}
+
+		if (Distance <= Threshold * Threshold)
 			return Idx;
 	}
-	return LODDistance.Num() - 1;
+	return LODDistance.Num();
 }
 
 int32 AVoxelGround::GetChunkLODLevel(const FIntVector& ChunkCoord)
@@ -331,7 +374,7 @@ int32 AVoxelGround::GetChunkLODLevel(const FIntVector& ChunkCoord)
 int32 AVoxelGround::GetChunkLODLevel(int32 ChunkIdx)
 {
 	if (ChunkDatas.IsValidIndex(ChunkIdx) == false)
-		return LODDistance.Num() - 1;
+		return LODDistance.Num();
 
 	return ChunkDatas[ChunkIdx].LODLevel;
 }
@@ -356,10 +399,106 @@ void AVoxelGround::AddChunkAndNeighbors(int32 ChunkIdx, TSet<int32>& ChunkIdxs)
 {
 	ChunkIdxs.Add(ChunkIdx);
 
+	int32 ChunkLODLevel = GetChunkLODLevel(ChunkIdx);
 	FIntVector ChunkCoord = GetChunkCoord(ChunkIdx);
 	for (int32 Idx = 0; Idx < 6; ++Idx)
 	{
-		ChunkIdxs.Add(GetChunkIndex(ChunkCoord + NeighborOffsets[Idx]));
+		int32 NeighborIdx = GetChunkIndex(ChunkCoord + NeighborOffsets[Idx]);
+		if (GetChunkLODLevel(NeighborIdx) > ChunkLODLevel)
+		{
+			ChunkIdxs.Add(NeighborIdx);
+		}
+	}
+}
+
+void AVoxelGround::UpdateChunkMesh(int32 ChunkIdx, bool bIncludeNeighbors)
+{
+	bIsDirty = true;
+	ChunkMeshDirties[ChunkIdx] = true;
+	
+	if (bIncludeNeighbors == true)
+	{
+		FIntVector ChunkCoord = GetChunkCoord(ChunkIdx);
+
+		for (int32 Idx = 0; Idx < 6; ++Idx)
+		{
+			int32 NeighborIdx = GetChunkIndex(ChunkCoord + NeighborOffsets[Idx]);
+			if (ChunkMeshDirties.IsValidIndex(NeighborIdx) == false || ChunkMeshDirties[NeighborIdx] == true)
+				continue;
+
+			ChunkMeshDirties[NeighborIdx] = true;
+		}
+	}
+}
+
+void AVoxelGround::UpdateChunkMeshImmediately(int32 ChunkIdx, bool bIncludeNeighbors)
+{
+	if (bIsPriorityDirty == false)
+	{
+		bIsPriorityDirty = true;
+		GetWorldTimerManager().SetTimerForNextTick(
+			this,
+			&ThisClass::UpdatePriorityDirtyChunks);
+	}
+
+	PriorityChunkMeshDirties[ChunkIdx] = true;
+
+	if (bIncludeNeighbors == true)
+	{
+		FIntVector ChunkCoord = GetChunkCoord(ChunkIdx);
+
+		for (int32 Idx = 0; Idx < 6; ++Idx)
+		{
+			int32 NeighborIdx = GetChunkIndex(ChunkCoord + NeighborOffsets[Idx]);
+			if (PriorityChunkMeshDirties.IsValidIndex(NeighborIdx) == false || PriorityChunkMeshDirties[NeighborIdx] == true)
+				continue;
+
+			PriorityChunkMeshDirties[NeighborIdx] = true;
+		}
+	}
+}
+
+void AVoxelGround::UpdateDirtyChunks()
+{
+	if (bIsDirty == false)
+		return;
+
+	int32 Count = 0;
+	bIsDirty = false;
+	for (TBitArray<>::FConstIterator It(ChunkMeshDirties); It; ++It)
+	{
+		int32 ChunkIdx = It.GetIndex();
+		if (ChunkMeshDirties[ChunkIdx] == true)
+		{
+			if (IsValid(Chunks[ChunkIdx]) == true)
+			{
+				Chunks[ChunkIdx]->CalculateMeshDataAsync(NextChunkUpdateID++, this, ChunkDatas[ChunkIdx].DensityValues, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
+			}
+			ChunkMeshDirties[ChunkIdx] = false;
+			++Count;
+		}
+	}
+
+	UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));
+}
+
+void AVoxelGround::UpdatePriorityDirtyChunks()
+{
+	if (bIsPriorityDirty == false)
+		return;
+
+	bIsPriorityDirty = false;
+	for (TBitArray<>::FConstIterator It(PriorityChunkMeshDirties); It; ++It)
+	{
+		int32 ChunkIdx = It.GetIndex();
+		if (PriorityChunkMeshDirties[ChunkIdx] == true)
+		{
+			if (IsValid(Chunks[ChunkIdx]) == true)
+			{
+				Chunks[ChunkIdx]->CalculateMeshDataAsync(NextChunkUpdateID++, this, ChunkDatas[ChunkIdx].DensityValues, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
+			}
+			PriorityChunkMeshDirties[ChunkIdx] = false;
+		}
 	}
 }
 
@@ -381,6 +520,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->RegisterComponent();
 	NewChunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	NewChunk->bUseAsyncCooking = true;
+	NewChunk->bCastVolumetricTranslucentShadow = false;
 	NewChunk->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	NewChunk->SetCollisionResponseToAllChannels(ECR_Ignore);
 	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
@@ -393,7 +533,6 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->InitializeChunk(ChunkGridSize, ChunkVoxelSize, IsoLevel);
 	NewChunk->CoordV = Coord;
 	NewChunk->ChunkIdxV = ChunkIdx;
-	NewChunk->UpdateMeshAsync(ChunkDatas[ChunkIdx].DensityValues, GetNeighborLOD(Coord), GetChunkLODLevel(ChunkIdx));
 }
 
 FVector AVoxelGround::GetPlayerLocation()
@@ -425,9 +564,10 @@ void AVoxelGround::CheckPlayerChunk(const FVector& PlayerLocation)
 void AVoxelGround::UpdateNearByChunks(const FIntVector& PlayerChunkCoord)
 {
 	TSet<int32> CurrNearByChunkIdxs;
-	TSet<int32> ChunkIdxsForUpdate;
+	TSet<int32> ChunkIdxsToCheck = LastNearByChunkIdxs;
 
-	int32 MaxDistance = LODDistance.Last();
+	int32 MaxDistWithMargin = LODDistance.Last() + LODDistMargin;
+	int32 MaxDistance = MaxDistWithMargin;
 	FIntVector MinRange = PlayerChunkCoord - FIntVector(MaxDistance, MaxDistance, MaxDistance);
 	FIntVector MaxRange = PlayerChunkCoord + FIntVector(MaxDistance, MaxDistance, MaxDistance);
 
@@ -441,38 +581,28 @@ void AVoxelGround::UpdateNearByChunks(const FIntVector& PlayerChunkCoord)
 				if (ChunkDatas.IsValidIndex(ChunkIdx) == false)
 					continue;
 
-				CurrNearByChunkIdxs.Add(ChunkIdx);
-
-				FIntVector ChunkCoord(X, Y, Z);
-				int32 NewLODLevel = GetLODLevelByPlayer(ChunkCoord, PlayerChunkCoord);
-
-				if (ChunkDatas[ChunkIdx].LODLevel != NewLODLevel)
-				{
-					ChunkDatas[ChunkIdx].LODLevel = NewLODLevel;
-					AddChunkAndNeighbors(ChunkIdx, ChunkIdxsForUpdate);
-				}
-
-				LastNearByChunkIdxs.Remove(ChunkIdx);
+				ChunkIdxsToCheck.Add(ChunkIdx);
 			}
 		}
 	}
 
-	for (int32 LastIdx : LastNearByChunkIdxs)
+	for (int32 ChunkIdx : ChunkIdxsToCheck)
 	{
-		int32 MaxLOD = LODDistance.Num() - 1;
-		if (ChunkDatas[LastIdx].LODLevel != MaxLOD)
+		FIntVector ChunkCoord = GetChunkCoord(ChunkIdx);
+
+		int32 OldLODLevel = ChunkDatas[ChunkIdx].LODLevel;
+		int32 NewLODLevel = GetLODLevelByPlayer(ChunkCoord, PlayerChunkCoord, OldLODLevel);
+
+		if (NewLODLevel != OldLODLevel)
 		{
-			ChunkDatas[LastIdx].LODLevel = MaxLOD;
-			AddChunkAndNeighbors(LastIdx, ChunkIdxsForUpdate);
+			ChunkDatas[ChunkIdx].LODLevel = NewLODLevel;
+			UpdateChunkMesh(ChunkIdx, true);
 		}
-	}
 
-	for (int32 TargetIdx : ChunkIdxsForUpdate)
-	{
-		if (ChunkDatas.IsValidIndex(TargetIdx) == false || IsValid(Chunks[TargetIdx]) == false)
-			continue;
-
-		Chunks[TargetIdx]->UpdateMeshAsync(ChunkDatas[TargetIdx].DensityValues, GetNeighborLOD(TargetIdx), ChunkDatas[TargetIdx].LODLevel);
+		if (NewLODLevel < LODDistance.Num())
+		{
+			CurrNearByChunkIdxs.Add(ChunkIdx);
+		}
 	}
 
 	LastNearByChunkIdxs = MoveTemp(CurrNearByChunkIdxs);

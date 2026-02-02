@@ -1,5 +1,6 @@
 ﻿#include "Mining/VoxelGroundChunk.h"
 #include "Mining/MarchingCubeTable.h"
+#include "Mining/VoxelGround.h"
 
 int32 UVoxelGroundChunk::MaxLODLevel = 2;
 
@@ -10,9 +11,9 @@ void UVoxelGroundChunk::InitializeChunk(int32 InGridSize, float InVoxelSize, uin
 	IsoLevel = InIsoLevel;
 }
 
-void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, const FNeighborLOD& NeighborLOD, int32 LODLevel)
+void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const FNeighborLOD& NeighborLOD, int32 LODLevel)
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(UpdateMeshAsync);
+	TRACE_CPUPROFILER_EVENT_SCOPE(CalculateMeshDataAsync);
 
 	if (DensityValues.IsEmpty() == true)
 		return;
@@ -24,22 +25,23 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 
 	TArray<uint8> LocalDensity = DensityValues;
 	TWeakObjectPtr<UVoxelGroundChunk> WeakThis(this);
+	TWeakObjectPtr<AVoxelGround> WeakGround(VoxelGround);
 
 	// 쓰레드 안전을 위해 멤버변수도 복사해서 전달
 	// []안에 넣으면 값 복사되는 줄 알았는데 컴파일러가 this포인터를 캡쳐해서 멤버변수에 접근하게 된다고 함
-	int32 LocalLODLevel = CurrentLODLevel;
-	float LocalVoxelSize = VoxelSize;
-	int32 LocalGridSize = GridSize;
-	uint8 LocalIsoLevel = IsoLevel;
+	const int32 LocalLODLevel = CurrentLODLevel;
+	const float LocalVoxelSize = VoxelSize;
+	const int32 LocalGridSize = GridSize;
+	const uint8 LocalIsoLevel = IsoLevel;
+	const int32 LocalChunkIdx = ChunkIdxV;
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
-		[WeakThis, LocalDensity, NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
+		[UpdateID, LocalChunkIdx, WeakThis, WeakGround, LocalDensity = MoveTemp(LocalDensity), NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
 		{
 			FChunkMeshData MeshData;
 			TMap<uint64, int32> VertexCache;
 
 			int32 Step = GetStepByLODLevel(LocalLODLevel);
-
 			int32 MaxSize = LocalGridSize - Step;
 
 			// -X, +X, -Y, +Y, -Z, +Z 방향 TransitionCell 존재 여부
@@ -52,16 +54,13 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 				}
 			}
 
-			auto CallGenerateRegular = [&](int32 X, int32 Y, int32 Z)
-				{
-					GenerateRegularCell(X, Y, Z, LocalLODLevel, Step, NeighborMask, MeshData, VertexCache, LocalDensity, LocalVoxelSize, LocalGridSize, LocalIsoLevel);
-				};
+			FVoxelGenerationContext Context(LocalDensity, LocalLODLevel, Step, LocalVoxelSize, LocalGridSize, LocalIsoLevel, NeighborMask, MeshData, VertexCache);
 
 			auto CallGenerateTransition = [&](int32 X, int32 Y, int32 Z, int32 FaceIdx)
 				{
 					if (NeighborMask & (1 << FaceIdx))
 					{
-						GenerateTransitionCell(FaceIdx, X, Y, Z, LocalLODLevel, Step, NeighborMask, MeshData, VertexCache, LocalDensity, LocalVoxelSize, LocalGridSize, LocalIsoLevel);
+						GenerateTransitionCell(FaceIdx, X, Y, Z, Context);
 					}
 				};
 
@@ -72,7 +71,7 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 				{
 					for (int32 X = 0; X <= MaxSize; X += Step)
 					{
-						CallGenerateRegular(X, Y, Z);
+						GenerateRegularCell(X, Y, Z, Context);
 
 						if (X == 0)
 						{
@@ -107,14 +106,15 @@ void UVoxelGroundChunk::UpdateMeshAsync(const TArray<uint8>& DensityValues, cons
 				}
 			}
 
-			AsyncTask(ENamedThreads::GameThread,
-				[WeakThis, MeshData]()
-				{
-					if (WeakThis.IsValid() == true)
-					{
-						WeakThis->GenerateMesh(MeshData);
-					}
-				});
+			if (WeakGround.IsValid() == true)
+			{
+				FChunkUpdateResult UpdateResult;
+				UpdateResult.UpdateID = UpdateID;
+				UpdateResult.TargetChunkIdx = LocalChunkIdx;
+				UpdateResult.MeshData = MoveTemp(MeshData);
+
+				WeakGround->EnqueueChunkUpdateResult(MoveTemp(UpdateResult));
+			}
 		});
 }
 
@@ -140,7 +140,7 @@ int32 UVoxelGroundChunk::GetIndex(const FIntVector& Vec, int32 InGridSize)
 int32 UVoxelGroundChunk::GetStepByLODLevel(int32 LODLevel)
 {
 	// LODLevel에 따라 멀리 있는 청크면 더 많은 갯수만큼 건너뛰면서 체크 (LOD0: 1, LOD1: 2, LOD2: 4)
-	return 1 << LODLevel;;
+	return 1 << LODLevel;
 }
 
 uint32 UVoxelGroundChunk::GetVertexInfoForKey(int32 X, int32 Y, int32 Z, uint8 ShrinkDir)
@@ -156,24 +156,24 @@ uint64 UVoxelGroundChunk::GetVertexKey(uint32 VertexInfo0, uint32 VertexInfo1)
 	return ((uint64)VertexInfo0 << 32) | ((uint64)VertexInfo1);
 }
 
-void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 LocalLODLevel, int32 Step, uint8 NeighborMask, FChunkMeshData& MeshData, TMap<uint64, int32>& VertexCache, const TArray<uint8>& LocalDensity, float LocalVoxelSize, int32 LocalGridSize, uint8 LocalIsoLevel)
+void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVoxelGenerationContext& Context)
 {
 	FVector Pos[8]{};
 	uint8 Density[8]{};
 	uint32 VertexInfo[8]{};
 	for (int32 Idx = 0; Idx < 8; ++Idx)
 	{
-		FIntVector Corner(X + CornerTable[Idx][0] * Step, Y + CornerTable[Idx][1] * Step, Z + CornerTable[Idx][2] * Step);
-		FVector LocalPos = FVector(Corner.X, Corner.Y, Corner.Z) * LocalVoxelSize;
-		Density[Idx] = LocalDensity[GetIndex(Corner.X, Corner.Y, Corner.Z, LocalGridSize)];
-		uint8 ShrinkMask = GetAdjustedPosition(LocalPos, Pos[Idx], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
+		FIntVector Corner(X + CornerTable[Idx][0] * Context.Step, Y + CornerTable[Idx][1] * Context.Step, Z + CornerTable[Idx][2] * Context.Step);
+		FVector LocalPos = FVector(Corner.X, Corner.Y, Corner.Z) * Context.VoxelSize;
+		Density[Idx] = Context.Density[GetIndex(Corner.X, Corner.Y, Corner.Z, Context.GridSize)];
+		uint8 ShrinkMask = GetAdjustedPosition(LocalPos, Pos[Idx], Context.LODLevel, Context.NeighborMask, Context.VoxelSize, Context.GridSize);
 		VertexInfo[Idx] = GetVertexInfoForKey(Corner.X, Corner.Y, Corner.Z, ShrinkMask);
 	}
 
 	int32 CubeIdx = 0;
 	for (int32 Idx = 0; Idx < 8; ++Idx)
 	{
-		if (Density[Idx] > LocalIsoLevel)
+		if (Density[Idx] > Context.IsoLevel)
 		{
 			CubeIdx |= (1 << Idx);
 		}
@@ -194,7 +194,7 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 Loc
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[E1], VertexInfo[E2]);
 
-			int32* CachedIdx = VertexCache.Find(VertexKey);
+			int32* CachedIdx = Context.OutVertexCache.Find(VertexKey);
 			if (CachedIdx != nullptr)
 			{
 				NewTriangle[TriangleIdx] = *CachedIdx;
@@ -202,19 +202,19 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, int32 Loc
 			else
 			{
 				// 버텍스의 위치를 보간해서 너무 각지지 않고 부드러워 보이게 함e);
-				FVector FinalPos = Interpolate(Pos[E1], Density[E1], Pos[E2], Density[E2], LocalIsoLevel);
+				FVector FinalPos = Interpolate(Pos[E1], Density[E1], Pos[E2], Density[E2], Context.IsoLevel);
 
-				int32 VertexIdx = MeshData.Vertices.Add(FinalPos);
-				VertexCache.Add(VertexKey, VertexIdx);
+				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
+				Context.OutVertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
 			}
 		}
 
-		MeshData.Triangles.Add(NewTriangle);
+		Context.OutMeshData.Triangles.Add(NewTriangle);
 	}
 }
 
-void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, int32 Z, int32 LocalLODLevel, int32 Step, uint8 NeighborMask, FChunkMeshData& MeshData, TMap<uint64, int32>& VertexCache, const TArray<uint8>& LocalDensity, float LocalVoxelSize, int32 LocalGridSize, uint8 LocalIsoLevel)
+void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, int32 Z, const FVoxelGenerationContext& Context)
 {
 	FIntVector VIdx[9]{};
 	FVector Pos[13]{};
@@ -222,25 +222,25 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	uint32 VertexInfo[13]{};
 	int32 CaseCode = 0;
 
-	int32 HalfStep = Step / 2;
+	int32 HalfStep = Context.Step / 2;
 	for (int32 Idx = 0; Idx < 9; ++Idx)
 	{
 		int32 U = TransitionCornerTable[Idx][0] * HalfStep;
 		int32 V = TransitionCornerTable[Idx][1] * HalfStep;
 
-		FIntVector SwizzledPos = GetSwizzledPos(FaceIdx, U, V, Step);
+		FIntVector SwizzledPos = GetSwizzledPos(FaceIdx, U, V, Context.Step);
 		checkf(SwizzledPos.X >= 0, TEXT("TransitionCell Wrong Swizzled Pos"));
 
 		VIdx[Idx] = FIntVector(X, Y, Z) + SwizzledPos;
-		Pos[Idx] = FVector(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z) * LocalVoxelSize;
-		Density[Idx] = LocalDensity[GetIndex(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, LocalGridSize)];
+		Pos[Idx] = FVector(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z) * Context.VoxelSize;
+		Density[Idx] = Context.Density[GetIndex(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, Context.GridSize)];
 		VertexInfo[Idx] = GetVertexInfoForKey(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, 0);
 	}
 
 	auto SetVertexInfoTransition =
 		[&](int32 Idx, int32 IdxSource)
 		{
-			uint8 ShrinkMask = GetAdjustedPosition(Pos[IdxSource], Pos[Idx], LocalLODLevel, NeighborMask, LocalVoxelSize, LocalGridSize);
+			uint8 ShrinkMask = GetAdjustedPosition(Pos[IdxSource], Pos[Idx], Context.LODLevel, Context.NeighborMask, Context.VoxelSize, Context.GridSize);
 			Density[Idx] = Density[IdxSource];
 			VertexInfo[Idx] = GetVertexInfoForKey(VIdx[IdxSource].X, VIdx[IdxSource].Y, VIdx[IdxSource].Z, ShrinkMask);
 		};
@@ -253,7 +253,7 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	static const uint8 CaseTable[9] = { 0, 1, 2, 5, 8, 7, 6, 3, 4 };
 	for (int32 i = 0; i < 9; ++i)
 	{
-		if (Density[CaseTable[i]] > LocalIsoLevel)
+		if (Density[CaseTable[i]] > Context.IsoLevel)
 		{
 			CaseCode |= (1 << i);
 		}
@@ -281,22 +281,22 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[Edge0], VertexInfo[Edge1]);
 
-			int32* CachedIdx = VertexCache.Find(VertexKey);
+			int32* CachedIdx = Context.OutVertexCache.Find(VertexKey);
 			if (CachedIdx != nullptr)
 			{
 				NewTriangle[TriangleIdx] = *CachedIdx;
 			}
 			else
 			{
-				FVector FinalPos = Interpolate(Pos[Edge0], Density[Edge0], Pos[Edge1], Density[Edge1], LocalIsoLevel);
+				FVector FinalPos = Interpolate(Pos[Edge0], Density[Edge0], Pos[Edge1], Density[Edge1], Context.IsoLevel);
 
-				int32 VertexIdx = MeshData.Vertices.Add(FinalPos);
-				VertexCache.Add(VertexKey, VertexIdx);
+				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
+				Context.OutVertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
 			}
 		}
 
-		MeshData.Triangles.Add(NewTriangle);
+		Context.OutMeshData.Triangles.Add(NewTriangle);
 	}
 }
 
@@ -394,8 +394,9 @@ FIntVector UVoxelGroundChunk::GetSwizzledPos(int32 FaceIdx, int32 U, int32 V, in
 	return FIntVector(-1, -1, -1);
 }
 
-void UVoxelGroundChunk::GenerateMesh(const FChunkMeshData& MeshData)
+void UVoxelGroundChunk::UpdateChunk(int32 UpdateID, const FChunkMeshData& MeshData, bool bUpdatePhysics)
 {
+	LastUpdateID = UpdateID;
 	UDynamicMesh* Mesh = GetDynamicMesh();
 	if (IsValid(Mesh) == false)
 		return;
@@ -415,8 +416,21 @@ void UVoxelGroundChunk::GenerateMesh(const FChunkMeshData& MeshData)
 
 	// 렌더링 업데이트
 	NotifyMeshModified();
-	// 충돌체 업데이트
+
 	UpdateCollision(false);
+	//if (bUpdatePhysics)
+	//{
+	//	// 충돌체 업데이트
+	//	UpdateCollision(false);
+
+	//	SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	//	SetGenerateOverlapEvents(true);
+	//}
+	//else
+	//{
+	//	SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//	SetGenerateOverlapEvents(false);
+	//}
 
 	UpdateBounds();
 }
