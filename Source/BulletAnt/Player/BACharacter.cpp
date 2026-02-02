@@ -474,7 +474,7 @@ void ABACharacter::PlaceBuilding(const FInputActionValue& Value)
 
 void ABACharacter::RotateBuilding(const FInputActionValue& Value)
 {
-	//BuildManager->RotatePreviewByWheel(Value);
+	BuildManager->RotatePreviewByWheel(Value);
 }
 
 void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)

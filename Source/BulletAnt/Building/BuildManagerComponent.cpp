@@ -3,6 +3,7 @@
 #include "Building/BuildPreview.h"
 #include "Building/BaseBuilding.h"
 #include "Engine/OverlapResult.h"
+#include <InputActionValue.h>
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
@@ -79,7 +80,7 @@ void UBuildManagerComponent::EnterBuildMode()
     }
 
     bBuildMode = true;
-    SetCurrentBuildingRow("DefaultBuildingRow");
+    SetCurrentBuildingRow(DefaultBuildingRow);
     
     RefreshCachedRef();
     CurrentYaw = 0.f;
@@ -119,13 +120,14 @@ void UBuildManagerComponent::TryPlace()
     ServerTryPlace(CurrentBuildingRow, PreviewActor->GetActorLocation(), PreviewActor->GetActorRotation());
 }
 
-void UBuildManagerComponent::RotatePreviewByWheel(float WheelAxisValue)
+void UBuildManagerComponent::RotatePreviewByWheel(const FInputActionValue& Value)
 {
     if (!bBuildMode || !PreviewActor)
     {
         return;
     }
 
+    const float WheelAxisValue = Value.Get<float>();
     if (FMath::IsNearlyZero(WheelAxisValue))
     {
         return;
