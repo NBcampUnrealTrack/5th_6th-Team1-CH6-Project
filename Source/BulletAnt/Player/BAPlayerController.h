@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -10,16 +10,22 @@
  * 
  */
 class UInputMappingContext;
+class ABuildingManagerComponent;
 UCLASS()
 class BULLETANT_API ABAPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
 public:
-	// --- [ºí·çÇÁ¸°Æ® ÀÔ·Â¿ë º¯¼ö]
+	// --- [ë¸”ë£¨í”„ë¦°íŠ¸ ìž…ë ¥ìš© ë³€ìˆ˜]
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	UInputMappingContext* DefaultMappingContext;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+	UInputMappingContext* BuildingMappingContext;
 
+	bool bIsBuildMode;
+
+	void SwitchingMode();
 protected:
 	virtual void BeginPlay() override;
 	

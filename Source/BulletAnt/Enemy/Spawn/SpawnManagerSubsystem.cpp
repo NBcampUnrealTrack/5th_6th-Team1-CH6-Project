@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "BulletAnt/Common/BAWorldSettings.h"
@@ -14,11 +14,11 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	WaveIndex = 0;
-	AliveEnemyCount = 0;
-	SpawnEnemyDataIdx = 0;
-	
-	checkf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL"));
+	if (!ensureMsgf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL")))
+	{
+		return;
+	}
+
 	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
 }
 
@@ -57,7 +57,7 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 		}
 
 		FString LevelName = World->GetMapName();
-		if (LevelName.Contains(TEXT("TestMap")))
+		if (LevelName.Contains(TEXT("TestMap")) || LevelName.Contains(TEXT("MainLevel")))
 		{
 			// UE_LOG(LogTemp, Warning, TEXT("4"))
 			return true; 
@@ -70,11 +70,20 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 void USpawnManagerSubsystem::SetSpawnDataTable()
 {
 	AWorldSettings* WorldSettings = GetWorld()->GetWorldSettings();
-	checkf(IsValid(WorldSettings), TEXT("SpawnManagerSubsystem : GetWorldSettings Error"));
+	if (!ensureMsgf(IsValid(WorldSettings), TEXT("SpawnManagerSubsystem : GetWorldSettings Error")))
+	{
+		return;
+	}
 	ABAWorldSettings* BAWorldSettings = Cast<ABAWorldSettings>(WorldSettings);
-	checkf(IsValid(BAWorldSettings), TEXT("SpawnManagerSubsystem : Cast BAWorldSettings Error"));
+	if (!ensureMsgf(IsValid(BAWorldSettings), TEXT("SpawnManagerSubsystem : Cast BAWorldSettings Error")))
+	{
+		return;
+	}
 	EnemySpawnHandle.DataTable = BAWorldSettings->SpawnTable;
-	checkf(IsValid(EnemySpawnHandle.DataTable), TEXT("SpawnManagerSubsystem : SetSpawnDataTable Error"));
+	if (!ensureMsgf(IsValid(EnemySpawnHandle.DataTable), TEXT("SpawnManagerSubsystem : SetSpawnDataTable Error")))
+	{
+		return;
+	}
 }
 
 void USpawnManagerSubsystem::StartWave()
@@ -155,6 +164,10 @@ void USpawnManagerSubsystem::SpawnEnemies()
 			SpawnLocation,
 			FRotator::ZeroRotator
 		);
+		if (IsValid(Enemy))
+		{
+			AliveEnemyCount++;
+		}
 	}
 	
 	SpawnEnemyDataIdx++;

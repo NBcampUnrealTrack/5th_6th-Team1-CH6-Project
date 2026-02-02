@@ -11,6 +11,7 @@
 enc_temp_folder*
 *.tmp
 *.bak
+UpgradeLog.htm
 
 
 Binaries/
