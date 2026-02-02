@@ -20,8 +20,14 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 		return EStateTreeRunStatus::Failed;
 	}
 	
-	checkf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UMoveToTargetActorTask : DataAsset Error"));
-	checkf(IsValid(ContextActor->BaseEnemyDataAsset->MoveEffect), TEXT("UMoveToTargetActorTask : MoveEffect Error"));
+	if (!ensureMsgf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UMoveToTargetActorTask : DataAsset Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	if (!ensureMsgf(IsValid(ContextActor->BaseEnemyDataAsset->MoveEffect), TEXT("UMoveToTargetActorTask : MoveEffect Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 	if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
 	{
 		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
@@ -29,7 +35,10 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 	}
 	
 	CachedAIController = ContextActor->GetController<AAIController>();
-	checkf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error"));
+	if (!ensureMsgf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 	
 	// 적의 이동 완료시 콜백함수 바인딩
 	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
@@ -75,13 +84,8 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 	CachedAIController = nullptr;
 	
 	// 적용했던 GE_Move 제거
-	if (ActiveGEHandle.IsValid())
+	if (ActiveGEHandle.IsValid() && IsValid(ContextActor))
 	{
-		if (!IsValid(ContextActor))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("UMoveToTargetActorTask-ExitState : ContextActor"));
-			return;
-		}
 		if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor))
 		{
 			ASC->RemoveActiveGameplayEffect(ActiveGEHandle);

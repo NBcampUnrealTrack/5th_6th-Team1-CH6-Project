@@ -6,21 +6,23 @@
 #include "AbilitySystemComponent.h"
 #include "BaseEnemyDataAsset.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+
+void ABaseEnemyCharacter::OnDeath()
+{
+	
+}
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	
-	// DataAsset으로 초기화
-	if (IsValid(BaseEnemyDataAsset))
-	{
-		AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
-	}
-	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+	
+	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthAttributeSet"));
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 	StateTreeComponent->SetStartLogicAutomatically(false);
@@ -47,7 +49,11 @@ void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	checkf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing"));
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
+	{
+		return;
+	}
+	AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
 	
 	if (HasAuthority())
 	{		

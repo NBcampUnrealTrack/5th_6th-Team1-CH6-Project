@@ -35,9 +35,14 @@ protected:
 	
 	inline static const FString SpawnContextString = (TEXT("EnemySpawnContext"));
 	
-	int32 WaveIndex ;
-	int32 AliveEnemyCount;
-	int32 SpawnEnemyDataIdx;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
+	int32 WaveIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
+	int32 AliveEnemyCount = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
+	int32 SpawnEnemyDataIdx = 0;
 	
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
