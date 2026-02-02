@@ -148,7 +148,7 @@ uint32 UVoxelGroundChunk::GetVertexInfoForKey(int32 X, int32 Y, int32 Z, uint8 S
 	// 청크의 한 변에 현재 16 ~ 32개씩 정점 저장 중
 	// 최대 128개를 넘지 않을 거 같아서, (X/Y/Z 8bit씩 + ShrinkMask 8bit = 32bit)로 VertexKey 만듬
 	// X, Y, Z 자료형은 일단 signed 상태로 써서 7bit까지만 쓰고(유지하고), 나중에 부족하면 바꿀 예정 (청크는 정점을 너무 많이 가지면 비효율적이어서 안 커질 듯)
-	return ((uint32)X << 20) | ((uint32)Y << 13) | ((uint32)Z << 6) | ((uint32)X << ShrinkDir);
+	return ((uint32)X << 20) | ((uint32)Y << 13) | ((uint32)Z << 6) | ((uint32)ShrinkDir);
 }
 
 uint64 UVoxelGroundChunk::GetVertexKey(uint32 VertexInfo0, uint32 VertexInfo1)
