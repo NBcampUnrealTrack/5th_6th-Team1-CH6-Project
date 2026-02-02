@@ -5,6 +5,11 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Engine/World.h"
+//#include "DrawDebugHelpers.h"//디버그 용 빨간 선
+#include "Components/CapsuleComponent.h"
+#include "Common/BAItemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Weapon/BaseRangedWeapon.h"
@@ -22,10 +27,12 @@ ABACharacter::ABACharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	// 이동 컴포넌트 설정
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+
+    // 이동 컴포넌트 설정
+    GetCharacterMovement()->bOrientRotationToMovement = false;
+    GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
+    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+    GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
 
 	// 스프링 암 생성 및 설정
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -51,6 +58,8 @@ ABACharacter::ABACharacter()
 
 	bIsAiming = false;
 	bIsRunning = false;
+	bIsClimbing = false;
+	ClimbDuration = 1.f;
 }
 
 // Called when the game starts or when spawned
@@ -63,7 +72,52 @@ void ABACharacter::BeginPlay()
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+    float Speed = GetVelocity().Size2D();
+    if (Speed > 1.f)
+        bUseControllerRotationYaw = true;
+    else
+        bUseControllerRotationYaw = false;
 
+    FRotator ControlRot = GetControlRotation();
+    FRotator ActorRot = GetActorRotation();
+    FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, ActorRot);
+    if(bIsAiming)
+    {
+        if (FMath::Abs(DeltaRot.Yaw) > AimTurn)
+        {
+            SetActorRotation(FRotator(0.f, ControlRot.Yaw, 0.f));
+        }
+    }
+    else
+    {
+        if (FMath::Abs(DeltaRot.Yaw) > IdleTurn)
+        {
+            SetActorRotation(FRotator(0.f, ControlRot.Yaw, 0.f));
+        }
+    }
+
+   /* DrawDebugLine(
+        GetWorld(),
+        FollowCamera->GetComponentLocation(),
+        FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * LineTraceRange),
+        FColor::Red,
+        false,
+        -1.f,
+        0,
+        1.f
+    );*/
+	if (bIsClimbing)
+	{
+		ClimbTimer += DeltaTime;
+
+		float Alpha = ClimbTimer / ClimbDuration;
+		FVector NewLocation = FMath::Lerp(ClimbStartLocation, ClimbEndLocation, Alpha);
+
+		SetActorLocation(NewLocation);
+
+		if (Alpha >= 1.f)
+			EndClimb();
+	}
 }
 
 // 입력 바인딩
@@ -126,26 +180,38 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
+//상태에 따른 이동속도
+float ABACharacter::UpdateMovementSpeed()
+{
+    float NewSpeed = WalkSpeed;
+
+    if (bIsAiming)
+        NewSpeed = AimSpeed;
+    else if (bIsRunning)
+        NewSpeed = RunningSpeed;
+
+    return NewSpeed;
+}
+
 // 이동 함수 구현
 void ABACharacter::Move(const FInputActionValue& Value)
 {
-	FVector2D MovementVector = Value.Get<FVector2D>();
-	if (Controller != nullptr)
-	{
-		// 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+    if (!Controller) return;
 
-		// 전방 방향 (W/S) 계산
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+    FVector2D MovementVector = Value.Get<FVector2D>();
+    // 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
+    const FRotator Rotation = Controller->GetControlRotation();
+    const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// 우측 방향 (A/D) 계산
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+    // 전방 방향 (W/S) 계산
+    const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-		// 이동 적용
-		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
-	}
+    // 우측 방향 (A/D) 계산
+    const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+    // 이동 적용
+    AddMovementInput(ForwardDirection, MovementVector.Y);
+    AddMovementInput(RightDirection, MovementVector.X);
 }
 
 UDataAsset* ABACharacter::GetDataAsset() const
@@ -155,28 +221,28 @@ UDataAsset* ABACharacter::GetDataAsset() const
 
 void ABACharacter::StartRunning(const FInputActionValue& Value)
 {
-	bIsRunning = true;
-	GetCharacterMovement()->MaxWalkSpeed = RunningSpeed;
+    bIsRunning = true;
+    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 }
 
 void ABACharacter::StopRunning(const FInputActionValue& Value)
 {
-	bIsRunning = false;
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+    bIsRunning = false;
+    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 }
 
 void ABACharacter::CrouchInput(const FInputActionValue& Value)
 {
-	if (!bIsCrouched)
-	{
-		Crouch(false);
-		GetCharacterMovement()->MaxWalkSpeed = CrouchSpeed;
-	}
-	else
-	{
-		UnCrouch(false);
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-	}
+    if(!bIsCrouched)
+    {
+        Crouch(false);
+        if(bIsRunning)
+            bIsRunning = false;
+    }
+    else
+    {
+        UnCrouch(false);
+    }
 }
 
 // 시선 처리 함수 구현
@@ -306,16 +372,14 @@ FVector ABACharacter::GetFireDirection() const
 
 	return GetActorRotation().Vector();
 }
+
+
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
 	bIsAiming = true;
 
-	//캐릭터 회전 고정
-	bUseControllerRotationYaw = true;
-
-	GetCharacterMovement()->bOrientRotationToMovement = false;
-	GetCharacterMovement()->MaxWalkSpeed = AimSpeed;
+    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 }
 
 //조준 끝
@@ -323,18 +387,62 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 {
 	bIsAiming = false;
 
-	//캐릭터 회전 고정
-	bUseControllerRotationYaw = false;
-
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 }
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
+    FVector Start = FollowCamera->GetComponentLocation();
+    FVector Forward = FollowCamera->GetForwardVector();
+    FVector End = Start + (Forward * LineTraceRange);
 
+    FHitResult HitResult;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    bool bHit = GetWorld()->LineTraceSingleByChannel(
+        HitResult,
+        Start,
+        End,
+        ECC_Visibility,
+        Params
+    );
+
+    if (bHit)
+    {
+        AActor* HitActor = HitResult.GetActor();
+
+        if (HitActor)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("라인트레이스 상호작용: %s"), *HitActor->GetName());
+            IBAItemInterface::Execute_Use(HitActor, this);
+        }
+    }
 }
 
+
+void ABACharacter::StartClimb(FVector TargetLocation)
+{
+	if (bIsClimbing) return;
+
+	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	// 벽과 충돌을 꺼야 할 경우
+	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	bIsClimbing = true;
+	ClimbStartLocation = GetActorLocation();
+	ClimbEndLocation = TargetLocation;
+	ClimbTimer = 0.f;
+}
+
+void ABACharacter::EndClimb()
+{
+	bIsClimbing = false;
+
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	// 벽과 충돌을 꺼야 할 경우
+	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+}
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
 	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);

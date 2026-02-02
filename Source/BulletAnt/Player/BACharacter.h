@@ -9,6 +9,9 @@
 #include "GameplayEffectTypes.h"
 #include "BACharacter.generated.h"
 
+class USpringArmComponent;
+class UCameraComponent;
+class UInputAction;
 class UHealthAttributeSet;
 class ABaseWeapon;
 
@@ -23,6 +26,7 @@ public:
 	// Sets default values for this character's properties
 	ABACharacter();
 
+
 protected:
     virtual void BeginPlay() override;
     
@@ -35,27 +39,30 @@ public:
     // --- 카메라 관련 컴포넌트 ---
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-    class USpringArmComponent* CameraBoom;
+    TObjectPtr<USpringArmComponent> CameraBoom;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-    class UCameraComponent* FollowCamera;
+    TObjectPtr<UCameraComponent> FollowCamera;
 
-    // --- 입력(Enhanced Input) 관련 변수 ---
+
+#pragma region InputAction
+
 public:
+    // --- 입력(Enhanced Input) 관련 변수 ---
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* JumpAction;
+    UInputAction* JumpAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* MoveAction;
+    UInputAction* MoveAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* RunAction;
+    UInputAction* RunAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* CrouchAction;
+    UInputAction* CrouchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-    class UInputAction* LookAction;
+    UInputAction* LookAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
     class UInputAction* AttackAction;
@@ -64,10 +71,14 @@ public:
     class UInputAction* SwitchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* AimAction;
+    UInputAction* AimAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* InteractionAction;
+    UInputAction* InteractionAction;
+
+#pragma endregion
+
+#pragma region Action Function
 
     // --- 실제 동작 함수 ---
 protected:
@@ -80,6 +91,26 @@ protected:
     void AimStart(const FInputActionValue& Value);
     void AimStop(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
+
+    //파쿠르 관련
+    void StartClimb(FVector TargetLocation);
+    void EndClimb();
+
+
+    FVector ClimbStartLocation;
+    FVector ClimbEndLocation;
+    float ClimbDuration;
+    float ClimbTimer;
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    bool bIsClimbing;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    float TraceDistance = 100.f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    float EyeHeight = 50.f;
+
+#pragma endregion
     void StartSwitchWeapon(const FInputActionValue& Value);
 
 public:
@@ -101,6 +132,20 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
 
+    // 상태에 따른 이동속도
+    float UpdateMovementSpeed();
+
+    //최대 조준시 좌우 시선 회전 각도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float AimTurn = 45.f;
+    //최대 좌우 시선 회전 각도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float IdleTurn = 90.f;
+    //시선에 따른 자세 회전 속도
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float TurnRate = 30.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    float LineTraceRange = 500.f;
 #pragma region GAS 
 
 public:
@@ -147,4 +192,6 @@ public:
 
 #pragma endregion
     
+
+   
 };
