@@ -36,6 +36,9 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+    //TEST
+    FORCEINLINE UCameraComponent* GetCamera() const { return FollowCamera; }
+
     // --- 카메라 관련 컴포넌트 ---
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
