@@ -55,7 +55,7 @@ private:
 
 	void SetCurrentBuildingRow(FName NewRow);
 
-private:
+protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	TObjectPtr<UDataTable> BuildingTable;
 

@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "BulletAnt/Common/BAWorldSettings.h"
@@ -57,7 +57,7 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 		}
 
 		FString LevelName = World->GetMapName();
-		if (LevelName.Contains(TEXT("TestMap")))
+		if (LevelName.Contains(TEXT("TestMap")) || LevelName.Contains(TEXT("MainLevel")))
 		{
 			// UE_LOG(LogTemp, Warning, TEXT("4"))
 			return true; 

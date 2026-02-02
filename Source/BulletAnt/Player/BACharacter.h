@@ -14,6 +14,7 @@ class UCameraComponent;
 class UInputAction;
 class UHealthAttributeSet;
 class ABaseWeapon;
+class UBuildManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 
@@ -49,25 +50,25 @@ protected:
 
 public:
     // --- 입력(Enhanced Input) 관련 변수 ---
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* JumpAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* MoveAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* RunAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* CrouchAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* LookAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     class UInputAction* AttackAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     class UInputAction* SwitchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
@@ -75,6 +76,21 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractionAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* EnterBuildModeAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* ExitBuildModeAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* PlaceBuildingAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* RotateBuildingAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* ToggleSnapModeAction;
 
 #pragma endregion
 
@@ -91,6 +107,12 @@ protected:
     void AimStart(const FInputActionValue& Value);
     void AimStop(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
+    void EnterBuildMode(const FInputActionValue& Value);
+    void ExitBuildMode(const FInputActionValue& Value);
+    void PlaceBuilding(const FInputActionValue& Value);
+    void RotateBuilding(const FInputActionValue& Value);
+    void ToggleSnapMode(const FInputActionValue& Value);
+
 
     //파쿠르 관련
     void StartClimb(FVector TargetLocation);
@@ -192,6 +214,8 @@ public:
 
 #pragma endregion
     
-
+protected:
+    UPROPERTY(VisibleAnywhere)
+    UBuildManagerComponent* BuildManager;
    
 };
