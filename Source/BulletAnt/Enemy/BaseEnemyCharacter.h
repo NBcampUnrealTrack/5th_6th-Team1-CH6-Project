@@ -35,7 +35,7 @@ public:
 	TObjectPtr<AActor> TargetActor;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
-	float AcceptanceRadius;
+	float AcceptanceRadius = 100.f;
 	
 	virtual UDataAsset* GetDataAsset() const override;
 	

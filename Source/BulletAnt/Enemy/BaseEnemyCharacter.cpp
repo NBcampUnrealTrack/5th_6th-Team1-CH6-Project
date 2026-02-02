@@ -18,12 +18,6 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	
-	// DataAsset으로 초기화
-	if (IsValid(BaseEnemyDataAsset))
-	{
-		AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
-	}
-	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
@@ -55,7 +49,11 @@ void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	checkf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing"));
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
+	{
+		return;
+	}
+	AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
 	
 	if (HasAuthority())
 	{		

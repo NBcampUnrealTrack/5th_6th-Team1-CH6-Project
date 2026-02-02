@@ -41,7 +41,7 @@ public:
 	TObjectPtr<AActor> TargetActor;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	float AcceptanceRadius;
+	float AcceptanceRadius = 100.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FStateTreeEvent ToAttack;
