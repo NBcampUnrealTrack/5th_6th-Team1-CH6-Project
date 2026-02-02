@@ -10,6 +10,20 @@ AActor* USpawnManagerSubsystem::GetTargetActor() const
 	return TargetActor;
 }
 
+void USpawnManagerSubsystem::OnEnemyDie()
+{
+	AliveEnemyCount--;
+	if (AliveEnemyCount == 0)
+	{
+		WaveIndex++;
+		if (WaveIndex > MaxWaveIndex)
+		{
+			return;
+		}
+		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
+	}
+}
+
 void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
