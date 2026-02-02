@@ -5,6 +5,7 @@
 #include "Player/BACharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
+#include "Kismet/KismetMathLibrary.h"
 
 void UBAAnimInstance::NativeInitializeAnimation()
 {
@@ -17,9 +18,7 @@ void UBAAnimInstance::NativeInitializeAnimation()
 		Character = Cast<ABACharacter>(Owner);
 
 		if (Character)
-		{
 			Movement = Character->GetCharacterMovement();
-		}
 	}
 }
 
@@ -36,19 +35,20 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	FRotator Rotation = Character->GetActorRotation();
 
-	if (GroundSpeed > 3.0f)
-	{
-		Direction = UKismetAnimationLibrary::CalculateDirection(Velocity, Rotation);
-	}
-	else
-	{
-		Direction = 0.0f;
-	}
+	Direction = (GroundSpeed > 3.0f)
+		? UKismetAnimationLibrary::CalculateDirection(Velocity, Rotation)
+		: Direction = 0.0f;
+
+	DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(Character->GetControlRotation(), Character->GetActorRotation());
+	AOPitch = FMath::Clamp(DeltaRot.Pitch, -90.0f, 90.0f);
+	AOYaw = FMath::Clamp(DeltaRot.Yaw, -90.0f, 90.0f);
 
 	bIsAiming = Character->bIsAiming;
 	
 	bIsFalling = Movement->IsFalling();
-
+	bIsCrouch = Character->bIsCrouched;
+	if(bIsCrouch)
+		UE_LOG(LogTemp, Warning, TEXT("앉기 true"));
 	bIsRunning = Character->bIsRunning;
 	VerticalVelocity = Velocity.Z;
 }

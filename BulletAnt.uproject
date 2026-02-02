@@ -33,15 +33,7 @@
 			"Enabled": true
 		},
 		{
-			"Name": "MassAI",
-			"Enabled": true
-		},
-		{
-			"Name": "MassCrowd",
-			"Enabled": true
-		},
-		{
-			"Name": "MassGameplay",
+			"Name": "StateTree", 
 			"Enabled": true
 		},
 		{
@@ -49,7 +41,15 @@
 			"Enabled": true
 		},
 		{
-			"Name": "ZoneGraph",
+			"Name": "MassGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "MassAI",
+			"Enabled": true
+		},
+		{
+			"Name": "StructUtils", 
 			"Enabled": true
 		}
 	]

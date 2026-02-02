@@ -26,33 +26,42 @@ public:
 
 protected:
 	// 매번 Cast 안하기 위한 포인터
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
-	class ABACharacter* Character;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	TObjectPtr<ABACharacter> Character;
 
 	// 매번 Cast 안하기 위한 포인터
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
-	class UCharacterMovementComponent* Movement;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	TObjectPtr <UCharacterMovementComponent> Movement;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GroundSpeed;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
-	float Direction;
+	FRotator DeltaRot;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	float AOPitch;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	float AOYaw;
 
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	float Direction;
 	// 조준 상태
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsAiming;
 
 	// 공중 상태
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsFalling;
 
 	// 달리기 상태
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsRunning;
+
+	// 앉기 상태
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	bool bIsCrouch;
 
 
 	//수직 이동 속도
-	UPROPERTY(BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float VerticalVelocity;
 };
