@@ -5,6 +5,10 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Enemy/BaseEnemyCharacter.h"
+#include "Components/StateTreeComponent.h"
+
+static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
@@ -12,6 +16,8 @@ UGA_MeleeAttack::UGA_MeleeAttack()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 
 	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Weapon.MeleeAttack")));
+	
+	ActivationOwnedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Attacking")));
 }
 
 void UGA_MeleeAttack::ActivateAbility(
@@ -62,6 +68,17 @@ void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
 
 void UGA_MeleeAttack::OnMontageFinished()
 {
+	AActor* Avatar = CurrentActorInfo->AvatarActor.Get();
+	if (IsValid(Avatar))
+	{
+		ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(Avatar); 
+		if (IsValid(Enemy))
+		{
+			FStateTreeEvent ToMove(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Moving")));
+			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToMove);
+		}
+	}
+	
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
@@ -90,11 +107,9 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 
 			if (SpecHandle.IsValid())
 			{
-				SpecHandle.Data->SetSetByCallerMagnitude(Data->HitEventTag, Data->BaseDamage);
-
+				SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, Data->BaseDamage);
 				SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 			}
 		}
 	}
 }
-

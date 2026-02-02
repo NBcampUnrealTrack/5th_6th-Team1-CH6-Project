@@ -1,7 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "Player/BACharacter.h"
+﻿#include "Player/BACharacter.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -121,6 +118,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
 		}
+
+		if (SwitchAction)
+		{
+			EnhancedInputComponent->BindAction(SwitchAction, ETriggerEvent::Started, this, &ABACharacter::StartSwitchWeapon);
+		}
 	}
 }
 
@@ -148,7 +150,7 @@ void ABACharacter::Move(const FInputActionValue& Value)
 
 UDataAsset* ABACharacter::GetDataAsset() const
 {
-	return EquippedWeapon->GetWeaponData();
+	return EquippedWeapon ? EquippedWeapon->GetWeaponData() : nullptr;
 }
 
 void ABACharacter::StartRunning(const FInputActionValue& Value)
@@ -192,12 +194,14 @@ void ABACharacter::Look(const FInputActionValue& Value)
 void ABACharacter::Attack(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
+	if (!EquippedWeapon) return;
 
 	FGameplayTagContainer Tag;
 
-	const FGameplayTag& AttackTag = EquippedWeapon->GetWeaponData()->WeaponTag;
-	Tag.AddTag(AttackTag);
-
+	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
+	if (!WeaponData) return;
+	Tag.AddTag(WeaponData->WeaponTag);
+	
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
 }
 
@@ -248,7 +252,7 @@ void ABACharacter::EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass)
 
 	if (EquippedWeapon)
 	{
-		EquippedWeapon->UnequipWeapon(AbilitySystemComponent);
+		/*EquippedWeapon->UnequipWeapon(AbilitySystemComponent);*/
 		EquippedWeapon->Destroy();
 		EquippedWeapon = nullptr;
 	}
@@ -329,4 +333,9 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
 
+}
+
+void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
+{
+	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
 }

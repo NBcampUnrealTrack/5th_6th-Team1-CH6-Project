@@ -16,6 +16,5 @@ class BULLETANT_API IFireStartInterface
 
 public:
 	virtual FVector GetFireStartLocation() const = 0;
-
 	virtual FVector GetFireDirection() const = 0;
 };

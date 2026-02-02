@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
 #include "GameplayAbilitySpec.h"
+#include "GameplayEffect.h"
 #include "BaseWeapon.generated.h"
 
 class USkeletalMeshComponent;
@@ -22,11 +23,13 @@ public:
 public:
 	FORCEINLINE UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+	FORCEINLINE TArray<TSubclassOf<UGameplayAbility>> GetGrantedAbilities() const { return GrantedAbilities; }
+	FORCEINLINE TArray<FGameplayAbilitySpecHandle> GetGrantedAbilityHandles() const { return GrantedAbilityHandles; }
+	FORCEINLINE TSubclassOf<UGameplayEffect> GetSwitchEffectClass() const { return SwitchEffectClass; }
 
-	void EquipWeapon(UAbilitySystemComponent* ASC);
+
+	virtual void EquipWeapon(UAbilitySystemComponent* ASC);
 	void UnequipWeapon(UAbilitySystemComponent* ASC);
-
-	
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
@@ -40,4 +43,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")
 	TObjectPtr<UWeaponDataAsset> WeaponData;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|GAS")
+	TSubclassOf<UGameplayEffect> SwitchEffectClass;
+	
 };

@@ -21,20 +21,24 @@ protected:
 	
 	void SetSpawnDataTable();
 	void StartWave();
-	void SpawnEnemies(int32 InWaveIndex);
+	void SpawnEnemies();
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<AActor> TargetActor;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UDataTable> SpawnDataTable;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	//TObjectPtr<UDataTable> SpawnDataTable;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
 	FDataTableRowHandle EnemySpawnHandle;	
 	
-	int32 WaveIndex;
-	int32 AliveEnemyCount;
+	inline static const FString SpawnContextString = (TEXT("EnemySpawnContext"));
 	
+	int32 WaveIndex ;
+	int32 AliveEnemyCount;
+	int32 SpawnEnemyDataIdx;
+	
+	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
 };
