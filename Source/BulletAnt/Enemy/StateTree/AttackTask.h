@@ -5,33 +5,18 @@
 #include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "Blueprint/StateTreeTaskBlueprintBase.h"
-#include "Navigation/PathFollowingComponent.h"
-#include "MoveToTargetActorTask.generated.h"
+#include "AttackTask.generated.h"
 
-class AAIController;
 class ABaseEnemyCharacter;
 
-enum class EMoveRequestResult : uint8
-{
-	RequestAccepted,
-	AlreadyArrived,
-	Failed            
-};
-
 UCLASS()
-class BULLETANT_API UMoveToTargetActorTask : public UStateTreeTaskBlueprintBase
+class BULLETANT_API UAttackTask : public UStateTreeTaskBlueprintBase
 {
 	GENERATED_BODY()
 	
 protected:
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
-	
-private:	
-	UFUNCTION()
-	void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
-	
-	void StartMoveToTarget();
 	
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
@@ -40,19 +25,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<AActor> TargetActor;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	float AcceptanceRadius;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FStateTreeEvent ToAttack;
+	FStateTreeEvent ToMove;
 	
-protected:
-	TWeakObjectPtr<AAIController> CachedAIController;
-
-	FAIRequestID CurrentRequestID;
-	EMoveRequestResult MoveRequestResult;
-	
+protected:	
 	FActiveGameplayEffectHandle ActiveGEHandle;
-	
-	FTimerHandle RetryTimer;
 };

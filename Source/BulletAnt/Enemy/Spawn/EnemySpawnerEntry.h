@@ -18,6 +18,9 @@ struct BULLETANT_API FSpawnEnemyData
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 Count = 10;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float SpawnInterval = 1.f;
 };
 
 USTRUCT(BlueprintType)
@@ -30,9 +33,6 @@ struct BULLETANT_API FEnemySpawnerEntry : public FTableRowBase
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FSpawnEnemyData> SpawnEnemyDataArray;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float SpawnInterval = 0.5f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 SpawnMinDistance = 1000;

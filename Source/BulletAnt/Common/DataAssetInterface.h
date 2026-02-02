@@ -1,14 +1,10 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 #include "DataAssetInterface.generated.h"
 
-class UWeaponDataAsset;
-
-UINTERFACE(MinimalAPI)
+UINTERFACE(MinimalAPI, BlueprintType)
 class UDataAssetInterface : public UInterface
 {
 	GENERATED_BODY()
