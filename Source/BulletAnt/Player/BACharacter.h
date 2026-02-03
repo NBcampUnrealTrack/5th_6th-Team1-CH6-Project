@@ -36,6 +36,7 @@ protected:
 public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
     //TEST
     FORCEINLINE UCameraComponent* GetCamera() const { return FollowCamera; }
@@ -203,13 +204,13 @@ public:
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
 
-    UFUNCTION()
-    void EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
+    UFUNCTION(Server,Reliable)
+    void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")

@@ -8,6 +8,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
 #include "BAPlayerController.h"
+#include "Net/UnrealNetwork.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -206,6 +207,13 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
+void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ThisClass, EquippedWeapon);
+}
+
 //상태에 따른 이동속도
 float ABACharacter::UpdateMovementSpeed()
 {
@@ -328,7 +336,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 	if (DefaultWeaponClass)
 	{
-		EquipWeapon(DefaultWeaponClass);
+		Server_EquipWeapon(DefaultWeaponClass);
 	}
 }
 
@@ -337,7 +345,7 @@ void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) c
 	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
 }
 
-void ABACharacter::EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass)
+void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> WeaponClass)
 {
 	if (!HasAuthority()) return;
 	if (!WeaponClass) return;
@@ -507,5 +515,5 @@ void ABACharacter::EndClimb()
 }
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
-	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
+	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
 }
