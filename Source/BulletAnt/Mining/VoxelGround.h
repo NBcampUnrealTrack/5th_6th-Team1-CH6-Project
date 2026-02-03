@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -93,6 +93,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	float CaveThreshold = 0.6f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	TArray<int32> LODDistance = { 1, 2 };
 	const int32 LODDistMargin = 1;				// 가까워질 때에는 LODDistance에 맞춰서 UpdateMesh, 멀어질 때에는 1만큼 더 여유 두고 UpdateMesh
 

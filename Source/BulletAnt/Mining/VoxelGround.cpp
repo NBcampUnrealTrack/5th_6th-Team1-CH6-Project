@@ -1,4 +1,4 @@
-﻿#include "Mining/VoxelGround.h"
+#include "Mining/VoxelGround.h"
 #include "Mining/VoxelGroundChunk.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
@@ -479,7 +479,7 @@ void AVoxelGround::UpdateDirtyChunks()
 		}
 	}
 
-	UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));
+	// UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));
 }
 
 void AVoxelGround::UpdatePriorityDirtyChunks()
@@ -538,7 +538,10 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 FVector AVoxelGround::GetPlayerLocation()
 {
 	ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
-	checkf(IsValid(PlayerCharacter) == true, TEXT("VoxelGround => Cannot find PlayerCharacter"));
+	if (!ensureMsgf(IsValid(PlayerCharacter), TEXT("VoxelGround => Cannot find PlayerCharacter")))
+	{
+		return FVector::ZeroVector;
+	}
 
 	return PlayerCharacter->GetActorLocation();
 }

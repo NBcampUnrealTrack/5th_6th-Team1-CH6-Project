@@ -1,4 +1,4 @@
-﻿#include "Mining/VoxelGroundChunk.h"
+#include "Mining/VoxelGroundChunk.h"
 #include "Mining/MarchingCubeTable.h"
 #include "Mining/VoxelGround.h"
 
@@ -201,7 +201,7 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 			}
 			else
 			{
-				// 버텍스의 위치를 보간해서 너무 각지지 않고 부드러워 보이게 함e);
+				// 버텍스의 위치를 보간해서 너무 각지지 않고 부드러워 보이게 함
 				FVector FinalPos = Interpolate(Pos[E1], Density[E1], Pos[E2], Density[E2], Context.IsoLevel);
 
 				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
@@ -315,7 +315,7 @@ uint8 UVoxelGroundChunk:: GetAdjustedPosition(const FVector& PrimaryPos, FVector
 	float S = (float)LocalGridSize / (1 << LODIndex);
 	float CellSize = (float)(1 << LODIndex) * LocalVoxelSize;
 	float W = FMath::Pow(2.0f, K - 2.0f) * LocalVoxelSize;
-	float MaxPos = (float)(LocalGridSize) * LocalVoxelSize;;
+	float MaxPos = (float)(LocalGridSize) * LocalVoxelSize;
 
 	FVector Offset(0, 0, 0);
 	const float Epsilon = 0.001f;
