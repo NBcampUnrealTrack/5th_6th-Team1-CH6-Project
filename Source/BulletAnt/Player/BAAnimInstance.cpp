@@ -39,7 +39,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		? UKismetAnimationLibrary::CalculateDirection(Velocity, Rotation)
 		: Direction = 0.0f;
 
-	DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(Character->GetControlRotation(), Character->GetActorRotation());
+	DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(Character->GetBaseAimRotation(), Character->GetActorRotation());
 	AOPitch = FMath::Clamp(DeltaRot.Pitch, -90.0f, 90.0f);
 	AOYaw = FMath::Clamp(DeltaRot.Yaw, -90.0f, 90.0f);
 
@@ -51,4 +51,15 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		UE_LOG(LogTemp, Warning, TEXT("앉기 true"));
 	bIsRunning = Character->bIsRunning;
 	VerticalVelocity = Velocity.Z;
+}
+
+
+void UBAAnimInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UBAAnimInstance, bIsAiming);
+	DOREPLIFETIME(UBAAnimInstance, bIsFalling);
+	DOREPLIFETIME(UBAAnimInstance, bIsRunning);
+	DOREPLIFETIME(UBAAnimInstance, bIsCrouch);
 }
