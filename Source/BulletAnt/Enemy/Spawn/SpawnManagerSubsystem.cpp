@@ -13,13 +13,9 @@ AActor* USpawnManagerSubsystem::GetTargetActor() const
 void USpawnManagerSubsystem::OnEnemyDie()
 {
 	AliveEnemyCount--;
-	if (AliveEnemyCount == 0)
+	if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
 	{
 		WaveIndex++;
-		if (WaveIndex > MaxWaveIndex)
-		{
-			return;
-		}
 		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
 	}
 }
