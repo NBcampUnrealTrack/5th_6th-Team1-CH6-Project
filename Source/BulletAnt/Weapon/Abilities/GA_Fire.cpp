@@ -4,6 +4,7 @@
 #include "AbilitySystemComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "Abilities/GameplayAbility.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h" 
 
@@ -13,6 +14,9 @@ UGA_Fire::UGA_Fire()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 
 	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Weapon.Fire")));
+
+	TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
+	TAG_GameplayCue_Weapon_Fire = FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Weapon.Fire"));
 }
 
 void UGA_Fire::ActivateAbility(
@@ -73,8 +77,10 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		1.f
 	);
 
-	if (!bHit) return;
+	ApplyAttackCue(Start, RangedData, ActorInfo->AbilitySystemComponent.Get());
 
+	if (!bHit) return;
+	
 	ApplyDamageEffect(ActorInfo, Hit.GetActor(), RangedData->BaseDamage, RangedData->HitEventTag);
 }
 
@@ -104,5 +110,18 @@ void UGA_Fire::ApplyDamageEffect(
 	);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
+}
+
+void UGA_Fire::ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC)
+{
+	if (!WeaponData || !ASC) return;
+	FGameplayCueParameters Params;
+	Params.Location = Location;
+	Params.SourceObject = WeaponData;
+
+	ASC->ExecuteGameplayCue(
+		TAG_GameplayCue_Weapon_Fire,
+		Params
+	);
 }
 

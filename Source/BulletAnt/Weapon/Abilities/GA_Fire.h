@@ -34,6 +34,9 @@ protected:
 		AActor* Target,
 		float Damage,
 		FGameplayTag HitTag);
+
+	void ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC);
 	
-	const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
+	FGameplayTag TAG_Data_Combat_Damage;
+	FGameplayTag TAG_GameplayCue_Weapon_Fire;
 };

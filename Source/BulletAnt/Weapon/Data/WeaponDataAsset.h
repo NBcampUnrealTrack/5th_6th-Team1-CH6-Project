@@ -17,7 +17,7 @@ enum class EWeaponType : uint8
 	Mining  UMETA(DisplayName = "Mining")
 };
 
-UCLASS()
+UCLASS(BlueprintType)
 class BULLETANT_API UWeaponDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
@@ -32,4 +32,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
 	FGameplayTag HitEventTag;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<USoundBase> AttackSound;
 };
