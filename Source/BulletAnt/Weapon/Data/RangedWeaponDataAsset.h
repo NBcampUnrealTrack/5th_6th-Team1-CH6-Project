@@ -16,7 +16,7 @@ public:
 	float BaseDamage;
 
 	UPROPERTY(EditDefaultsOnly)
-	float AttackRate;
+	float RoundPerMinute;
 
 	UPROPERTY(EditDefaultsOnly)
 	int32 MaxAmmo;
@@ -26,5 +26,14 @@ public:
 
 	UPROPERTY(EditDefaultsOnly)
 	float Range;
+
+	UPROPERTY(EditDefaultsOnly)
+	uint8 bAutoFire : 1 = true;
+
+	UPROPERTY(EditDefaultsOnly)
+	int32 FirePerShot = 1;
+	
+	UPROPERTY(EditDefaultsOnly)
+	float SpreadDegree;
 	
 };

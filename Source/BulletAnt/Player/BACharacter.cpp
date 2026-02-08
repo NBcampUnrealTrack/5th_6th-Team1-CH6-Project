@@ -168,7 +168,8 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		if (AttackAction)
 		{
-			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::Attack);
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::StartAttack);
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &ABACharacter::StopAttack);
 		}
 		// 조준
 		if (AimAction)
@@ -297,10 +298,12 @@ void ABACharacter::Look(const FInputActionValue& Value)
 	}
 }
 
-void ABACharacter::Attack(const FInputActionValue& Value)
+void ABACharacter::StartAttack(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
 	if (!EquippedWeapon) return;
+
+	AbilitySystemComponent->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Input.Attacking")));
 
 	FGameplayTagContainer Tag;
 
@@ -309,6 +312,14 @@ void ABACharacter::Attack(const FInputActionValue& Value)
 	Tag.AddTag(WeaponData->WeaponTag);
 	
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
+void ABACharacter::StopAttack(const FInputActionValue& Value)
+{
+	if (!AbilitySystemComponent) return;
+	if (!EquippedWeapon) return;
+
+	AbilitySystemComponent->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Input.Attacking")));
 }
 
 UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const

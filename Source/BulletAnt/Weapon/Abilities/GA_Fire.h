@@ -17,10 +17,6 @@ public:
 	UGA_Fire();
 
 protected:
-
-	UPROPERTY(EditDefaultsOnly, Category = "Fire")
-	TSubclassOf<UGameplayEffect> DamageEffectClass;
-
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -28,7 +24,16 @@ protected:
 		const FGameplayEventData* TriggerEventData
 	) override;
 
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle, 
+		const FGameplayAbilityActorInfo* ActorInfo, 
+		const FGameplayAbilityActivationInfo ActivationInfo, 
+		bool bReplicateEndAbility, 
+		bool bWasCancelled) override;
+
 	void FireOnce(const FGameplayAbilityActorInfo* ActorInfo);
+
+	void StartAutoFireLoop();
 
 	void ApplyDamageEffect(const FGameplayAbilityActorInfo* ActorInfo,
 		AActor* Target,
@@ -36,7 +41,25 @@ protected:
 		FGameplayTag HitTag);
 
 	void ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC);
-	
+
+	UFUNCTION()
+	FVector ApplySpread(const FVector& Dir, float Degree);
+
+	UFUNCTION()
+	void OnFireReleased();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Fire")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
 	FGameplayTag TAG_Data_Combat_Damage;
 	FGameplayTag TAG_GameplayCue_Weapon_Fire;
+
+	UPROPERTY()
+	TObjectPtr<AActor> SourceActor;
+
+	UPROPERTY()
+	URangedWeaponDataAsset* RangedData;
+
+	UPROPERTY()
+	FTimerHandle FireTimerHandler;
 };

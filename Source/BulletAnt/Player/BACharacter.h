@@ -19,6 +19,15 @@ class UBuildManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 
+UENUM(BlueprintType)
+enum class EAbilityInputID : uint8
+{
+    None,
+    Fire,
+    Reload,
+    Aim
+};
+
 UCLASS()
 class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
 {
@@ -111,7 +120,8 @@ public:
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
-    void Attack(const FInputActionValue& Value);
+    void StartAttack(const FInputActionValue& Value);
+    void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
     void CrouchInput(const FInputActionValue& Value);
