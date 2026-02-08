@@ -1,6 +1,7 @@
 ﻿#include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
+#include "Common/OnDeathInterface.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -28,6 +29,15 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 		{
 			const float NewHealth = GetHealth() - LocalIncomingDamage;
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
+
+			if (GetHealth() == 0.f)
+			{
+				AActor* TargetActor = Data.Target.GetAvatarActor();
+				if (IOnDeathInterface* Target = Cast<IOnDeathInterface>(TargetActor))
+				{
+					Target->OnDeath();
+				}
+			}
 		}
 
 		SetIncomingDamage(0.f);

@@ -13,6 +13,7 @@ class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 	
 public:
 	 AActor* GetTargetActor() const;
+	 void OnEnemyDie();
 	
 protected:	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -37,6 +38,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	int32 WaveIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
+	int32 MaxWaveIndex = 2;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	int32 AliveEnemyCount = 0;

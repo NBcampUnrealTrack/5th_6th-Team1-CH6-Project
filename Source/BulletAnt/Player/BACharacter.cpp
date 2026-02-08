@@ -38,16 +38,20 @@ ABACharacter::ABACharacter()
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
     GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
 
-	// 스프링 암 생성 및 설정
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f;
-	CameraBoom->bUsePawnControlRotation = true;
+	GetMesh()->SetOwnerNoSee(true);
+	GetMesh()->bCastHiddenShadow = true;
 
 	// 카메라 생성 및 설정
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false;
+	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+	FirstPersonCameraComponent->SetupAttachment(GetMesh(), TEXT("HEAD"));
+
+	//1인칭
+	FPSMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPSMesh"));
+	FPSMesh->SetupAttachment(FirstPersonCameraComponent);
+	FPSMesh->SetOnlyOwnerSee(true);
+	FPSMesh->SetCastShadow(false);
+	FPSMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	//GAS
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -212,6 +216,8 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ThisClass, EquippedWeapon);
+	DOREPLIFETIME(ABACharacter, bIsAiming);
+	DOREPLIFETIME(ABACharacter, bIsRunning);
 }
 
 //상태에 따른 이동속도
@@ -426,8 +432,8 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
-    FVector Start = FollowCamera->GetComponentLocation();
-    FVector Forward = FollowCamera->GetForwardVector();
+    FVector Start = FirstPersonCameraComponent->GetComponentLocation();
+    FVector Forward = FirstPersonCameraComponent->GetForwardVector();
     FVector End = Start + (Forward * LineTraceRange);
 
     FHitResult HitResult;
@@ -482,7 +488,7 @@ void ABACharacter::PlaceBuilding(const FInputActionValue& Value)
 
 void ABACharacter::RotateBuilding(const FInputActionValue& Value)
 {
-	//BuildManager->RotatePreviewByWheel(Value);
+	BuildManager->RotatePreviewByWheel(Value);
 }
 
 void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)

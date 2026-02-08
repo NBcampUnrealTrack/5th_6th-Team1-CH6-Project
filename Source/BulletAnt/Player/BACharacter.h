@@ -7,6 +7,7 @@
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h"
 #include "GameplayEffectTypes.h"
+#include "Net/UnrealNetwork.h"
 #include "BACharacter.generated.h"
 
 class USpringArmComponent;
@@ -38,16 +39,22 @@ public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+
+    FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetFPSMesh() { return FPSMesh; } const
     //TEST
-    FORCEINLINE UCameraComponent* GetCamera() const { return FollowCamera; }
+    FORCEINLINE UCameraComponent* GetCamera() const { return FirstPersonCameraComponent; }
 
-    // --- 카메라 관련 컴포넌트 ---
+
 protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-    TObjectPtr<USpringArmComponent> CameraBoom;
+    // --- 카메라 관련 컴포넌트 ---
+    //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+    //TObjectPtr<USpringArmComponent> CameraBoom;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-    TObjectPtr<UCameraComponent> FollowCamera;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+    TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
+    // --- 1인칭 관련 컴포넌트 ---
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS")
+    TObjectPtr<USkeletalMeshComponent> FPSMesh;
 
 
 #pragma region InputAction
@@ -141,11 +148,11 @@ public:
 
 public:
     //조준상태
-    UPROPERTY(BlueprintReadOnly, Category = "Input")
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
 
     //달리기 상태
-    UPROPERTY(BlueprintReadOnly, Category = "Input")
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsRunning;
 
     // --- 에디터 수정 가능 ---

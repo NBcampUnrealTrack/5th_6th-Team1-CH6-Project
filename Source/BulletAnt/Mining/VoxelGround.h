@@ -7,6 +7,7 @@
 
 class UVoxelGroundChunk;
 struct FNeighborLOD;
+class ABAPlayerController;
 
 UENUM()
 enum class EChunkState
@@ -27,6 +28,59 @@ struct FVoxelGroundChunkData
 	TArray<uint8> DensityValues;
 	UPROPERTY()
 	int32 LODLevel = 0;					// 0이 가장 정밀한 LOD
+
+	UPROPERTY()
+	int32 GroundVoxelCount = 0;
+};
+
+USTRUCT()
+struct FVoxelPointEditData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 VoxelIndex = 0;
+	UPROPERTY()
+	uint8 NewDensityValue = 0;
+};
+
+USTRUCT()
+struct FVoxelChunkEditData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 ChunkIdx = -1;
+	UPROPERTY()
+	TArray<FVoxelPointEditData> PointEditDatas;
+
+	UPROPERTY()
+	int32 SendIdx = 0;			// Queue에서 전달할 때 사용
+};
+
+USTRUCT()
+struct FVoxelChunkEditPacket
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<FVoxelChunkEditData> ChunkEditDatas;
+};
+
+// 레벨 전환 시 데이터 저장용
+USTRUCT()
+struct FVoxelGroundChunkSaveData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 ChunkIdx = -1;
+	UPROPERTY()
+	EChunkState ChunkState = EChunkState::Ground;
+	UPROPERTY()
+	TArray<uint8> CompressedDensityValues;
+	UPROPERTY()
+	int32 UncompressedSize = 0;
 };
 
 UCLASS()
@@ -43,9 +97,14 @@ protected:
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 public:
 	void DigGround(const FVector& WorldLocation, float Radius);
-	void DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius);
+	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData);
+
+	bool MakeChunkSaveData(int32 ChunkIdx, FVoxelGroundChunkSaveData& OutData);
+	bool LoadChunkSaveData(const FVoxelGroundChunkSaveData& Data);
 
 	void EnqueueChunkUpdateResult(FChunkUpdateResult&& Result);
 
@@ -54,11 +113,12 @@ protected:
 	void InitializeChunkData(int32 ChunkIdx);
 	void SpawnChunk(int32 ChunkIdx);
 
-	FVector GetPlayerLocation();					// 나중에 팀원들 전체 위치 가져오도록 수정
-	void CheckPlayerChunk(const FVector& PlayerLocation);
-	void UpdateNearByChunks(const FIntVector& PlayerChunkCoord);
+	void UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords);
 	UFUNCTION()
 	void UpdateChunkLODs();
+
+	bool ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue);
+	uint8 GetChunkDensityValue(int32 ChunkIdx, int32 PointIdx);
 
 	int32 GetChunkIndex(int32 X, int32 Y, int32 Z) const;
 	int32 GetChunkIndex(const FIntVector ChunkCoord) const;
@@ -75,14 +135,19 @@ protected:
 	void UpdateDirtyChunks();
 	void UpdatePriorityDirtyChunks();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_EditGround(const FVoxelChunkEditPacket& Packet);
+	void EditGroundChunk(const FVoxelChunkEditData& Data);
+	void EnqueueChunkEditData(const FVoxelChunkEditData& Data);
+
 #pragma region GroundSetting
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	FVector GroundSize = FVector(20000.0f, 20000.0f, 30000.0f);
+	FVector GroundSize = FVector(40000.0f, 40000.0f, 60000.0f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	int32 ChunkGridSize = 16;			// 복셀 갯수 - 청크의 한 변에 있는 복셀의 갯수
+	int32 ChunkGridSize = 32;			// 복셀 갯수 - 청크의 한 변에 있는 복셀의 갯수
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	float ChunkVoxelSize = 100.0f;		// 복셀 간격
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
@@ -91,7 +156,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	float CaveScale = 0.0005f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	float CaveThreshold = 0.6f;
+	float CaveThreshold = 0.2f;
 
 	TArray<int32> LODDistance = { 1, 2 };
 	const int32 LODDistMargin = 1;				// 가까워질 때에는 LODDistance에 맞춰서 UpdateMesh, 멀어질 때에는 1만큼 더 여유 두고 UpdateMesh
@@ -108,15 +173,15 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
 
+	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMin;
+	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMax;
+	UPROPERTY(Replicated)
 	FIntVector GridWidth;
 
-	FIntVector LastPlayerChunkCoord;
 	FTimerHandle UpdateChunkLODTimerHandle;
-
 	TSet<int32> LastNearByChunkIdxs;
-	uint8 bUpdateHighResNext : 1 = true;			// 플레이어 위치 기반으로 LOD 변경할 때, (고해상도 => 저해상도) / (저해상도 => 고해상도) 번갈아가면서 검사
 
 	FTimerHandle UpdateDirtyChunkTimerHandle;
 	TBitArray<> ChunkMeshDirties;
@@ -127,6 +192,8 @@ protected:
 	TQueue<FChunkUpdateResult, EQueueMode::Mpsc> ChunkUpdateResultQueue;
 	int32 NextChunkUpdateID = 0;
 	const int32 MaxUpdatePerFrame = 20;
+
+	TQueue<FVoxelChunkEditData> EditDataQueue;
 
 #pragma endregion
 };

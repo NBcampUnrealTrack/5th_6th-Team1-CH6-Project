@@ -8,6 +8,7 @@
 #include "BuildManagerComponent.generated.h"
 
 class ABuildPreview;
+struct FInputActionValue;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class BULLETANT_API UBuildManagerComponent : public UActorComponent
@@ -34,7 +35,7 @@ public:
 	void TryPlace();
 
 	UFUNCTION(BlueprintCallable)
-	void RotatePreviewByWheel(float WheelAxisValue);
+	void RotatePreviewByWheel(const FInputActionValue& Value);
 
 	UFUNCTION(BlueprintCallable)
 	void ToggleSnapMode();
@@ -55,7 +56,7 @@ private:
 
 	void SetCurrentBuildingRow(FName NewRow);
 
-protected:
+private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	TObjectPtr<UDataTable> BuildingTable;
 

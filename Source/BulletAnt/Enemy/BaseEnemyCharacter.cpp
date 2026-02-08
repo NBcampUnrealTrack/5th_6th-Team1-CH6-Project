@@ -10,7 +10,25 @@
 
 void ABaseEnemyCharacter::OnDeath()
 {
-	
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->CancelAllAbilities();
+		}
+	}
+
+	Destroy();
+
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			SpawnManagerSubsystem->OnEnemyDie();
+		}
+	}
 }
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
