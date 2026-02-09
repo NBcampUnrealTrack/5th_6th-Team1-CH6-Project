@@ -8,6 +8,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
 #include "BAPlayerController.h"
+#include "MotionWarpingComponent.h"
+#include "BAAnimInstance.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -24,6 +26,7 @@ ABACharacter::ABACharacter()
 {
 	// Tick 설정
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
 	// 캐릭터 회전 설정
 	bUseControllerRotationPitch = false;
@@ -51,6 +54,11 @@ ABACharacter::ABACharacter()
 	FPSMesh->SetOnlyOwnerSee(true);
 	FPSMesh->SetCastShadow(false);
 	FPSMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
+	MotionWarpingComp->bAutoActivate = true;
+	bIsTurning = false;
+	TurnDelayTimer = 0.f;
 
 	//GAS
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -81,52 +89,29 @@ void ABACharacter::BeginPlay()
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
     float Speed = GetVelocity().Size2D();
+
     if (Speed > 1.f)
         bUseControllerRotationYaw = true;
     else
         bUseControllerRotationYaw = false;
 
-    FRotator ControlRot = GetControlRotation();
-    FRotator ActorRot = GetActorRotation();
-    FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, ActorRot);
-    if(bIsAiming)
-    {
-        if (FMath::Abs(DeltaRot.Yaw) > AimTurn)
-        {
-            SetActorRotation(FRotator(0.f, ControlRot.Yaw, 0.f));
-        }
-    }
-    else
-    {
-        if (FMath::Abs(DeltaRot.Yaw) > IdleTurn)
-        {
-            SetActorRotation(FRotator(0.f, ControlRot.Yaw, 0.f));
-        }
-    }
-
-   /* DrawDebugLine(
-        GetWorld(),
-        FollowCamera->GetComponentLocation(),
-        FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * LineTraceRange),
-        FColor::Red,
-        false,
-        -1.f,
-        0,
-        1.f
-    );*/
-	if (bIsClimbing)
+	if (HasAuthority())
 	{
-		ClimbTimer += DeltaTime;
-
-		float Alpha = ClimbTimer / ClimbDuration;
-		FVector NewLocation = FMath::Lerp(ClimbStartLocation, ClimbEndLocation, Alpha);
-
-		SetActorLocation(NewLocation);
-
-		if (Alpha >= 1.f)
-			EndClimb();
+		if(Controller)
+		{
+			ControlRot = Controller->GetControlRotation();
+			SyncAimPitch = ControlRot.Pitch;
+			SyncAimYaw = ControlRot.Yaw;
+		}
 	}
+    DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, GetActorRotation());
+
+	if (!bIsAiming)
+		IdleCrouchTurning(DeltaTime);
+	else
+		AimTurning(DeltaTime);
 }
 
 // 입력 바인딩
@@ -227,6 +212,19 @@ float ABACharacter::UpdateMovementSpeed()
 void ABACharacter::Move(const FInputActionValue& Value)
 {
     if (!Controller) return;
+
+	if (bIsTurning)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("움직였다"));
+		bIsTurning = false;
+		TurnType = ETurnType::None;
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->StopAllMontages(0.1f);
+		}
+		TurnDelayTimer = 0.f;
+	}
 
     FVector2D MovementVector = Value.Get<FVector2D>();
     // 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
@@ -514,10 +512,133 @@ void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
 }
 
-void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)
+void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABACharacter, bIsAiming);
 	DOREPLIFETIME(ABACharacter, bIsRunning);
+	DOREPLIFETIME(ABACharacter, bIsClimbing);
+	DOREPLIFETIME(ABACharacter, SyncAimYaw);
+	DOREPLIFETIME(ABACharacter, SyncAimPitch);
+}
+
+void ABACharacter::IdleCrouchTurning(float DeltaTime)
+{
+	if (!bIsTurning)
+	{
+		if (FMath::Abs(DeltaRot.Yaw) > 90.f)
+		{
+			TurnDelayTimer += DeltaTime;
+			if (TurnDelayTimer > 0.5f)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("90도 넘음"));
+				bIsTurning = true;
+
+				bool bRight = (DeltaRot.Yaw > 0);
+
+				if (FMath::Abs(DeltaRot.Yaw) > 135.f)
+				{
+					TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
+					CurrentTurnSpeed = 15.f;
+				}
+				else if (FMath::Abs(DeltaRot.Yaw) > 90.f)
+				{
+					TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
+					CurrentTurnSpeed = 10.f;
+				}
+				UAnimMontage* CurrentTurnMontage = nullptr;
+				switch (TurnType)
+				{
+				case ETurnType::Left90:
+					CurrentTurnMontage = TurnLeft90Montage;
+					break;
+				case ETurnType::Right90:
+					CurrentTurnMontage = TurnRight90Montage;
+					break;
+				case ETurnType::Left180:
+					CurrentTurnMontage = TurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					CurrentTurnMontage = TurnRight180Montage;
+					break;
+				default:
+					return;
+				}
+				if (CurrentTurnMontage && MotionWarpingComp)
+				{
+					FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
+
+					FTransform TargetTransform(GoalRot, GetActorLocation());
+					MotionWarpingComp->AddOrUpdateWarpTargetFromTransform(FName("TurnTarget"), TargetTransform);
+					PlayAnimMontage(CurrentTurnMontage);
+				}
+			}
+		}
+	}
+}
+
+void ABACharacter::AimTurning(float DeltaTime)
+{
+
+	if (!bIsTurning)
+	{
+		if (FMath::Abs(DeltaRot.Yaw) > 45.f)
+		{
+			bIsTurning = true;
+
+			bool bRight = (DeltaRot.Yaw > 0);
+
+			if (FMath::Abs(DeltaRot.Yaw) > 135.f)
+			{
+				TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
+				CurrentTurnSpeed = 15.f;
+			}
+			else if (FMath::Abs(DeltaRot.Yaw) > 45.f)
+			{
+				TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
+				CurrentTurnSpeed = 15.f;
+			}
+		}
+	}
+	if (bIsTurning)
+	{
+		if (FMath::Abs(DeltaRot.Yaw) < 5.f)
+		{
+			bIsTurning = false;
+			TurnType = ETurnType::None;
+		}
+		else
+		{
+			if (bIsAiming)
+			{
+				if (FMath::Abs(DeltaRot.Yaw) > AimTurn)
+				{
+					FRotator NewRot = FMath::RInterpTo(GetActorRotation(), ControlRot, DeltaTime, 20.f);
+					SetActorRotation(FRotator(0.f, SyncAimYaw, 0.f));
+				}
+			}
+			else
+			{
+				if (FMath::Abs(DeltaRot.Yaw) > IdleTurn)
+				{
+					FRotator NewRot = FMath::RInterpTo(GetActorRotation(), ControlRot, DeltaTime, 20.f);
+					SetActorRotation(FRotator(0.f, NewRot.Yaw, 0.f));
+				}
+			}
+
+			if (bIsClimbing)
+			{
+				ClimbTimer += DeltaTime;
+
+				float Alpha = ClimbTimer / ClimbDuration;
+				FVector NewLocation = FMath::Lerp(ClimbStartLocation, ClimbEndLocation, Alpha);
+
+				SetActorLocation(NewLocation);
+
+				if (Alpha >= 1.f)
+					EndClimb();
+			}
+		}
+	}
 }

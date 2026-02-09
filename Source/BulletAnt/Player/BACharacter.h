@@ -12,12 +12,23 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+class UMotionWarpingComponent;
 class UInputAction;
 class UHealthAttributeSet;
 class ABaseWeapon;
 class UBuildManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
+
+UENUM(BlueprintType)
+enum class ETurnType : uint8
+{
+    None,
+    Left90,
+    Right90,
+    Left180,
+    Right180
+};
 
 UCLASS()
 class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
@@ -37,7 +48,7 @@ protected:
 public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps);
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     //TEST
     FORCEINLINE UCameraComponent* GetCamera() const { return FirstPersonCameraComponent; }
 
@@ -51,6 +62,8 @@ protected:
     // --- 1인칭 관련 컴포넌트 ---
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS")
     TObjectPtr<USkeletalMeshComponent> FPSMesh;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
+    TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
 
 
 #pragma region InputAction
@@ -119,6 +132,7 @@ protected:
     void PlaceBuilding(const FInputActionValue& Value);
     void RotateBuilding(const FInputActionValue& Value);
     void ToggleSnapMode(const FInputActionValue& Value);
+    void StartSwitchWeapon(const FInputActionValue& Value);
 
 
     //파쿠르 관련
@@ -131,7 +145,7 @@ protected:
     float ClimbDuration;
     float ClimbTimer;
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "Parkour")
     bool bIsClimbing;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parkour")
@@ -140,9 +154,13 @@ public:
     float EyeHeight = 50.f;
 
 #pragma endregion
-    void StartSwitchWeapon(const FInputActionValue& Value);
 
 public:
+    // 상태에 따른 이동속도
+    float UpdateMovementSpeed();
+    void IdleCrouchTurning(float DeltaTime);
+    void AimTurning(float DeltaTime);
+
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
@@ -161,8 +179,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
 
-    // 상태에 따른 이동속도
-    float UpdateMovementSpeed();
 
     //최대 조준시 좌우 시선 회전 각도
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
@@ -175,6 +191,39 @@ public:
     float TurnRate = 30.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
     float LineTraceRange = 500.f;
+    UPROPERTY(Replicated)
+    float SyncAimYaw;
+    UPROPERTY(Replicated)
+    float SyncAimPitch;
+
+    float RemoteViewYaw;
+    FRotator ControlRot;
+    float CurrentTurnSpeed;
+    FRotator DeltaRot;
+
+
+#pragma region MotionWarping
+protected:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
+    TObjectPtr<UAnimMontage> TurnLeft90Montage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
+    TObjectPtr<UAnimMontage> TurnRight90Montage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
+    TObjectPtr<UAnimMontage> TurnLeft180Montage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
+    TObjectPtr<UAnimMontage> TurnRight180Montage;
+
+public:
+    UPROPERTY(Replicated)
+    bool bIsTurning;
+    float TurnDelayTimer;
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    ETurnType TurnType;
+#pragma endregion
+
 #pragma region GAS 
 
 public:
