@@ -303,8 +303,6 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!AbilitySystemComponent) return;
 	if (!EquippedWeapon) return;
 
-	AbilitySystemComponent->AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Input.Attacking")));
-
 	FGameplayTagContainer Tag;
 
 	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
@@ -319,7 +317,10 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!AbilitySystemComponent) return;
 	if (!EquippedWeapon) return;
 
-	AbilitySystemComponent->RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("State.Input.Attacking")));
+	FGameplayTagContainer CancelTags;
+	CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
+
+	AbilitySystemComponent->CancelAbilities(&CancelTags);
 }
 
 UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const

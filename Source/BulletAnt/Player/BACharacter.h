@@ -221,6 +221,8 @@ public:
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
 
+
+
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 

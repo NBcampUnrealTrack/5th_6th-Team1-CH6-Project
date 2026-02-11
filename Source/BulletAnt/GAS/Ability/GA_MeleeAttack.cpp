@@ -15,7 +15,7 @@ UGA_MeleeAttack::UGA_MeleeAttack()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Weapon.MeleeAttack")));
+	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.MeleeAttack")));
 	
 	ActivationOwnedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Attacking")));
 }

@@ -35,5 +35,4 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly)
 	float SpreadDegree;
-	
 };

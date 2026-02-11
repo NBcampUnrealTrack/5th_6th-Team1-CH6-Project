@@ -14,7 +14,7 @@ UGA_Fire::UGA_Fire()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Weapon.Fire")));
+	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Fire")));
 
 	TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 
@@ -41,16 +41,12 @@ void UGA_Fire::ActivateAbility(
 	RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
 	if (!RangedData) return;
 
+	const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
+
+	AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
 	
 	if (RangedData->bAutoFire)
 	{
-		UAbilityTask_WaitGameplayTagRemoved* WaitTagRemoved = UAbilityTask_WaitGameplayTagRemoved::WaitGameplayTagRemove(
-			this,
-			FGameplayTag::RequestGameplayTag(TEXT("State.Input.Attacking"))
-		);
-		WaitTagRemoved->Removed.AddDynamic(this, &UGA_Fire::OnFireReleased);
-		WaitTagRemoved->ReadyForActivation();
-
 		StartAutoFireLoop();
 	}
 	else 
@@ -67,12 +63,17 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 		GetWorld()->GetTimerManager().ClearTimer(FireTimerHandler);
 	}
 
+	if (AttackingStateHandle.IsValid())
+	{
+		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(AttackingStateHandle);
+	}
+
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
-	if (!ActorInfo) return;
+	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
 
 	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
 	if (!FireStart) return;
@@ -122,8 +123,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		ApplyDamageEffect(
 			ActorInfo,
 			LocalHit.GetActor(),
-			RangedData->BaseDamage,
-			RangedData->HitEventTag
+			RangedData
 		);
 	}
 
@@ -150,8 +150,7 @@ void UGA_Fire::StartAutoFireLoop()
 void UGA_Fire::ApplyDamageEffect(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	AActor* Target,
-	float Damage,
-	FGameplayTag HitTag)
+	const URangedWeaponDataAsset* WeaponData)
 {
 	if (!Target) return;
 
@@ -163,13 +162,13 @@ void UGA_Fire::ApplyDamageEffect(
 	if (!TargetASC) return;
 
 	FGameplayEffectSpecHandle Spec =
-		SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.f, SourceASC->MakeEffectContext());
+		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, SourceASC->MakeEffectContext());
 
 	if (!Spec.IsValid()) return;
 
 	Spec.Data->SetSetByCallerMagnitude(
 		TAG_Data_Combat_Damage,
-		Damage
+		RangedData->BaseDamage
 	);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
@@ -194,10 +193,5 @@ FVector UGA_Fire::ApplySpread(const FVector& Dir, float Degree)
 
 	const float HalfRad = FMath::DegreesToRadians(Degree * 0.5f);
 	return FMath::VRandCone(Dir, HalfRad);
-}
-
-void UGA_Fire::OnFireReleased()
-{
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 

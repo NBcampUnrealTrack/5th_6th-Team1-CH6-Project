@@ -7,6 +7,8 @@
 #include "GameplayTagContainer.h"
 #include "WeaponDataAsset.generated.h"
 
+class UGameplayEffect;
+
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
@@ -34,5 +36,11 @@ public:
 	FGameplayTag HitEventTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
-	TObjectPtr<USoundBase> AttackSound;
+	TObjectPtr<USoundBase> ActiveSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
+	TSubclassOf<UGameplayEffect> UseStateEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
+	TSubclassOf<UGameplayEffect> OnUseStateHitEffect;
 };

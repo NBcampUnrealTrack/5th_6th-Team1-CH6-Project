@@ -37,22 +37,16 @@ protected:
 
 	void ApplyDamageEffect(const FGameplayAbilityActorInfo* ActorInfo,
 		AActor* Target,
-		float Damage,
-		FGameplayTag HitTag);
+		const URangedWeaponDataAsset* WeaponData);
 
 	void ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC);
 
 	UFUNCTION()
 	FVector ApplySpread(const FVector& Dir, float Degree);
 
-	UFUNCTION()
-	void OnFireReleased();
-
-	UPROPERTY(EditDefaultsOnly, Category = "Fire")
-	TSubclassOf<UGameplayEffect> DamageEffectClass;
-
 	FGameplayTag TAG_Data_Combat_Damage;
 	FGameplayTag TAG_GameplayCue_Weapon_Fire;
+	FActiveGameplayEffectHandle AttackingStateHandle;
 
 	UPROPERTY()
 	TObjectPtr<AActor> SourceActor;
