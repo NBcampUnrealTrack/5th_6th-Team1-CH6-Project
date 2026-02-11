@@ -16,7 +16,7 @@ void USpawnManagerSubsystem::OnEnemyDie()
 	if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
 	{
 		WaveIndex++;
-		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
+		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
 	}
 }
 

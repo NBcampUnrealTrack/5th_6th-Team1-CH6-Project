@@ -79,7 +79,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 		12,                          
 		bHit ? FColor::Green : FColor::Red,  
 		false,                       
-		10.f                         // 1frame
+		-1.f                         // 1frame
 	);
 
 	if (bHit)
