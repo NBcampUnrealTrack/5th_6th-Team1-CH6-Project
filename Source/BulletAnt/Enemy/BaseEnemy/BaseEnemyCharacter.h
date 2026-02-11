@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"	
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
-#include "Weapon/Data/MeleeWeaponDataAsset.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/OnDeathInterface.h"
 #include "BaseEnemyCharacter.generated.h"
@@ -23,12 +22,7 @@ public:
 	UFUNCTION()
 	virtual void OnDeath() override;
 	
-	ABaseEnemyCharacter();
-	
 	AActor* GetTargetActor() const;
-
-protected:
-	virtual void BeginPlay() override;
 	
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
@@ -36,12 +30,15 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	float AcceptanceRadius = 100.f;
-	
 	virtual UDataAsset* GetDataAsset() const override;
-	
-protected:	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
-	TObjectPtr<UWeaponDataAsset> BaseEnemyAttackDataAsset;
+
+#pragma region Base
+public:
+	ABaseEnemyCharacter();
+
+protected:
+	virtual void BeginPlay() override;
+#pragma endregion
 	
 #pragma region GAS
 	

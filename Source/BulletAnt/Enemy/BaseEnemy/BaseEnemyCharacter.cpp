@@ -126,5 +126,5 @@ void ABaseEnemyCharacter::BeginPlay()
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
-	return BaseEnemyAttackDataAsset;
+	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
 }

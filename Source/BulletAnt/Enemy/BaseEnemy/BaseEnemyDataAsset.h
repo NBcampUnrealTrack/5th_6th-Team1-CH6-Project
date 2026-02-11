@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "GameplayEffectTypes.h"	
 #include "GameplayEffect.h"
+#include "Weapon/Data/MeleeWeaponDataAsset.h"
 #include "BaseEnemyDataAsset.generated.h"
 
 struct FGameplayTagContainer;
@@ -34,6 +35,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	FGameplayTag AttackStateTag;	
 	
-	UPROPERTY(EditDefaultsOnly, Category = "Attack")
-	TObjectPtr<UAnimMontage> AttackMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	TObjectPtr<UWeaponDataAsset> BaseEnemyAttackDataAsset;
 };

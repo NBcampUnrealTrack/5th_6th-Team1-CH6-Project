@@ -5,8 +5,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "AIController.h"
-#include "Enemy/BaseEnemyCharacter.h"
-#include "Enemy/BaseEnemyDataAsset.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyDataAsset.h"
 
 EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContext& Context,
                                                        const FStateTreeTransitionResult& Transition)

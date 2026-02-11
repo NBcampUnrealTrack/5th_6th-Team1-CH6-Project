@@ -3,7 +3,7 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "BulletAnt/Common/BAWorldSettings.h"
 #include "Enemy/Spawn/EnemySpawnerEntry.h"
-#include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 
 AActor* USpawnManagerSubsystem::GetTargetActor() const
 {

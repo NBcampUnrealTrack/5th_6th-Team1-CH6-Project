@@ -2,10 +2,10 @@
 
 
 #include "Enemy/StateTree/AttackTask.h"
-#include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "enemy/BaseEnemyDataAsset.h"
+#include "Enemy/BaseEnemy/BaseEnemyDataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Weapon/Data/WeaponDataAsset.h"
 
