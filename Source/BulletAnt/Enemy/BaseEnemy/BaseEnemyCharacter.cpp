@@ -3,38 +3,27 @@
 
 #include "BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "BaseEnemyDataAsset.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
-
-void ABaseEnemyCharacter::OnDeath()
-{
-	if (HasAuthority())
-	{
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->CancelAllAbilities();
-		}
-	}
-
-	Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
-	}
-}
+#include "Enemy/BaseEnemy/BaseEnemyController.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
+	AIControllerClass = ABaseEnemyController::StaticClass();
+
+	// AI 회전 설정
+	bUseControllerRotationYaw = false;
+	UCharacterMovementComponent* CharacterMovementComponent = GetCharacterMovement();
+	if (IsValid(CharacterMovementComponent))
+	{
+		CharacterMovementComponent->bOrientRotationToMovement = false;
+		CharacterMovementComponent->bUseControllerDesiredRotation = true;
+	}
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
@@ -67,14 +56,15 @@ void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
-	{
-		return;
-	}
-	AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
-	
 	if (HasAuthority())
 	{		
+		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
+		{
+			return;
+		}
+		AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
+		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
+
 		if (AbilitySystemComponent)
 		{
 			AbilitySystemComponent->InitAbilityActorInfo(this, this);
@@ -127,4 +117,27 @@ void ABaseEnemyCharacter::BeginPlay()
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
 	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
+}
+
+void ABaseEnemyCharacter::OnDeath()
+{
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->CancelAllAbilities();
+		}
+	}
+
+	Destroy();
+
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			SpawnManagerSubsystem->OnEnemyDie();
+		}
+	}
 }

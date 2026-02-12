@@ -15,26 +15,29 @@ UCLASS()
 class BULLETANT_API UBaseEnemyDataAsset : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
-	
-public:	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities") 
-	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;	
-	
+
+public:
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
 	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Move")
 	TSubclassOf<UGameplayEffect> MoveEffect;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Move")
 	FGameplayTag MoveStateTag;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Move")
-	float AcceptanceRadius = 100.f;	
+	float AcceptanceRadius = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Move")
+	float RotationRate = 360.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
-	FGameplayTag AttackStateTag;	
-	
+	FGameplayTag AttackStateTag;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TObjectPtr<UWeaponDataAsset> BaseEnemyAttackDataAsset;
 };

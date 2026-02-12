@@ -18,6 +18,14 @@ class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySyst
 {
 	GENERATED_BODY()
 
+#pragma region Base
+public:
+	ABaseEnemyCharacter();
+
+protected:
+	virtual void BeginPlay() override;
+#pragma endregion
+
 public:
 	UFUNCTION()
 	virtual void OnDeath() override;
@@ -32,14 +40,6 @@ public:
 	float AcceptanceRadius = 100.f;
 	virtual UDataAsset* GetDataAsset() const override;
 
-#pragma region Base
-public:
-	ABaseEnemyCharacter();
-
-protected:
-	virtual void BeginPlay() override;
-#pragma endregion
-	
 #pragma region GAS
 	
 public:
