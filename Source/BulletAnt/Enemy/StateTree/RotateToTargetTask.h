@@ -5,26 +5,41 @@
 #include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "Blueprint/StateTreeTaskBlueprintBase.h"
-#include "AttackTask.generated.h"
+#include "RotateToTargetTask.generated.h"
 
 class ABaseEnemyCharacter;
+class AAIController;
 
 UCLASS()
-class BULLETANT_API UAttackTask : public UStateTreeTaskBlueprintBase
+class BULLETANT_API URotateToTargetTask : public UStateTreeTaskBlueprintBase
 {
 	GENERATED_BODY()
+
+public:
+	URotateToTargetTask(const FObjectInitializer& ObjectInitializer);
 	
 protected:
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) override;
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
-	
-public:	
+	bool IsFacingTarget();
+	void TransitionState();
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<ABaseEnemyCharacter> ContextActor;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<AActor> TargetActor;
-	
-protected:	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	float RotateThreshold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FStateTreeEvent ToMove;
+
+protected:
+	TWeakObjectPtr<AAIController> CachedAIController;
+
 	FActiveGameplayEffectHandle ActiveGEHandle;
 };

@@ -31,14 +31,18 @@ public:
 	virtual void OnDeath() override;
 	
 	AActor* GetTargetActor() const;
-	
+
+	virtual UDataAsset* GetDataAsset() const override;
+
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	float AcceptanceRadius = 100.f;
-	virtual UDataAsset* GetDataAsset() const override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	float RotateThreshold = 10.f;
 
 #pragma region GAS
 	

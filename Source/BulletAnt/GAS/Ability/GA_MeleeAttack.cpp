@@ -74,8 +74,8 @@ void UGA_MeleeAttack::OnMontageFinished()
 		ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(Avatar); 
 		if (IsValid(Enemy))
 		{
-			FStateTreeEvent ToMove(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Moving")));
-			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToMove);
+			FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToRotate);
 		}
 	}
 	

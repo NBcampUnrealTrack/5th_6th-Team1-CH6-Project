@@ -64,6 +64,7 @@ void ABaseEnemyCharacter::BeginPlay()
 		}
 		AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
 		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
+		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 
 		if (AbilitySystemComponent)
 		{

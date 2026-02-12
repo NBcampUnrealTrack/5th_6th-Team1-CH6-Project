@@ -40,4 +40,13 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TObjectPtr<UWeaponDataAsset> BaseEnemyAttackDataAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotate")
+	TSubclassOf<UGameplayEffect> RotateEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Rotate")
+	FGameplayTag RotateStateTag;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Rotate")
+	float RotateThreshold = 10.f;	// 임계치 값 이내로 Target과 방향 일치 시, 회전 멈춤
 };
