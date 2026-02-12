@@ -15,6 +15,7 @@
 				"StateTreeModule",
 				"GeometryFramework",
 				"AIModule"
+				"UMG"
 			]
 		}
 	],

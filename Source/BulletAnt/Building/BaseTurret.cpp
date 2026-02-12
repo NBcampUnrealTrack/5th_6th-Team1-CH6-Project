@@ -135,7 +135,7 @@ void ABaseTurret::StartAutoFire()
 {
 	if (HasAuthority() && TurretData)
 	{
-		const float AttackRate = TurretData->AttackRate;
+		const float AttackRate = TurretData->RoundPerMinute;
 		GetWorldTimerManager().SetTimer(
 			FireTimerHandle,
 			this,

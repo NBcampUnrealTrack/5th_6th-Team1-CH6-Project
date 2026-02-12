@@ -19,6 +19,15 @@ class UBuildManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 
+UENUM(BlueprintType)
+enum class EAbilityInputID : uint8
+{
+    None,
+    Fire,
+    Reload,
+    Aim
+};
+
 UCLASS()
 class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
 {
@@ -37,9 +46,14 @@ protected:
 public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps);
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void OnRep_Controller() override;
+
+
+    FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetFPSMesh() { return FPSMesh; } const
     //TEST
     FORCEINLINE UCameraComponent* GetCamera() const { return FirstPersonCameraComponent; }
+
 
 protected:
     // --- 카메라 관련 컴포넌트 ---
@@ -107,7 +121,8 @@ public:
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
-    void Attack(const FInputActionValue& Value);
+    void StartAttack(const FInputActionValue& Value);
+    void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
     void CrouchInput(const FInputActionValue& Value);
@@ -207,13 +222,15 @@ public:
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
 
-    UFUNCTION()
-    void EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
+
+
+    UFUNCTION(Server,Reliable)
+    void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")

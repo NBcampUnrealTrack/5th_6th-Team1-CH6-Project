@@ -6,6 +6,7 @@ struct FChunkMeshData
 {
 	TArray<FVector> Vertices;
 	TArray<FIntVector> Triangles;
+	TArray<uint8> MaterialIDs;
 };
 
 struct FChunkUpdateResult

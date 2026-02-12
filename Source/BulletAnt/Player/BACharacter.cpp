@@ -8,6 +8,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
 #include "BAPlayerController.h"
+#include "Net/UnrealNetwork.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -167,7 +168,8 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		if (AttackAction)
 		{
-			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::Attack);
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::StartAttack);
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &ABACharacter::StopAttack);
 		}
 		// 조준
 		if (AimAction)
@@ -206,6 +208,30 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (ToggleSnapModeAction)
 		{
 			EnhancedInputComponent->BindAction(ToggleSnapModeAction, ETriggerEvent::Started, this, &ABACharacter::ToggleSnapMode);
+		}
+	}
+}
+
+void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ThisClass, EquippedWeapon);
+	DOREPLIFETIME(ABACharacter, bIsAiming);
+	DOREPLIFETIME(ABACharacter, bIsRunning);
+}
+
+void ABACharacter::OnRep_Controller()
+{
+	Super::OnRep_PlayerState();
+	if (IsLocallyControlled())
+	{
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
 		}
 	}
 }
@@ -287,7 +313,7 @@ void ABACharacter::Look(const FInputActionValue& Value)
 	}
 }
 
-void ABACharacter::Attack(const FInputActionValue& Value)
+void ABACharacter::StartAttack(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
 	if (!EquippedWeapon) return;
@@ -299,6 +325,17 @@ void ABACharacter::Attack(const FInputActionValue& Value)
 	Tag.AddTag(WeaponData->WeaponTag);
 	
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
+void ABACharacter::StopAttack(const FInputActionValue& Value)
+{
+	if (!AbilitySystemComponent) return;
+	if (!EquippedWeapon) return;
+
+	FGameplayTagContainer CancelTags;
+	CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
+
+	AbilitySystemComponent->CancelAbilities(&CancelTags);
 }
 
 UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
@@ -332,7 +369,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 	if (DefaultWeaponClass)
 	{
-		EquipWeapon(DefaultWeaponClass);
+		Server_EquipWeapon(DefaultWeaponClass);
 	}
 }
 
@@ -341,7 +378,7 @@ void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) c
 	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
 }
 
-void ABACharacter::EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass)
+void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> WeaponClass)
 {
 	if (!HasAuthority()) return;
 	if (!WeaponClass) return;
@@ -511,13 +548,5 @@ void ABACharacter::EndClimb()
 }
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
-	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
-}
-
-void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ABACharacter, bIsAiming);
-	DOREPLIFETIME(ABACharacter, bIsRunning);
+	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
 }
