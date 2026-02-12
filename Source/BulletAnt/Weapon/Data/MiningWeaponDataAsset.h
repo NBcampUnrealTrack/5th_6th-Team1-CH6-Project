@@ -11,7 +11,7 @@ class BULLETANT_API UMiningWeaponDataAsset : public UWeaponDataAsset
 	
 public:
 	UPROPERTY(EditDefaultsOnly)
-	float DigPerMinute = 240.f;
+	float DigPerMinute = 180.f;
 
 	UPROPERTY(EditDefaultsOnly)
 	uint8 bAutoFire : 1 = true;
