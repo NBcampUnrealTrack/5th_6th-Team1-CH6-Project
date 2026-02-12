@@ -67,7 +67,7 @@ EStateTreeRunStatus URotateToTargetTask::Tick(FStateTreeExecutionContext& Contex
 
 void URotateToTargetTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {
-	CachedAIController = nullptr;
+	CachedAIController.Reset();
 
 	// 적용했던 GE_Rotate 제거
 	if (ActiveGEHandle.IsValid() && IsValid(ContextActor))

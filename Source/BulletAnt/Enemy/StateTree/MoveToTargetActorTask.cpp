@@ -44,6 +44,11 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
 	StartMoveToTarget();
 	
+	if (!CachedAIController.IsValid())
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
 	// AI의 이동 요청이 받아들여졌을 경우
 	if (MoveRequestResult == EMoveRequestResult::RequestAccepted)
 	{
@@ -81,7 +86,7 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 	}
 
 	MoveRequestResult = EMoveRequestResult::Failed;
-	CachedAIController = nullptr;
+	CachedAIController.Reset();
 	
 	// 적용했던 GE_Move 제거
 	if (ActiveGEHandle.IsValid() && IsValid(ContextActor))
@@ -98,7 +103,6 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 
 void UMoveToTargetActorTask::StartMoveToTarget()
 {
-	UE_LOG(LogTemp, Warning, TEXT("StartMoveToTarget"))
 	if (!CachedAIController.IsValid() || !IsValid(TargetActor))
 	{
 		MoveRequestResult = EMoveRequestResult::Failed;
