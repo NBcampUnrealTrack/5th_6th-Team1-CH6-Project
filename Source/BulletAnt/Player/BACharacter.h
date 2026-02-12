@@ -47,6 +47,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void OnRep_Controller() override;
 
 
     FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetFPSMesh() { return FPSMesh; } const

@@ -6,11 +6,11 @@
 #include "GameFramework/PlayerController.h"
 #include "BAPlayerController.generated.h"
 
-/**
- * 
- */
+
 class UInputMappingContext;
 class ABuildingManagerComponent;
+class UUW_PlayerHUDWidget;
+
 UCLASS()
 class BULLETANT_API ABAPlayerController : public APlayerController
 {
@@ -28,5 +28,8 @@ public:
 	void SwitchingMode();
 protected:
 	virtual void BeginPlay() override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUW_PlayerHUDWidget> HUDClass;
 	
 };

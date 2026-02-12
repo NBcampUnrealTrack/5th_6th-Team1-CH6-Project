@@ -221,6 +221,21 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, bIsRunning);
 }
 
+void ABACharacter::OnRep_Controller()
+{
+	Super::OnRep_PlayerState();
+	if (IsLocallyControlled())
+	{
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+		}
+	}
+}
+
 //상태에 따른 이동속도
 float ABACharacter::UpdateMovementSpeed()
 {
