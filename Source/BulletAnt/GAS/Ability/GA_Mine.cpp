@@ -51,7 +51,7 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 
 	MiningStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
 
-	if (MiningData->bAutoFire)
+	if (MiningData->bAutoActive)
 	{
 		StartAutoDigLoop();
 	}

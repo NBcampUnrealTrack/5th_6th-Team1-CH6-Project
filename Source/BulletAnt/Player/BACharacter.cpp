@@ -330,7 +330,7 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 void ABACharacter::StopAttack(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
-	if (!EquippedWeapon) return;
+	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
 	CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
