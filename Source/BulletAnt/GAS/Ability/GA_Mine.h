@@ -4,6 +4,8 @@
 #include "Abilities/GameplayAbility.h"
 #include "GA_Mine.generated.h"
 
+class UMiningWeaponDataAsset;
+
 UCLASS()
 class BULLETANT_API UGA_Mine : public UGameplayAbility
 {
@@ -12,6 +14,8 @@ class BULLETANT_API UGA_Mine : public UGameplayAbility
 public:
 	UGA_Mine();
 
+	void StartAutoDigLoop();
+
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -19,10 +23,25 @@ public:
 		const FGameplayEventData* TriggerEventData
 	) override;
 
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
+
 	void MiningOnce(const FGameplayAbilityActorInfo* ActorInfo);
 
-	void ApplyMiningEffect(const FGameplayAbilityActorInfo* ActorInfo,
-		AActor* Target,
-		float Damage,
-		FGameplayTag HitTag);
+	
+
+	UPROPERTY()
+	TObjectPtr<AActor> SourceActor;
+
+	UPROPERTY()
+	UMiningWeaponDataAsset* MiningData;
+
+	UPROPERTY()
+	FTimerHandle DigTimerHandler;
+
+	FActiveGameplayEffectHandle MiningStateHandle;
 };

@@ -13,7 +13,8 @@
 				"GameplayAbilities",
 				"MassSpawner",
 				"StateTreeModule",
-				"GeometryFramework"
+				"GeometryFramework",
+				"UMG"
 			]
 		}
 	],
@@ -34,7 +35,7 @@
 			"Enabled": true
 		},
 		{
-			"Name": "StateTree", 
+			"Name": "StateTree",
 			"Enabled": true
 		},
 		{
@@ -50,7 +51,11 @@
 			"Enabled": true
 		},
 		{
-			"Name": "StructUtils", 
+			"Name": "StructUtils",
+			"Enabled": true
+		},
+		{
+			"Name": "MotionWarping",
 			"Enabled": true
 		}
 	]

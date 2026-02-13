@@ -1,5 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "Weapon/BaseRangedWeapon.h"
 
+#include "Weapon/Data/RangedWeaponDataAsset.h"
 
-#include "Weapon/BaseRangedWeapon.h"
+void ABaseRangedWeapon::BeginPlay()
+{
+	Super::BeginPlay();
+	URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(WeaponData);
 
+	bAutoActive = Data->bAutoFire;
+}

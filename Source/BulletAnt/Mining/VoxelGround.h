@@ -8,13 +8,14 @@
 class UVoxelGroundChunk;
 struct FNeighborLOD;
 class ABAPlayerController;
+class UGroundSettingPreset;
 
 UENUM()
 enum class EChunkState
 {
-	Ground,
-	Air,
-	Complex
+	Ground,								// 기반암 없는 땅만
+	Air,								// 공기만
+	Complex								// 땅 + 공기 or 기반암이 섞인 땅
 };
 
 USTRUCT()
@@ -25,9 +26,9 @@ struct FVoxelGroundChunkData
 	UPROPERTY()
 	EChunkState ChunkState = EChunkState::Ground;
 	UPROPERTY()
-	TArray<uint8> DensityValues;
+	TArray<uint8> DensityValues;						// 200 초과: 기반암
 	UPROPERTY()
-	int32 LODLevel = 0;					// 0이 가장 정밀한 LOD
+	int32 LODLevel = 0;									// 0이 가장 정밀한 LOD
 
 	UPROPERTY()
 	int32 GroundVoxelCount = 0;
@@ -111,6 +112,7 @@ public:
 protected:
 	void InitializeGround();
 	void InitializeChunkData(int32 ChunkIdx);
+	void InitializeChunkDensities(int32 ChunkIdx);
 	void SpawnChunk(int32 ChunkIdx);
 
 	void UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords);
@@ -144,19 +146,7 @@ protected:
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	FVector GroundSize = FVector(40000.0f, 40000.0f, 60000.0f);
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	int32 ChunkGridSize = 32;			// 복셀 갯수 - 청크의 한 변에 있는 복셀의 갯수
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	float ChunkVoxelSize = 100.0f;		// 복셀 간격
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	uint8 IsoLevel = 127;				// 지표면 임계값
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	float CaveScale = 0.0005f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	float CaveThreshold = 0.2f;
+	TObjectPtr<const UGroundSettingPreset> Setting;
 
 	TArray<int32> LODDistance = { 1, 2 };
 	const int32 LODDistMargin = 1;				// 가까워질 때에는 LODDistance에 맞춰서 UpdateMesh, 멀어질 때에는 1만큼 더 여유 두고 UpdateMesh

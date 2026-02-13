@@ -7,6 +7,8 @@
 #include "GameplayTagContainer.h"
 #include "WeaponDataAsset.generated.h"
 
+class UGameplayEffect;
+
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
@@ -17,7 +19,7 @@ enum class EWeaponType : uint8
 	Mining  UMETA(DisplayName = "Mining")
 };
 
-UCLASS()
+UCLASS(BlueprintType)
 class BULLETANT_API UWeaponDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
@@ -32,4 +34,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
 	FGameplayTag HitEventTag;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<USoundBase> ActiveSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
+	TSubclassOf<UGameplayEffect> UseStateEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
+	TSubclassOf<UGameplayEffect> OnUseStateHitEffect;
 };
