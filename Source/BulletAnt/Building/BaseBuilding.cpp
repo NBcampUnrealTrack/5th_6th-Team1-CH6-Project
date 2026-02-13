@@ -10,8 +10,11 @@ ABaseBuilding::ABaseBuilding()
 {
 	bReplicates = true;
 
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComp"));
-	SetRootComponent(StaticMeshComp);
+	StaticMeshComp->SetupAttachment(RootComponent);
 
 	StaticMeshComp->SetSimulatePhysics(false);
 	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -50,52 +53,72 @@ void ABaseBuilding::SetBuildingBoxExtent(const FVector& InBoxExtent)
 	}
 }
 
-void ABaseBuilding::GetSnapPointsWorld(TArray<FVector>& OutPoints) const
+void ABaseBuilding::GetEdgesWorld(TArray<FBuildingEdge>& OutEdges) const
 {
-	TArray<FVector> Local;
-	GetSnapPointsLocal(Local);
+	TArray<FBuildingEdge> Local;
+	GetEdgesLocal(Local);
 
-	OutPoints.Reset(Local.Num());
+	OutEdges.Reset(Local.Num());
 
 	const FTransform T = GetActorTransform();
-	for (const FVector& P : Local)
+	for (const FBuildingEdge& E : Local)
 	{
-		OutPoints.Add(T.TransformPosition(P));
+		FBuildingEdge W;
+		W.A = T.TransformPosition(E.A);
+		W.B = T.TransformPosition(E.B);
+		OutEdges.Add(W);
 	}
 }
 
-void ABaseBuilding::DrawSnapPointsDebug(bool bPersistentLines, float LifeTime) const
+void ABaseBuilding::GetEdgesWorldWithTransform(const FTransform& T, TArray<FBuildingEdge>& OutEdges) const
+{
+	TArray<FBuildingEdge> Local;
+	GetEdgesLocal(Local);
+
+	OutEdges.Reset(Local.Num());
+	for (const FBuildingEdge& E : Local)
+	{
+		FBuildingEdge W;
+		W.A = T.TransformPosition(E.A);
+		W.B = T.TransformPosition(E.B);
+		OutEdges.Add(W);
+	}
+}
+
+void ABaseBuilding::DrawEdgesDebug(bool bPersistentLines, float LifeTime) const
 {
 	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
+	if (!World) return;
 
-	TArray<FVector> SnapPoints;
-	GetSnapPointsWorld(SnapPoints);
+	TArray<FBuildingEdge> Edges;
+	GetEdgesWorld(Edges);
 
-	for (const FVector& P : SnapPoints)
+	for (const FBuildingEdge& E : Edges)
 	{
-		DrawDebugSphere(World, P, 12.f, 8, FColor::Yellow, bPersistentLines, LifeTime, 0, 1.5f);
+		DrawDebugLine(World, E.A, E.B, FColor::Cyan, bPersistentLines, LifeTime, 0, 2.f);
+		DrawDebugSphere(World, E.Mid(), 10.f, 8, FColor::Cyan, bPersistentLines, LifeTime, 0, 1.f);
 	}
+}
+
+void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const
+{
+	OutEdges.Reset();
+
+	const float X = BuildingBoxExtent.X;
+	const float Y = BuildingBoxExtent.Y;
+
+	const FVector P0(+X, +Y, 0.f);
+	const FVector P1(+X, -Y, 0.f);
+	const FVector P2(-X, -Y, 0.f);
+	const FVector P3(-X, +Y, 0.f);
+
+	OutEdges.Add({ P0, P1 });
+	OutEdges.Add({ P1, P2 });
+	OutEdges.Add({ P2, P3 });
+	OutEdges.Add({ P3, P0 });
 }
 
 void ABaseBuilding::OnRep_BuildingBoxExtent()
 {
 	ApplyBuildingBounds(BuildingBoxExtent);
-}
-
-void ABaseBuilding::GetSnapPointsLocal(TArray<FVector>& OutPoints) const
-{
-	OutPoints.Reset();
-
-	const float X = BuildingBoxExtent.X;
-	const float Y = BuildingBoxExtent.Y;
-
-	// 바닥 4면 꼭지점
-	OutPoints.Add(FVector(+X, +Y, 0.f));
-	OutPoints.Add(FVector(+X, -Y, 0.f));
-	OutPoints.Add(FVector(-X, +Y, 0.f));
-	OutPoints.Add(FVector(-X, -Y, 0.f));
 }

@@ -2,12 +2,13 @@
 
 
 #include "Enemy/StateTree/AttackTask.h"
-#include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "enemy/BaseEnemyDataAsset.h"
+#include "Enemy/BaseEnemy/BaseEnemyDataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Weapon/Data/WeaponDataAsset.h"
+#include "AIController.h"
 
 EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
@@ -20,6 +21,12 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 		// 해당 몬스터 제거 후 다시 스폰
 		return EStateTreeRunStatus::Failed;
 	}
+
+	CachedAIController = ContextActor->GetController<AAIController>();
+	if (!ensureMsgf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 	
 	if (!ensureMsgf(IsValid(ContextActor->BaseEnemyDataAsset), TEXT("UAttackTask-EnterState : DataAsset Error")))
 	{
@@ -30,6 +37,10 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 		UWeaponDataAsset* WeaponDataAsset = Cast<UWeaponDataAsset>(ContextActor->GetDataAsset());
 		if (IsValid(WeaponDataAsset))
 		{
+			if (CachedAIController.IsValid())
+			{
+				CachedAIController->ClearFocus(EAIFocusPriority::Gameplay);
+			}
 			ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(WeaponDataAsset->WeaponTag));
 		}
 	}
