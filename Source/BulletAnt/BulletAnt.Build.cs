@@ -15,8 +15,11 @@ public class BulletAnt : ModuleRules
 			"Engine", 
 			"InputCore", 
 			"EnhancedInput", 
-			"AnimGraphRuntime",
             "GeometryFramework", "GeometryCore",
+
+			//Character
+			"AnimGraphRuntime",
+            "MotionWarping",
 			
 			// GAS
 			"GameplayAbilities", 
