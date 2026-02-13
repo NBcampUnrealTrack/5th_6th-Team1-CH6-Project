@@ -9,6 +9,7 @@
 
 class ABuildPreview;
 struct FInputActionValue;
+struct FBuildingEdge;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class BULLETANT_API UBuildManagerComponent : public UActorComponent
@@ -45,7 +46,7 @@ public:
 private:
 	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);
 
-	bool TrySnapPreview(FVector& InOutLocation) const;
+	bool TrySnapPreview(FVector& InOutLocation, FRotator& InOutRotation);
 
 	UFUNCTION(Server, Reliable)
 	void ServerTryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
@@ -55,6 +56,12 @@ private:
 	void RefreshCachedRef();
 
 	void SetCurrentBuildingRow(FName NewRow);
+
+	void SampleKeyPointsOnEdge(const FBuildingEdge& E, TArray<FVector>& OutPts) const;
+
+	FVector2D ClosestPointOnExtendedLine2D(const FVector2D& Point2D, const FBuildingEdge& TargetEdgeWorld, const FVector2D& TargetDir2D, float HalfRange) const;
+
+	float GetPerpFullSizeForEdge(const ABaseBuilding* Building, const FBuildingEdge& EdgeWorld) const;
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
@@ -94,6 +101,17 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
 	float SnapMaxDistance = 40.f;
+
+	// 엣지 Z축 높이 오차 허용
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
+	float EdgeHeightTolerance = 0.5f;
+
+	// 면 스냅 cos(각도). 0.7071 ≈ 45도
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
+	float EdgeParallelCosThreshold = 0.7071f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
+	float KeyPointSnapMaxDistance = 40.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	float MaxBuildDistance = 1000.f;

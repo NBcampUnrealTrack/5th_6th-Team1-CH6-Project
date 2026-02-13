@@ -41,11 +41,11 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     FVector FinalLocation = FreeLocation;
     if (bSnapMode)
     {
-        TrySnapPreview(FinalLocation);
+        TrySnapPreview(FinalLocation, Rotation);
     }
 
     PreviewActor->UpdateTransform(FinalLocation, Rotation);
-    PreviewActor->DrawSnapPointsDebug(false, 0.02f);
+    PreviewActor->DrawEdgesDebug(false, 0.02f);
 
     // 설치 가능 판정
     bool bCanPlace;
@@ -196,7 +196,7 @@ bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRota
     return true;
 }
 
-bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation) const
+bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation, FRotator& InOutRotation)
 {
     UWorld* World = GetWorld();
     if (!World || !PreviewActor)
@@ -227,15 +227,16 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation) const
         return false;
     }
 
-    // 프리뷰 스냅 포인트들
-    TArray<FVector> PreviewSnapPoints;
-    PreviewActor->GetSnapPointsWorld(PreviewSnapPoints);
+    // 프리뷰 스냅 엣지들
+    TArray<FBuildingEdge> PrevEdges;
+    PreviewActor->GetEdgesWorld(PrevEdges);
 
-    float BestDistSq = SnapMaxDistance * SnapMaxDistance;
+    // 최적 엣지 계산
+    float BestScore = TNumericLimits<float>::Max();
     FVector BestDelta = FVector::ZeroVector;
+    float BestYaw = InOutRotation.Yaw;
     bool bFound = false;
 
-    // 각 후보 빌딩의 스냅 포인트와 매칭
     for (const FOverlapResult& R : Overlaps)
     {
         ABaseBuilding* OtherBuilding = Cast<ABaseBuilding>(R.GetActor());
@@ -244,21 +245,146 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation) const
             continue;
         }
 
-        TArray<FVector> OtherSnapPoints;
-        OtherBuilding->GetSnapPointsWorld(OtherSnapPoints);
-
-        for (const FVector& PPrev : PreviewSnapPoints)
+        TArray<FBuildingEdge> OtherEdges;
+        OtherBuilding->GetEdgesWorld(OtherEdges);
+        if (OtherEdges.Num() == 0) 
         {
-            for (const FVector& POther : OtherSnapPoints)
-            {
-                FVector Delta = POther - PPrev;
+            continue;
+        }
 
-                const float DistSq = Delta.SizeSquared();
-                if (DistSq < BestDistSq)
+        for (const FBuildingEdge& EO : OtherEdges)
+        {
+            const FVector2D OtherDir2d = EO.Dir2D();
+            if (OtherDir2d.IsNearlyZero())
+            {
+                continue;
+            }
+
+            // 타겟 엣지 yaw (동일방향 / 반대방향)
+            const float EdgeYaw = FMath::RadiansToDegrees(FMath::Atan2(OtherDir2d.Y, OtherDir2d.X));
+            const float CandidateYaws[2] = { EdgeYaw, FRotator::NormalizeAxis(EdgeYaw + 180.f) };
+
+            for (float TargetYaw : CandidateYaws)
+            {
+                // 회전 차이도 스코어에 반영
+                const float DeltaYaw = FMath::Abs(FMath::FindDeltaAngleDegrees(InOutRotation.Yaw, TargetYaw));
+
+                // 가상 Transform: 위치는 현재 프리뷰 위치(스냅 적용 전), 회전은 TargetYaw
+                const FTransform VirtualT(FRotator(0.f, TargetYaw, 0.f), InOutLocation);
+
+                // 가상 프리뷰 엣지 월드 계산
+                TArray<FBuildingEdge> PrevEdgesWorld;
+                PreviewActor->GetEdgesWorldWithTransform(VirtualT, PrevEdgesWorld);
+
+                for (const FBuildingEdge& EPw : PrevEdgesWorld)
                 {
-                    BestDistSq = DistSq;
-                    BestDelta = Delta;
-                    bFound = true;
+                    const FVector2D PrevDir2d = EPw.Dir2D();
+                    if (PrevDir2d.IsNearlyZero())
+                    {
+                        continue;
+                    }
+
+                    // 각도 필터
+                    if (FMath::Abs(FVector2D::DotProduct(PrevDir2d, OtherDir2d)) < EdgeParallelCosThreshold)
+                    {
+                        continue;
+                    }
+
+                    const float PrevLen = EPw.Length2D();
+                    const float OtherLen = EO.Length2D();
+                    if (PrevLen <= KINDA_SMALL_NUMBER || OtherLen <= KINDA_SMALL_NUMBER)
+                    {
+                        continue;
+                    }
+
+                    // 슬라이딩 최대(모서리 접촉 가능)
+                    const float SlideHalfRange = 0.5f * (PrevLen + OtherLen);
+
+                    // "붙이기 + 슬라이드": 프리뷰 엣지 중점을 타겟 엣지 연장선에 투영
+                    const FVector2D PrevMid2d = FVector2D(EPw.Mid().X, EPw.Mid().Y);
+                    const FVector2D Closest2d = ClosestPointOnExtendedLine2D(PrevMid2d, EO, OtherDir2d, SlideHalfRange);
+                    const FVector2D DeltaBase2d = Closest2d - PrevMid2d;
+
+                    // 타겟 법선(2D)
+                    const FVector2D Normal2d(OtherDir2d.Y, OtherDir2d.X);
+
+                    // "건물 크기만큼 띄우기" 후보: 0 / 프리뷰 / 타겟
+                    const float PrevOffset = GetPerpFullSizeForEdge(PreviewActor, EPw);
+                    const float OtherOffset = GetPerpFullSizeForEdge(OtherBuilding, EO);
+                    const float Offsets[3] = { 0.f, PrevOffset, OtherOffset };
+
+                    for (float Offset : Offsets)
+                    {
+                        // 1차 이동(붙이기+슬라이드+오프셋)
+                        const FVector2D DeltaOff2d = DeltaBase2d + Normal2d * Offset;
+
+                        // 키포인트 스냅(슬라이드 방향 성분만 추가)
+                        TArray<FVector> PrevKeys;
+                        SampleKeyPointsOnEdge(EPw, PrevKeys);
+                        for (FVector& P : PrevKeys)
+                        {
+                            P.X += DeltaOff2d.X;
+                            P.Y += DeltaOff2d.Y;
+                        }
+
+                        TArray<FVector> OtherKeys;
+                        SampleKeyPointsOnEdge(EO, OtherKeys);
+
+                        float BestAlong = 0.f;
+                        float BestKeyDistSq = KeyPointSnapMaxDistance * KeyPointSnapMaxDistance;
+                        bool bKeySnap = false;
+
+                        for (const FVector& PK : PrevKeys)
+                        {
+                            const FVector2D PK2d(PK.X, PK.Y);
+                            for (const FVector& OK : OtherKeys)
+                            {
+                                const FVector2D OK2d(OK.X, OK.Y);
+                                const FVector2D Diff = OK2d - PK2d;
+
+                                const float DistSq = Diff.SizeSquared();
+                                if (DistSq > KeyPointSnapMaxDistance * KeyPointSnapMaxDistance)
+                                {
+                                    continue;
+                                }
+
+                                const float Along = FVector2D::DotProduct(Diff, OtherDir2d);
+
+                                if (DistSq < BestKeyDistSq)
+                                {
+                                    BestKeyDistSq = DistSq;
+                                    BestAlong = Along;
+                                    bKeySnap = true;
+                                }
+                            }
+                        }
+
+                        FVector2D DeltaFinal2d = DeltaOff2d;
+
+                        if (bKeySnap)
+                        {
+                            const FVector2D NewMid2d = PrevMid2d + DeltaOff2d + OtherDir2d * BestAlong;
+                            const FVector2D ClampedMid2d = ClosestPointOnExtendedLine2D(NewMid2d, EO, OtherDir2d, SlideHalfRange);
+                            DeltaFinal2d = ClampedMid2d - PrevMid2d;
+                        }
+
+                        const float DeltaZ = EO.Mid().Z - EPw.Mid().Z;
+
+                        const FVector DeltaWorld(DeltaFinal2d.X, DeltaFinal2d.Y, DeltaZ);
+
+                        // 최종 스코어: 이동량 + 회전량
+                        const float MoveCost = DeltaWorld.SizeSquared();
+                        const float RotCost = DeltaYaw * DeltaYaw;
+                        const float TotalScore = MoveCost + RotCost;
+
+                        if (TotalScore < BestScore && MoveCost <= SnapMaxDistance * SnapMaxDistance)
+                        {
+                            BestScore = TotalScore;
+                            BestDelta = DeltaWorld;
+                            BestYaw = TargetYaw;
+                            bFound = true;
+                        }
+                    }
                 }
             }
         }
@@ -270,6 +396,7 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation) const
     }
 
     // 적용
+    InOutRotation.Yaw = FRotator::NormalizeAxis(BestYaw);
     InOutLocation += BestDelta;
     return true;
 }
@@ -307,7 +434,7 @@ void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, co
     if (Spawned)
     {
         Spawned->SetBuildingBoxExtent(Row->BuildingBoxExtent);
-        Spawned->DrawSnapPointsDebug(true, -1.f);
+        Spawned->DrawEdgesDebug(true, -1.f);
     }
 }
 
@@ -360,7 +487,7 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
             continue;
         }
 
-        if (Other->ActorHasTag("GroundActorTag")) 
+        if (Other->ActorHasTag(GroundActorTag)) 
         {
             continue;
         }
@@ -404,5 +531,43 @@ void UBuildManagerComponent::SetCurrentBuildingRow(FName NewRow)
     {
         PreviewActor->InitWithData(*CachedBuildingRow);
     }
+}
+
+void UBuildManagerComponent::SampleKeyPointsOnEdge(const FBuildingEdge& E, TArray<FVector>& OutPts) const
+{
+    OutPts.Reset(5);
+    OutPts.Add(FMath::Lerp(E.A, E.B, 0.f));
+    OutPts.Add(FMath::Lerp(E.A, E.B, 0.25f));
+    OutPts.Add(FMath::Lerp(E.A, E.B, 0.5f));
+    OutPts.Add(FMath::Lerp(E.A, E.B, 0.75f));
+    OutPts.Add(FMath::Lerp(E.A, E.B, 1.f));
+}
+
+FVector2D UBuildManagerComponent::ClosestPointOnExtendedLine2D(const FVector2D& Point2D, const FBuildingEdge& TargetEdgeWorld, const FVector2D& TargetDir2D, float HalfRange) const
+{
+    const FVector2D A2(TargetEdgeWorld.A.X, TargetEdgeWorld.A.Y);
+    const FVector2D B2(TargetEdgeWorld.B.X, TargetEdgeWorld.B.Y);
+    const FVector2D Mid = (A2 + B2) * 0.5f;
+
+    const float S = FVector2D::DotProduct(Point2D - Mid, TargetDir2D);
+    const float ClampedS = FMath::Clamp(S, -HalfRange, +HalfRange);
+
+    return Mid + TargetDir2D * ClampedS;
+}
+
+float UBuildManagerComponent::GetPerpFullSizeForEdge(const ABaseBuilding* Building, const FBuildingEdge& EdgeWorld) const
+{
+    if (!Building) return 0.f;
+
+    const FVector LocalDir = Building->GetActorTransform().InverseTransformVectorNoScale(EdgeWorld.B - EdgeWorld.A);
+
+    const FVector AbsDir = LocalDir.GetAbs();
+
+    if (AbsDir.X >= AbsDir.Y)
+    {
+        return 2.f * Building->GetBuildingBoxExtent().Y;
+    }
+
+    return 2.f * Building->GetBuildingBoxExtent().X;
 }
 
