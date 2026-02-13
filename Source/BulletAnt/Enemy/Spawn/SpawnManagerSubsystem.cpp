@@ -3,7 +3,7 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "BulletAnt/Common/BAWorldSettings.h"
 #include "Enemy/Spawn/EnemySpawnerEntry.h"
-#include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 
 AActor* USpawnManagerSubsystem::GetTargetActor() const
 {
@@ -13,14 +13,10 @@ AActor* USpawnManagerSubsystem::GetTargetActor() const
 void USpawnManagerSubsystem::OnEnemyDie()
 {
 	AliveEnemyCount--;
-	if (AliveEnemyCount == 0)
+	if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
 	{
 		WaveIndex++;
-		if (WaveIndex > MaxWaveIndex)
-		{
-			return;
-		}
-		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
+		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
 	}
 }
 
@@ -33,7 +29,7 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5, false);
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
 }
 
 void USpawnManagerSubsystem::Deinitialize()

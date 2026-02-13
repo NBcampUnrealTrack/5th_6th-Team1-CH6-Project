@@ -5,7 +5,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
 
 static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
@@ -74,8 +74,8 @@ void UGA_MeleeAttack::OnMontageFinished()
 		ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(Avatar); 
 		if (IsValid(Enemy))
 		{
-			FStateTreeEvent ToMove(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Moving")));
-			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToMove);
+			FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToRotate);
 		}
 	}
 	

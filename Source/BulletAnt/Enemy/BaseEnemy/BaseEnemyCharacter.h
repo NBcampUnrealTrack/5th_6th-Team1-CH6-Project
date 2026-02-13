@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"	
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
-#include "Weapon/Data/MeleeWeaponDataAsset.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/OnDeathInterface.h"
 #include "BaseEnemyCharacter.generated.h"
@@ -19,30 +18,32 @@ class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySyst
 {
 	GENERATED_BODY()
 
+#pragma region Base
+public:
+	ABaseEnemyCharacter();
+
+protected:
+	virtual void BeginPlay() override;
+#pragma endregion
+
 public:
 	UFUNCTION()
 	virtual void OnDeath() override;
 	
-	ABaseEnemyCharacter();
-	
 	AActor* GetTargetActor() const;
 
-protected:
-	virtual void BeginPlay() override;
-	
+	virtual UDataAsset* GetDataAsset() const override;
+
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	float AcceptanceRadius = 100.f;
-	
-	virtual UDataAsset* GetDataAsset() const override;
-	
-protected:	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
-	TObjectPtr<UWeaponDataAsset> BaseEnemyAttackDataAsset;
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	float RotateThreshold = 10.f;
+
 #pragma region GAS
 	
 public:
