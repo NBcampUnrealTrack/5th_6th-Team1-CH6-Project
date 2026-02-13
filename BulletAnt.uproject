@@ -14,7 +14,7 @@
 				"MassSpawner",
 				"StateTreeModule",
 				"GeometryFramework",
-				"AIModule"
+				"AIModule",
 				"UMG"
 			]
 		}

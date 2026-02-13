@@ -8,6 +8,7 @@
 
 class ABaseEnemyCharacter;
 class UCharacterMovementComponent;
+class AAIController;
 
 UCLASS()
 class BULLETANT_API UBaseEnemyAnimInstance : public UAnimInstance
@@ -40,4 +41,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "BaseEnemy")
 	bool bIsFalling;
 	
+	UPROPERTY(BlueprintReadOnly, Category = "BaseEnemy")
+	TWeakObjectPtr<AAIController> CachedController;
 };
