@@ -267,17 +267,17 @@ void ABACharacter::StartRunning(const FInputActionValue& Value)
 {
     bIsRunning = true;
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	ServerSetRunning(true);
+	Server_SetRunning(true);
 }
 
 void ABACharacter::StopRunning(const FInputActionValue& Value)
 {
     bIsRunning = false;
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	ServerSetRunning(false);
+	Server_SetRunning(false);
 }
 
-void ABACharacter::ServerSetRunning_Implementation(bool bNewIsRunning)
+void ABACharacter::Server_SetRunning_Implementation(bool bNewIsRunning)
 {
 	bIsRunning = bNewIsRunning;
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
@@ -443,7 +443,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 	bIsAiming = true;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	ServerSetAiming(true);
+	Server_SetAiming(true);
 }
 
 //조준 끝
@@ -453,10 +453,10 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 
-	ServerSetAiming(false);
+	Server_SetAiming(false);
 }
 
-void ABACharacter::ServerSetAiming_Implementation(bool bNewIsAiming)
+void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 {
 	bIsAiming = bNewIsAiming;
 
@@ -487,8 +487,12 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 
         if (HitActor)
         {
-            UE_LOG(LogTemp, Warning, TEXT("라인트레이스 상호작용: %s"), *HitActor->GetName());
-            IBAItemInterface::Execute_Use(HitActor, this);
+			bool bHasInterface = HitActor->GetClass()->ImplementsInterface(UBAItemInterface::StaticClass());
+			if(bHasInterface)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("라인트레이스 상호작용: %s"), *HitActor->GetName());
+				IBAItemInterface::Execute_Use(HitActor, this);
+			}
         }
     }
 }

@@ -186,13 +186,13 @@ public:
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
     UFUNCTION(Server, Reliable)
-    void ServerSetAiming(bool bNewIsAiming);
+    void Server_SetAiming(bool bNewIsAiming);
 
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsRunning;
     UFUNCTION(Server, Reliable)
-    void ServerSetRunning(bool bNewIsRunning);
+    void Server_SetRunning(bool bNewIsRunning);
 
     // --- 에디터 수정 가능 ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
