@@ -38,7 +38,11 @@ void UBaseEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	Velocity = MovementComponent->Velocity;
 	GroundSpeed = Velocity.Size2D();
-	
+	if (GroundSpeed > 0.01)
+	{
+		bShouldMove = true;
+	}
+
 	if (!CachedController.IsValid())
 	{
 		CachedController = Enemy->GetController<AAIController>();
@@ -51,10 +55,6 @@ void UBaseEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	FRotator EnemyRotator = Enemy->GetActorRotation();
 	Direction = UKismetAnimationLibrary::CalculateDirection(DesiredVector, EnemyRotator);
 
-	if (GroundSpeed > 0.01)
-	{
-		bShouldMove = true;
-	}
 
 	bIsFalling = MovementComponent->IsFalling();
 }
