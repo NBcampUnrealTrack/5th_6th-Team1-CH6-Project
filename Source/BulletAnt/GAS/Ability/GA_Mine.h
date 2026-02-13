@@ -30,7 +30,7 @@ public:
 		bool bReplicateEndAbility,
 		bool bWasCancelled) override;
 
-	void MiningOnce(const FGameplayAbilityActorInfo* ActorInfo);
+	void MiningOnce();
 
 	
 

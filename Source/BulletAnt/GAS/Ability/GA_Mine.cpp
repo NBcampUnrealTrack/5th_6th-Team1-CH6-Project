@@ -9,25 +9,23 @@
 UGA_Mine::UGA_Mine()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
 
 	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Mining")));
 }
 
 void UGA_Mine::StartAutoDigLoop()
 {
-	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-
-	MiningOnce(ActorInfo);
+	MiningOnce();
 
 	float DigDelay = 60.f / MiningData->DigPerMinute;
 
 	GetWorld()->GetTimerManager().SetTimer(
 		DigTimerHandler,
 		this,
-		&UGA_Mine::StartAutoDigLoop,
+		&UGA_Mine::MiningOnce,
 		DigDelay,
-		false
+		true
 	);
 }
 
@@ -38,6 +36,7 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
+
 	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
 	if (!SourceActor) return;
 
@@ -57,7 +56,7 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	}
 	else
 	{
-		MiningOnce(ActorInfo);
+		MiningOnce();
 		EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
 	}
 }
@@ -76,18 +75,29 @@ void UGA_Mine::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_Mine::MiningOnce(const FGameplayAbilityActorInfo* ActorInfo)
+void UGA_Mine::MiningOnce()
 {
-	AActor* ActorOwner = ActorInfo->AvatarActor.Get();
-	ABACharacter* Owner = Cast<ABACharacter>(ActorOwner);
+	ABACharacter* Owner = Cast<ABACharacter>(SourceActor);
 	FVector Start = Owner->GetCamera()->GetComponentLocation();
-	FVector End = Start + Owner->GetCamera()->GetForwardVector() * 700.0f;
+	FVector End = Start + Owner->GetController()->GetControlRotation().Vector() * 700.0f;
 
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(ActorOwner);
+	Params.AddIgnoredActor(SourceActor);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
+
+	DrawDebugLine(
+		SourceActor->GetWorld(),
+		Start,
+		bHit ? HitResult.ImpactPoint : End,
+		FColor::Red,
+		false,
+		1.f,
+		0,
+		1.f
+	);
+
 	if (bHit)
 	{
 		AActor* HitActor = HitResult.GetActor();

@@ -440,6 +440,7 @@ FVector ABACharacter::GetFireDirection() const
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
 	bIsAiming = true;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
@@ -449,6 +450,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 //조준 끝
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
 	bIsAiming = false;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
