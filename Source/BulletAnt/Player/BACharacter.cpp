@@ -197,15 +197,6 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
-void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ThisClass, EquippedWeapon);
-	DOREPLIFETIME(ABACharacter, bIsAiming);
-	DOREPLIFETIME(ABACharacter, bIsRunning);
-}
-
 void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_PlayerState();
@@ -537,10 +528,12 @@ void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
 {
 	BuildManager->ToggleSnapMode();
 }
+
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
-	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
+	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
 }
+
 void ABACharacter::JumpHandler(const FInputActionValue& Value)
 {
 	bool bParkourStarted = false;
@@ -704,6 +697,3 @@ void ABACharacter::SetTurnStatus()
 	TurnDelayTimer = 0.f;
 }
 
-
-	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
-}
