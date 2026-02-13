@@ -10,8 +10,11 @@ ABaseBuilding::ABaseBuilding()
 {
 	bReplicates = true;
 
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComp"));
-	SetRootComponent(StaticMeshComp);
+	StaticMeshComp->SetupAttachment(RootComponent);
 
 	StaticMeshComp->SetSimulatePhysics(false);
 	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);

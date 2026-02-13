@@ -28,8 +28,11 @@ public class BulletAnt : ModuleRules
 			"GameplayStateTreeModule",
 			"NavigationSystem",
 			"MassEntity", "MassCommon", "MassNavigation", "MassMovement", "MassSpawner", "MassActors",
-			"MassAIBehavior", "MassRepresentation", "MassLOD", "MassSignals"
-		});
+			"MassAIBehavior", "MassRepresentation", "MassLOD", "MassSignals",
+
+			// ChaosDestruction
+			"GeometryCollectionEngine",
+        });
 
 		PublicIncludePaths.AddRange(new string[] {
             "BulletAnt" });

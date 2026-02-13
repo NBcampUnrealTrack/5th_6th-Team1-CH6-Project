@@ -8,6 +8,9 @@
 #include "Weapon/Abilities/GA_Fire.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Components/SphereComponent.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GeometryCollection/GeometryCollectionComponent.h"
+#include "GeometryCollection/GeometryCollection.h"
 
 ABaseTurret::ABaseTurret()
 {
@@ -18,6 +21,8 @@ ABaseTurret::ABaseTurret()
 	ASC->SetIsReplicated(true);
 	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 
+	HealthSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
+
 	TargetSerchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSerchingSphere"));
 	TargetSerchingSphere->SetupAttachment(RootComponent);
 
@@ -25,6 +30,13 @@ ABaseTurret::ABaseTurret()
 	TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TargetSerchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	TargetSerchingSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
+	DestructionComp = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("DestructionComp"));
+	DestructionComp->SetupAttachment(RootComponent);
+	DestructionComp->SetHiddenInGame(true);
+	DestructionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DestructionComp->SetSimulatePhysics(false);
+	DestructionComp->SetIsReplicated(false);
 }
 
 void ABaseTurret::BeginPlay()
@@ -51,6 +63,11 @@ void ABaseTurret::BeginPlay()
 			TargetSearchInterval,
 			true
 		);
+	}
+
+	if (DestructionCollection)
+	{
+		DestructionComp->SetRestCollection(DestructionCollection);
 	}
 }
 
@@ -92,6 +109,13 @@ void ABaseTurret::Tick(float DeltaSeconds)
 	StaticMeshComp->SetWorldRotation(NewRot);
 }
 
+void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseTurret, bDead);
+}
+
 UAbilitySystemComponent* ABaseTurret::GetAbilitySystemComponent() const
 {
 	return ASC;
@@ -121,6 +145,25 @@ FVector ABaseTurret::GetFireDirection() const
 UDataAsset* ABaseTurret::GetDataAsset() const
 {
 	return TurretData;
+}
+
+void ABaseTurret::OnDeath()
+{
+	if (!HasAuthority() || bDead)
+	{
+		return;
+	}
+
+	bDead = true;
+
+	if (StaticMeshComp)
+	{
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		StaticMeshComp->SetHiddenInGame(true);
+	}
+
+	Multicast_PlayDestruction(GetActorLocation());
+	UE_LOG(LogTemp, Warning, TEXT("ABaseTurret::OnDeath"));
 }
 
 void ABaseTurret::GiveDefaultAbilities()
@@ -211,4 +254,48 @@ void ABaseTurret::UpdateCurrentTarget()
 	}
 
 	CurrentTarget = BestTarget;
+}
+
+void ABaseTurret::Multicast_PlayDestruction_Implementation(const FVector& ImpulseOrigin)
+{
+	if (!DestructionComp || !DestructionCollection)
+	{
+		return;
+	}
+
+	// 죽는 순간 위치를 현재 터렛 위치에 맞춤
+	const FTransform SpawnTM = StaticMeshComp ? StaticMeshComp->GetComponentTransform()
+		: GetActorTransform();
+
+	// 먼저 월드 트랜스폼 세팅
+	DestructionComp->SetWorldTransform(SpawnTM);
+
+	// 붙어있으면 물리가 제대로 안 도는 경우가 많아서 분리
+	DestructionComp->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+	// 렌더 켬
+	DestructionComp->SetHiddenInGame(false, true);
+	DestructionComp->SetVisibility(true, true);
+
+	// 충돌/물리 켬
+	DestructionComp->SetMobility(EComponentMobility::Movable);
+	DestructionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	DestructionComp->SetSimulatePhysics(false); // 한번 끔
+	DestructionComp->SetEnableGravity(true);
+
+	// 바운드/렌더/물리 상태 강제 갱신 (안 보이다가 갑자기 나타나는 문제 해결)
+	DestructionComp->UpdateBounds();
+	DestructionComp->MarkRenderStateDirty();
+	DestructionComp->RecreatePhysicsState();
+
+	// 시뮬 켬
+	DestructionComp->SetSimulatePhysics(true);
+	DestructionComp->WakeAllRigidBodies();
+
+	// 임펄스 테스트용
+	const float Strength = 80000.f;
+	FVector Dir = (GetActorLocation() - ImpulseOrigin);
+	Dir = Dir.IsNearlyZero() ? FVector(1, 0, 1).GetSafeNormal() : Dir.GetSafeNormal();
+
+	DestructionComp->AddImpulse(Dir * Strength, NAME_None, true);
 }

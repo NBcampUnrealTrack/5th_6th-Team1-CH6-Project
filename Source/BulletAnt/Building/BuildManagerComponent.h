@@ -49,7 +49,7 @@ private:
 	bool TrySnapPreview(FVector& InOutLocation, FRotator& InOutRotation);
 
 	UFUNCTION(Server, Reliable)
-	void ServerTryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
+	void Server_TryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
 
 	bool CheckCanPlaceAt(const FVector& Location, const FRotator& Rotation, const FVector& InBoxExtent) const;
 
@@ -97,24 +97,20 @@ private:
 	bool bSnapMode = false;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
-	float SnapSearchRadius = 400.f;
+	float SnapSearchRadius = 2000.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
 	float SnapMaxDistance = 40.f;
-
-	// 엣지 Z축 높이 오차 허용
-	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
-	float EdgeHeightTolerance = 0.5f;
 
 	// 면 스냅 cos(각도). 0.7071 ≈ 45도
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
 	float EdgeParallelCosThreshold = 0.7071f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
-	float KeyPointSnapMaxDistance = 40.f;
+	float KeyPointSnapMaxDistance = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
-	float MaxBuildDistance = 1000.f;
+	float MaxBuildDistance = 5000.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	float AllowedPenetrationDistance = 1.f;

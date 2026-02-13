@@ -117,7 +117,7 @@ void UBuildManagerComponent::TryPlace()
         return;
     }
 
-    ServerTryPlace(CurrentBuildingRow, PreviewActor->GetActorLocation(), PreviewActor->GetActorRotation());
+    Server_TryPlace(CurrentBuildingRow, PreviewActor->GetActorLocation(), PreviewActor->GetActorRotation());
 }
 
 void UBuildManagerComponent::RotatePreviewByWheel(const FInputActionValue& Value)
@@ -401,7 +401,7 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation, FRotator& In
     return true;
 }
 
-void UBuildManagerComponent::ServerTryPlace_Implementation(FName BuildingRow, const FVector& Location, const FRotator& Rotation)
+void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, const FVector& Location, const FRotator& Rotation)
 {
     if (!BuildingTable)
     {

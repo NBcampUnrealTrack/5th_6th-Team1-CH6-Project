@@ -58,6 +58,9 @@ private:
 	void OnRep_BuildingBoxExtent();
 
 public:
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> SceneRoot;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStaticMeshComponent> StaticMeshComp;
 
