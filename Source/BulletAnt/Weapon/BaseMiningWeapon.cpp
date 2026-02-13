@@ -1,5 +1,11 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "Weapon/BaseMiningWeapon.h"
 
+#include "Weapon/Data/MiningWeaponDataAsset.h"
 
-#include "Weapon/BaseMiningWeapon.h"
+void ABaseMiningWeapon::BeginPlay()
+{
+	Super::BeginPlay();
+	UMiningWeaponDataAsset* Data = Cast<UMiningWeaponDataAsset>(WeaponData);
 
+	bAutoActive = Data->bAutoActive;
+}

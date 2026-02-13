@@ -9,4 +9,5 @@ class BULLETANT_API ABaseMeleeWeapon : public ABaseWeapon
 {
 	GENERATED_BODY()
 	
+public:
 };

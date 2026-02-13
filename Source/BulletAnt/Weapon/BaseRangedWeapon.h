@@ -16,6 +16,8 @@ class BULLETANT_API ABaseRangedWeapon : public ABaseWeapon
 	GENERATED_BODY()
 
 public:
+	virtual void BeginPlay() override;
+
 	FORCEINLINE FName GetMuzzleSocketName() const { return MuzzleSocketName; }
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")

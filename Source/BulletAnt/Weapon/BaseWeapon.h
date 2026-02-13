@@ -31,6 +31,9 @@ public:
 	virtual void EquipWeapon(UAbilitySystemComponent* ASC);
 	void UnequipWeapon(UAbilitySystemComponent* ASC);
 
+	UPROPERTY()
+	uint8 bAutoActive : 1 = false;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
@@ -48,5 +51,7 @@ protected:
 	TSubclassOf<UGameplayEffect> SwitchEffectClass;
 
 	const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
+
+	
 	
 };

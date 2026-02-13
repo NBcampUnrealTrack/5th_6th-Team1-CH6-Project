@@ -14,5 +14,5 @@ public:
 	float DigPerMinute = 180.f;
 
 	UPROPERTY(EditDefaultsOnly)
-	uint8 bAutoFire : 1 = true;
+	uint8 bAutoActive : 1 = true;
 };
