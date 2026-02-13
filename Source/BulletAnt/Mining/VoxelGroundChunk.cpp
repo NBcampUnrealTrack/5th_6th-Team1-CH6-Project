@@ -1,6 +1,9 @@
 ﻿#include "Mining/VoxelGroundChunk.h"
 #include "Mining/MarchingCubeTable.h"
 #include "Mining/VoxelGround.h"
+#include "DynamicMesh/MeshNormals.h"
+#include "DynamicMesh/DynamicMesh3.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 int32 UVoxelGroundChunk::MaxLODLevel = 2;
 
@@ -185,12 +188,19 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 	for (int32 Idx = 0; TriangleTable[CubeIdx][Idx] != -1; Idx += 3)
 	{
 		FIntVector NewTriangle{};
+		bool bBedRock = true;
 		for (int32 TriangleIdx = 0; TriangleIdx < 3; ++TriangleIdx)
 		{
 			int32 EdgeIdx = TriangleTable[CubeIdx][Idx + TriangleIdx];
 
 			int32 E1 = EdgeIndexTable[EdgeIdx][0];
 			int32 E2 = EdgeIndexTable[EdgeIdx][1];
+
+			int32 GroundVertex = (Density[E1] > Context.IsoLevel) ? E1 : E2;
+			if (Density[GroundVertex] <= 200)
+			{
+				bBedRock = false;
+			}
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[E1], VertexInfo[E2]);
 
@@ -211,6 +221,7 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 		}
 
 		Context.OutMeshData.Triangles.Add(NewTriangle);
+		Context.OutMeshData.MaterialIDs.Add(bBedRock == true ? 0 : 1);
 	}
 }
 
@@ -271,6 +282,7 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	for (int32 i = 0; i < TriangleCount; ++i)
 	{
 		FIntVector NewTriangle{};
+		bool bBedRock = true;
 		for (int32 TriangleIdx = 0; TriangleIdx < 3; ++TriangleIdx)
 		{
 			int32 TableIdx = bFlipped ? (i * 3 + (2 - TriangleIdx)) : (i * 3 + TriangleIdx);
@@ -278,6 +290,12 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 			uint16 EdgeData = TransitionVertexData[CaseCode][EdgeIdx];
 			int32 Edge0 = (EdgeData >> 4) & 0x0F;
 			int32 Edge1 = EdgeData & 0x0F;
+
+			int32 GroundVertex = (Density[Edge0] > Context.IsoLevel) ? Edge0 : Edge1;
+			if (Density[GroundVertex] <= 200)
+			{
+				bBedRock = false;
+			}
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[Edge0], VertexInfo[Edge1]);
 
@@ -297,6 +315,7 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 		}
 
 		Context.OutMeshData.Triangles.Add(NewTriangle);
+		Context.OutMeshData.MaterialIDs.Add(bBedRock == true ? 0 : 1);
 	}
 }
 
@@ -404,18 +423,25 @@ void UVoxelGroundChunk::UpdateChunk(int32 UpdateID, const FChunkMeshData& MeshDa
 	FDynamicMesh3& DynamicMesh3 = Mesh->GetMeshRef();
 	DynamicMesh3.Clear();
 
+	DynamicMesh3.EnableAttributes();
+	DynamicMesh3.Attributes()->EnableMaterialID();
+
 	for (const FVector& Vertex : MeshData.Vertices)
 	{
 		DynamicMesh3.AppendVertex(Vertex);
 	}
 
-	for (const FIntVector& Triangle : MeshData.Triangles)
+	for (int32 Idx = 0; Idx < MeshData.Triangles.Num(); ++Idx)
 	{
-		DynamicMesh3.AppendTriangle(Triangle.X, Triangle.Y, Triangle.Z);
+		const FIntVector& Triangle = MeshData.Triangles[Idx];
+		int32 TriangleID = DynamicMesh3.AppendTriangle(Triangle.X, Triangle.Y, Triangle.Z);
+		DynamicMesh3.Attributes()->GetMaterialID()->SetValue(TriangleID, (int32)MeshData.MaterialIDs[Idx]);
 	}
 
+	UE::Geometry::FMeshNormals::QuickComputeVertexNormals(DynamicMesh3);
+
 	// 렌더링 업데이트
-	NotifyMeshModified();
+	NotifyMeshUpdated();
 
 	UpdateCollision(false);
 	//if (bUpdatePhysics)

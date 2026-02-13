@@ -46,5 +46,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|GAS")
 	TSubclassOf<UGameplayEffect> SwitchEffectClass;
+
+	const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
 	
 };

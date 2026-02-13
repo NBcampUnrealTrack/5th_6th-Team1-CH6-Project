@@ -1,13 +1,13 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "Player/BAPlayerController.h"
+﻿#include "Player/BAPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "Building/BuildManagerComponent.h"
+#include "Player/BACharacter.h"
+#include "UI/UW_PlayerHUDWidget.h"
 
 void ABAPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!IsLocalController()) return;
 	bIsBuildMode = false;
 
 	if(UEnhancedInputLocalPlayerSubsystem* Subsystem 
@@ -16,6 +16,17 @@ void ABAPlayerController::BeginPlay()
 		if (DefaultMappingContext)
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+
+	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
+	{
+		if (HUDClass) 
+		{
+			UUW_PlayerHUDWidget* HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
+
+			HUD->OwnerCharacter = PlayerCharacter;
+			HUD->AddToViewport();
 		}
 	}
 }

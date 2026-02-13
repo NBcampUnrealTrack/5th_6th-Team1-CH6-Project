@@ -13,7 +13,8 @@
 				"GameplayAbilities",
 				"MassSpawner",
 				"StateTreeModule",
-				"GeometryFramework"
+				"GeometryFramework",
+				"UMG"
 			]
 		}
 	],
