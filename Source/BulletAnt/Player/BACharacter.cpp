@@ -10,6 +10,7 @@
 #include "BAPlayerController.h"
 #include "MotionWarpingComponent.h"
 #include "BAAnimInstance.h"
+#include "BAParkourComponent.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -60,6 +61,9 @@ ABACharacter::ABACharacter()
 	bIsTurning = false;
 	TurnDelayTimer = 0.f;
 
+	//파쿠르
+	ParkourComponent = CreateDefaultSubobject<UBAParkourComponent>(TEXT("ParkourComponent"));
+
 	//GAS
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
@@ -73,8 +77,6 @@ ABACharacter::ABACharacter()
 
 	bIsAiming = false;
 	bIsRunning = false;
-	bIsClimbing = false;
-	ClimbDuration = 1.f;
 
 	BuildManager = CreateDefaultSubobject<UBuildManagerComponent>(TEXT("BuildManager"));
 }
@@ -83,6 +85,7 @@ ABACharacter::ABACharacter()
 void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
 }
 
 // Called every frame
@@ -108,10 +111,7 @@ void ABACharacter::Tick(float DeltaTime)
 	}
     DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, GetActorRotation());
 
-	if (!bIsAiming)
-		IdleCrouchTurning(DeltaTime);
-	else
-		AimTurning(DeltaTime);
+	IdleTurning(DeltaTime);
 }
 
 // 입력 바인딩
@@ -124,7 +124,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		// 점프
 		if (JumpAction)
 		{
-			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ABACharacter::JumpHandler);
 			EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 		}
 
@@ -215,15 +215,14 @@ void ABACharacter::Move(const FInputActionValue& Value)
 
 	if (bIsTurning)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("움직였다"));
-		bIsTurning = false;
-		TurnType = ETurnType::None;
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		if (AnimInstance)
+		if (HasAuthority())
 		{
-			AnimInstance->StopAllMontages(0.1f);
+			Multicast_StopTurnMontage();
 		}
-		TurnDelayTimer = 0.f;
+		else
+		{
+			ServerRPC_StopTurnMontage();
+		}
 	}
 
     FVector2D MovementVector = Value.Get<FVector2D>();
@@ -251,12 +250,20 @@ void ABACharacter::StartRunning(const FInputActionValue& Value)
 {
     bIsRunning = true;
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	ServerSetRunning(true);
 }
 
 void ABACharacter::StopRunning(const FInputActionValue& Value)
 {
     bIsRunning = false;
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	ServerSetRunning(false);
+}
+
+void ABACharacter::ServerSetRunning_Implementation(bool bNewIsRunning)
+{
+	bIsRunning = bNewIsRunning;
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 }
 
 void ABACharacter::CrouchInput(const FInputActionValue& Value)
@@ -408,6 +415,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 	bIsAiming = true;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	ServerSetAiming(true);
 }
 
 //조준 끝
@@ -416,6 +424,15 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 	bIsAiming = false;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+
+	ServerSetAiming(false);
+}
+
+void ABACharacter::ServerSetAiming_Implementation(bool bNewIsAiming)
+{
+	bIsAiming = bNewIsAiming;
+
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 }
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
@@ -483,48 +500,86 @@ void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
 {
 	BuildManager->ToggleSnapMode();
 }
-
-
-void ABACharacter::StartClimb(FVector TargetLocation)
-{
-	if (bIsClimbing) return;
-
-	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-	// 벽과 충돌을 꺼야 할 경우
-	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	bIsClimbing = true;
-	ClimbStartLocation = GetActorLocation();
-	ClimbEndLocation = TargetLocation;
-	ClimbTimer = 0.f;
-}
-
-void ABACharacter::EndClimb()
-{
-	bIsClimbing = false;
-
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-	// 벽과 충돌을 꺼야 할 경우
-	//GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-}
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
-	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>()-1]);
+	EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
 }
+void ABACharacter::JumpHandler(const FInputActionValue& Value)
+{
+	bool bParkourStarted = false;
 
+	if (ParkourComponent)
+	{
+		bParkourStarted = ParkourComponent->AttemptParkour();
+	}
+
+	if (!bParkourStarted)
+	{
+		Jump();
+	}
+}
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABACharacter, bIsAiming);
 	DOREPLIFETIME(ABACharacter, bIsRunning);
-	DOREPLIFETIME(ABACharacter, bIsClimbing);
 	DOREPLIFETIME(ABACharacter, SyncAimYaw);
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
 }
 
-void ABACharacter::IdleCrouchTurning(float DeltaTime)
+void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)
 {
+	if (MotionWarpingComp)
+	{
+		MotionWarpingComp->AddOrUpdateWarpTargetFromTransform(FName("TurnTarget"), TargetTransform);
+	}
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && MontageToPlay)
+	{
+		AnimInstance->Montage_Play(MontageToPlay);
+
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &ABACharacter::OnTurnMontageEnded);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+	}
+
+	bIsTurning = true;
+	CurrentTurnMontage = MontageToPlay;
+}
+void ABACharacter::ServerRPC_StopTurnMontage_Implementation()
+{
+	Multicast_StopTurnMontage();
+}
+void ABACharacter::Multicast_StopTurnMontage_Implementation()
+{
+	SetTurnStatus();
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		if (CurrentTurnMontage)
+		{
+			AnimInstance->Montage_Stop(0.2f, CurrentTurnMontage);
+		}
+		else
+		{
+			AnimInstance->Montage_Stop(0.2f);
+		}
+	}
+}
+
+void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (CurrentTurnMontage == Montage)
+	{
+		SetTurnStatus();
+	}
+}
+void ABACharacter::IdleTurning(float DeltaTime)
+{
+	if (!HasAuthority()) return;
 	if (!bIsTurning)
 	{
 		if (FMath::Abs(DeltaRot.Yaw) > 90.f)
@@ -547,98 +602,69 @@ void ABACharacter::IdleCrouchTurning(float DeltaTime)
 					TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
 					CurrentTurnSpeed = 10.f;
 				}
-				UAnimMontage* CurrentTurnMontage = nullptr;
-				switch (TurnType)
+				CurrentTurnMontage = nullptr;
+				if (bIsCrouched)
 				{
-				case ETurnType::Left90:
-					CurrentTurnMontage = TurnLeft90Montage;
-					break;
-				case ETurnType::Right90:
-					CurrentTurnMontage = TurnRight90Montage;
-					break;
-				case ETurnType::Left180:
-					CurrentTurnMontage = TurnLeft180Montage;
-					break;
-				case ETurnType::Right180:
-					CurrentTurnMontage = TurnRight180Montage;
-					break;
-				default:
-					return;
+					switch (TurnType)
+					{
+					case ETurnType::Left90:
+						CurrentTurnMontage = CrouchTurnLeft90Montage;
+						break;
+					case ETurnType::Right90:
+						CurrentTurnMontage = CrouchTurnRight90Montage;
+						break;
+					case ETurnType::Left180:
+						CurrentTurnMontage = CrouchTurnLeft180Montage;
+						break;
+					case ETurnType::Right180:
+						CurrentTurnMontage = CrouchTurnRight180Montage;
+						break;
+					default:
+						return;
+					}
+				}
+				else
+				{
+					switch (TurnType)
+					{
+					case ETurnType::Left90:
+						CurrentTurnMontage = TurnLeft90Montage;
+						break;
+					case ETurnType::Right90:
+						CurrentTurnMontage = TurnRight90Montage;
+						break;
+					case ETurnType::Left180:
+						CurrentTurnMontage = TurnLeft180Montage;
+						break;
+					case ETurnType::Right180:
+						CurrentTurnMontage = TurnRight180Montage;
+						break;
+					default:
+						return;
+					}
 				}
 				if (CurrentTurnMontage && MotionWarpingComp)
 				{
 					FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
 
 					FTransform TargetTransform(GoalRot, GetActorLocation());
-					MotionWarpingComp->AddOrUpdateWarpTargetFromTransform(FName("TurnTarget"), TargetTransform);
-					PlayAnimMontage(CurrentTurnMontage);
+					Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
 				}
 			}
-		}
-	}
-}
-
-void ABACharacter::AimTurning(float DeltaTime)
-{
-
-	if (!bIsTurning)
-	{
-		if (FMath::Abs(DeltaRot.Yaw) > 45.f)
-		{
-			bIsTurning = true;
-
-			bool bRight = (DeltaRot.Yaw > 0);
-
-			if (FMath::Abs(DeltaRot.Yaw) > 135.f)
-			{
-				TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
-				CurrentTurnSpeed = 15.f;
-			}
-			else if (FMath::Abs(DeltaRot.Yaw) > 45.f)
-			{
-				TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
-				CurrentTurnSpeed = 15.f;
-			}
-		}
-	}
-	if (bIsTurning)
-	{
-		if (FMath::Abs(DeltaRot.Yaw) < 5.f)
-		{
-			bIsTurning = false;
-			TurnType = ETurnType::None;
 		}
 		else
 		{
-			if (bIsAiming)
-			{
-				if (FMath::Abs(DeltaRot.Yaw) > AimTurn)
-				{
-					FRotator NewRot = FMath::RInterpTo(GetActorRotation(), ControlRot, DeltaTime, 20.f);
-					SetActorRotation(FRotator(0.f, SyncAimYaw, 0.f));
-				}
-			}
-			else
-			{
-				if (FMath::Abs(DeltaRot.Yaw) > IdleTurn)
-				{
-					FRotator NewRot = FMath::RInterpTo(GetActorRotation(), ControlRot, DeltaTime, 20.f);
-					SetActorRotation(FRotator(0.f, NewRot.Yaw, 0.f));
-				}
-			}
-
-			if (bIsClimbing)
-			{
-				ClimbTimer += DeltaTime;
-
-				float Alpha = ClimbTimer / ClimbDuration;
-				FVector NewLocation = FMath::Lerp(ClimbStartLocation, ClimbEndLocation, Alpha);
-
-				SetActorLocation(NewLocation);
-
-				if (Alpha >= 1.f)
-					EndClimb();
-			}
+			TurnDelayTimer = 0.f;
 		}
 	}
 }
+
+void ABACharacter::SetTurnStatus()
+{
+	bIsTurning = false;
+	TurnType = ETurnType::None;
+	CurrentTurnMontage = nullptr;
+	TurnDelayTimer = 0.f;
+}
+
+
