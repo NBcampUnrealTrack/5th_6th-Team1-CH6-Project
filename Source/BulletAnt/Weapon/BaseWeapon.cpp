@@ -12,8 +12,11 @@ ABaseWeapon::ABaseWeapon()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
+	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	SetRootComponent(RootComp);
+
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	SetRootComponent(WeaponMesh);
+	WeaponMesh->SetupAttachment(RootComp);
 
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }

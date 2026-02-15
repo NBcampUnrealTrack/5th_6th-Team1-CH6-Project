@@ -44,6 +44,9 @@ protected:
 	UFUNCTION()
 	FVector ApplySpread(const FVector& Dir, float Degree);
 
+	UFUNCTION()
+	void ApplyRecoil();
+
 	FGameplayTag TAG_Data_Combat_Damage;
 	FGameplayTag TAG_GameplayCue_Weapon_Fire;
 	FActiveGameplayEffectHandle AttackingStateHandle;
@@ -56,4 +59,11 @@ protected:
 
 	UPROPERTY()
 	FTimerHandle FireTimerHandler;
+
+	UPROPERTY()
+	UAbilitySystemComponent* CachedASC;
+
+	int32 ContinuousBullet;
+	float CurrentRecoilPitch;
+	float CurrentRecoilYaw;
 };

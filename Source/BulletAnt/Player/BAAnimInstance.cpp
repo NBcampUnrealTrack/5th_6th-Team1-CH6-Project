@@ -65,6 +65,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	VerticalVelocity = Velocity.Z;
 
 	RootYawOffset = Character->RootYawOffset * -1;
+
 }
 
 FRotator UBAAnimInstance::CameraTargetOffset()

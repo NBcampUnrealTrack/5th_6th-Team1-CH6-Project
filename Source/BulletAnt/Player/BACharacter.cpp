@@ -109,6 +109,36 @@ void ABACharacter::Tick(float DeltaTime)
 
 	IdleTurning(DeltaTime);
 
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (!FMath::IsNearlyZero(CurrentRecoilPitch))
+	{
+		float ApplyAmountPitnch = FMath::FInterpTo(0.f, CurrentRecoilPitch, DeltaTime, InterpSpeed);
+		if (PC)
+		{
+			PC->AddPitchInput(-ApplyAmountPitnch);
+		}
+
+		CurrentRecoilPitch -= ApplyAmountPitnch;
+		if (FMath::IsNearlyZero(CurrentRecoilPitch))
+		{
+			CurrentRecoilPitch = 0.f;
+		}
+	}
+	if (!FMath::IsNearlyZero(CurrentRecoilYaw))
+	{
+		float ApplyAmountYaw = FMath::FInterpTo(0.f, CurrentRecoilYaw, DeltaTime, InterpSpeed);
+		if (PC)
+		{
+			PC->AddYawInput(ApplyAmountYaw);
+		}
+
+		CurrentRecoilYaw -= ApplyAmountYaw;
+		if (FMath::IsNearlyZero(CurrentRecoilYaw))
+		{
+			CurrentRecoilYaw = 0.f;
+		}
+	}
 }
 
 // 입력 바인딩
@@ -428,6 +458,12 @@ FVector ABACharacter::GetFireDirection() const
 	return GetActorRotation().Vector();
 }
 
+void ABACharacter::AddRecoilImpuls(float Pitch, float Yaw)
+{
+	CurrentRecoilPitch = Pitch;
+	CurrentRecoilYaw = Yaw;
+}
+
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
@@ -441,7 +477,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 //조준 끝
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
+	if (!bIsAiming) return;
 	bIsAiming = false;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();

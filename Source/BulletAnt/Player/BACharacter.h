@@ -298,8 +298,7 @@ public:
 
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
-
-
+    virtual void AddRecoilImpuls(float Pitch, float Yaw) override;
 
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
@@ -312,6 +311,10 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
+
+    float InterpSpeed = 10.f;
+    float CurrentRecoilPitch = 0.f;
+    float CurrentRecoilYaw = 0.f;
 
 #pragma endregion
     

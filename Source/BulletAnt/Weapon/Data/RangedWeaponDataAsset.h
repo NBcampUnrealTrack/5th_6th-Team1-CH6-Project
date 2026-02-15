@@ -35,4 +35,16 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly)
 	float SpreadDegree;
+
+	UPROPERTY(EditDefaultsOnly)
+	float RecoilPitchMax = 0.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float RecoilPitchMin = 0.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float RecoilYawMax = 0.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> FireCueEffect;
 };
