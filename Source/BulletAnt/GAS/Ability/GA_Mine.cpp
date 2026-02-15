@@ -5,6 +5,8 @@
 #include "Mining/VoxelGround.h"
 #include "Weapon/Data/MiningWeaponDataAsset.h"
 #include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
 UGA_Mine::UGA_Mine()
 {
@@ -17,16 +19,6 @@ UGA_Mine::UGA_Mine()
 void UGA_Mine::StartAutoDigLoop()
 {
 	MiningOnce();
-
-	float DigDelay = 60.f / MiningData->DigPerMinute;
-
-	GetWorld()->GetTimerManager().SetTimer(
-		DigTimerHandler,
-		this,
-		&UGA_Mine::MiningOnce,
-		DigDelay,
-		true
-	);
 }
 
 void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -45,6 +37,12 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 
 	MiningData = Cast<UMiningWeaponDataAsset>(DataAssetInterface->GetDataAsset());
 	if (!MiningData) return;
+	
+	CachedMiningAM = MiningData->MiningMontage;
+
+	TargetDuration = 60.f / MiningData->DigPerMinute;
+	float BaseMontageLength = CachedMiningAM->GetPlayLength();
+	Playrate = FMath::Clamp(BaseMontageLength / TargetDuration,0.8f,1.8f);
 
 	const UGameplayEffect* EffectCDO = MiningData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
 
@@ -61,21 +59,7 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	}
 }
 
-void UGA_Mine::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
-	if (GetWorld())
-	{
-		GetWorld()->GetTimerManager().ClearTimer(DigTimerHandler);
-	}
-
-	if (MiningStateHandle.IsValid())
-	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(MiningStateHandle);
-	}
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
-void UGA_Mine::MiningOnce()
+void UGA_Mine::OnMontageFinished()
 {
 	ABACharacter* Owner = Cast<ABACharacter>(SourceActor);
 	FVector Start = Owner->GetCamera()->GetComponentLocation();
@@ -85,18 +69,7 @@ void UGA_Mine::MiningOnce()
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(SourceActor);
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
-
-	DrawDebugLine(
-		SourceActor->GetWorld(),
-		Start,
-		bHit ? HitResult.ImpactPoint : End,
-		FColor::Red,
-		false,
-		1.f,
-		0,
-		1.f
-	);
+	bool bHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(MiningData->TraceRadius), Params);
 
 	if (bHit)
 	{
@@ -108,10 +81,31 @@ void UGA_Mine::MiningOnce()
 
 			if (IsValid(Ground) == true)
 			{
-				Ground->DigGround(HitResult.Location, 180.0f);
+				Ground->DigGround(HitResult.Location, MiningData->DigRadius);
 			}
 		}
 	}
+
+	StartAutoDigLoop();
+}
+
+void UGA_Mine::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (MiningStateHandle.IsValid())
+	{
+		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(MiningStateHandle);
+	}
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_Mine::MiningOnce()
+{
+	if (MiningData && CachedMiningAM)
+	{
+		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, CachedMiningAM, Playrate);
+		MontageTask->OnCompleted.AddDynamic(this, &UGA_Mine::OnMontageFinished);
+		MontageTask->ReadyForActivation();
+	}	
 }
 
 

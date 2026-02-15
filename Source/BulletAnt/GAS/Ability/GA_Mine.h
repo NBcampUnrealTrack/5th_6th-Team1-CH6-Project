@@ -32,7 +32,13 @@ public:
 
 	void MiningOnce();
 
-	
+	UFUNCTION()
+	void OnMontageFinished();
+
+protected:
+	UPROPERTY()
+	float Playrate;
+	float TargetDuration;
 
 	UPROPERTY()
 	TObjectPtr<AActor> SourceActor;
@@ -44,4 +50,7 @@ public:
 	FTimerHandle DigTimerHandler;
 
 	FActiveGameplayEffectHandle MiningStateHandle;
+
+	UPROPERTY()
+	UAnimMontage* CachedMiningAM;
 };

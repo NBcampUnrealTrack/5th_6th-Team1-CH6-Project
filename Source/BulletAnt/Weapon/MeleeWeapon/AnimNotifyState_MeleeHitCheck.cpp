@@ -20,8 +20,6 @@ void UAnimNotifyState_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshCom
 		Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		if (!Data) return;
 	}
-
-	HitActors.Empty();
 }
 
 void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
@@ -60,7 +58,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 	}
 
 	TArray<FOverlapResult> Overlaps;
-	FCollisionQueryParams Params(NAME_None, true, OwnerActor);
+	FCollisionQueryParams Params(NAME_None, false, OwnerActor);
 	Params.AddIgnoredActors(HitActors);
 
 	bool bHit = OwnerActor->GetWorld()->OverlapMultiByChannel(
@@ -70,6 +68,18 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 		ECC_GameTraceChannel1,
 		FCollisionShape::MakeSphere(Data->AttackRadius),
 		Params
+	);
+
+	DrawDebugSphere(
+		OwnerActor->GetWorld(),
+		Origin,
+		Data->AttackRadius,   // 반경
+		24,                   // 세그먼트 수 (부드러움)
+		FColor::Red,
+		false,                // false = 일정 시간 후 사라짐
+		1.0f,                 // 지속 시간
+		0,
+		1.5f                  // 두께
 	);
 
 	if (bHit)
