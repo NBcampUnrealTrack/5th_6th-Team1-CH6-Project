@@ -6,17 +6,22 @@
 #include "AbilitySystemInterface.h"
 #include "Common/FireStartInterface.h"
 #include "Common/DataAssetInterface.h"
+#include "Common/OnDeathInterface.h"
 #include "BaseTurret.generated.h"
 
 class UAbilitySystemComponent;
 class URangedWeaponDataAsset;
 class USphereComponent;
+class UHealthAttributeSet;
+class UGeometryCollection;
+class UGeometryCollectionComponent;
 
 UCLASS()
 class BULLETANT_API ABaseTurret : public ABaseBuilding
 								, public IAbilitySystemInterface
 								, public IFireStartInterface
 								, public IDataAssetInterface
+								, public IOnDeathInterface
 {
 	GENERATED_BODY()
 	
@@ -28,6 +33,7 @@ protected:
 
 public:
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
@@ -37,6 +43,9 @@ protected:
 
 	// IDataAssetInterface
 	virtual UDataAsset* GetDataAsset() const override;
+
+	// IOnDeathInterface
+	virtual void OnDeath() override;
 
 	void GiveDefaultAbilities();
 	void StartAutoFire();
@@ -54,9 +63,15 @@ private:
 	UFUNCTION()
 	void UpdateCurrentTarget();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayDestruction(const FVector& ImpulseOrigin);
+
 protected:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAbilitySystemComponent> ASC;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UHealthAttributeSet> HealthSet;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
 	TObjectPtr<URangedWeaponDataAsset> TurretData;
@@ -85,4 +100,13 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
 	float TurnSpeedDegPerSec = 180.f;
+
+	UPROPERTY(Replicated)
+	bool bDead = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Destruction")
+	TObjectPtr<UGeometryCollection> DestructionCollection;
+
+	UPROPERTY(VisibleAnywhere, Category = "Turret|Destruction")
+	TObjectPtr<UGeometryCollectionComponent> DestructionComp;
 };

@@ -72,14 +72,12 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 
 	DrawDebugSphere(
 		OwnerActor->GetWorld(),
-		Origin,
-		Data->AttackRadius,   // 반경
-		24,                   // 세그먼트 수 (부드러움)
-		FColor::Red,
-		false,                // false = 일정 시간 후 사라짐
-		1.0f,                 // 지속 시간
-		0,
-		1.5f                  // 두께
+		Origin,                      
+		Data->AttackRadius,         
+		12,                          
+		bHit ? FColor::Green : FColor::Red,  
+		false,                       
+		-1.f                         // 1frame
 	);
 
 	if (bHit)

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "Engine/DataTable.h"
-#include "Enemy/BaseEnemyCharacter.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "EnemySpawnerEntry.generated.h"
 
 class ABaseEnemyCharacter;
