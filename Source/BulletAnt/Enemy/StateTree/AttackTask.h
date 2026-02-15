@@ -8,6 +8,7 @@
 #include "AttackTask.generated.h"
 
 class ABaseEnemyCharacter;
+class AAIController;
 
 UCLASS()
 class BULLETANT_API UAttackTask : public UStateTreeTaskBlueprintBase
@@ -25,9 +26,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<AActor> TargetActor;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FStateTreeEvent ToMove;
-	
 protected:	
+	TWeakObjectPtr<AAIController> CachedAIController;
+
 	FActiveGameplayEffectHandle ActiveGEHandle;
 };

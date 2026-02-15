@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "StateTree.h"
-#include "BaseEnemyStateTree.generated.h"
+#include "Enemy/BaseEnemy/BaseEnemyAnimInstance.h"
+#include "LarvaeAnimInstance.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class BULLETANT_API UBaseEnemyStateTree : public UStateTree
+class BULLETANT_API ULarvaeAnimInstance : public UBaseEnemyAnimInstance
 {
 	GENERATED_BODY()
 	
