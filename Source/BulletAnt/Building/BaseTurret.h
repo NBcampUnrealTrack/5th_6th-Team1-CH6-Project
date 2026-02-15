@@ -62,11 +62,20 @@ private:
 
 	UFUNCTION()
 	void UpdateCurrentTarget();
+	
+	UFUNCTION()
+	void OnRep_Dead();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayDestruction(const FVector& ImpulseOrigin);
 
 protected:
+	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
+	TObjectPtr<UStaticMeshComponent> BodyMesh;
+
+	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
+	TObjectPtr<UStaticMeshComponent> BarrelMesh;
+
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAbilitySystemComponent> ASC;
 
@@ -85,13 +94,13 @@ protected:
 	TObjectPtr<USphereComponent> TargetSerchingSphere;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float SerchingSphereRadius = 300.f;
+	float SerchingSphereRadius = 1000.f;
 
 	UPROPERTY()
 	TArray<TWeakObjectPtr<AActor>> TargetCandidates;
 
-	UPROPERTY()
-	TWeakObjectPtr<AActor> CurrentTarget;
+	UPROPERTY(Replicated)
+	TObjectPtr<AActor> CurrentTarget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
 	float TargetSearchInterval = 1.f;
@@ -101,7 +110,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
 	float TurnSpeedDegPerSec = 180.f;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
+	float PitchMin = -20.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
+	float PitchMax = 90.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Dead)
 	bool bDead = false;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Destruction")
