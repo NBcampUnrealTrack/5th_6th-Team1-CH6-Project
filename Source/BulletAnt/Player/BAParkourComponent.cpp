@@ -33,19 +33,20 @@ void UBAParkourComponent::BeginPlay()
 
 bool UBAParkourComponent::AttemptParkour()
 {
-	DetectWall();
-
-	if (WallHitResult.bBlockingHit && WallHeight >= 50.0f)
+	if (DetectWall())
 	{
-		EParkourType TypeToPlay = EParkourType::None;
-		if (WallHeight <= 120.0f) TypeToPlay = EParkourType::Vault;
-		else if (WallHeight <= 250.0f) TypeToPlay = EParkourType::Climb;
-
-		if (TypeToPlay != EParkourType::None)
+		if (WallHeight >= 50.0f)
 		{
-			ServerRPC_AttemptParkour();
+			EParkourType TypeToPlay = EParkourType::None;
 
-			return true;
+			if (WallHeight <= 60.0f) TypeToPlay = EParkourType::Vault;
+			else if (WallHeight <= 250.0f) TypeToPlay = EParkourType::Climb;
+
+			if (TypeToPlay != EParkourType::None)
+			{
+				ServerRPC_AttemptParkour(TypeToPlay, WarpTargetLocation, WarpTargetRotation);
+				return true;
+			}
 		}
 	}
 
@@ -62,28 +63,9 @@ void UBAParkourComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	// ...
 }
 
-void UBAParkourComponent::ServerRPC_AttemptParkour_Implementation()
+void UBAParkourComponent::ServerRPC_AttemptParkour_Implementation(EParkourType ParkourType, FVector TargetLocation, FRotator TargetRotation)
 {
-	DetectWall();
-
-	if (WallHitResult.bBlockingHit)
-	{
-		EParkourType TypeToPlay = EParkourType::None;
-
-		if (WallHeight >= 50.0f && WallHeight <= 120.0f)
-		{
-			TypeToPlay = EParkourType::Vault;
-		}
-		else if (WallHeight > 120.0f && WallHeight <= 250.0f)
-		{
-			TypeToPlay = EParkourType::Climb;
-		}
-
-		if (TypeToPlay != EParkourType::None)
-		{
-			Multicast_ExecuteParkour(TypeToPlay, WarpTargetLocation, WarpTargetRotation);
-		}
-	}
+	Multicast_ExecuteParkour(ParkourType, TargetLocation, TargetRotation);
 }
 
 void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType ParkourType, FVector TargetLocation, FRotator TargetRotation)
@@ -110,17 +92,17 @@ void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType P
 	{
 		Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
 		Character->SetActorEnableCollision(false);
-
-		USkeletalMeshComponent* FPSMesh = Character->GetFPSMesh();
-		if (FPSMesh && FPSMesh->GetAnimInstance())
-		{
-			FPSMesh->GetAnimInstance()->Montage_Play(MontageToPlay);
-		}
+		
 		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
 			WarpTargetName,
 			TargetLocation,
 			TargetRotation
 		);
+		USkeletalMeshComponent* FPSMesh = Character->GetFPSMesh();
+		if (FPSMesh && FPSMesh->GetAnimInstance())
+		{
+			FPSMesh->GetAnimInstance()->Montage_Play(MontageToPlay);
+		}
 		if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
 		{
 			FRotator ViewRotation = TargetRotation;
@@ -138,14 +120,20 @@ void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType P
 	}
 }
 
-void UBAParkourComponent::DetectWall()
+bool UBAParkourComponent::DetectWall()
 {
 	AActor* Owner = GetOwner();
-	if (!Owner) return;
+	if (!Owner) return false;
+
+	WallHeight = 0.0f;
+	WallThickness = 0.0f;
+	WarpTargetLocation = FVector::ZeroVector;
+	WarpTargetRotation = FRotator::ZeroRotator;
+
+	WallHitResult.Reset();
 
 	FVector Start = Owner->GetActorLocation();
 	FVector Forward = Owner->GetActorForwardVector();
-
 	Start.Z += 10.0f;
 
 	FVector End = Start + (Forward * TraceDistance);
@@ -167,45 +155,79 @@ void UBAParkourComponent::DetectWall()
 		DrawDebugLine(GetWorld(), Start, End, Color, false, 1.f, 0, 2.f);
 	}
 
-	if (bHitCenter)
+	if (!bHitCenter) return false;
+	FVector WallInnerDir = -WallHitResult.ImpactNormal;
+	WallInnerDir.Z = 0.f;
+	WallInnerDir.Normalize();
+	FHitResult TopHitResult;
+	bool bFoundValidTop = false;
+
+	int32 MaxAttempts = 3;
+	float CurrentDepth = 30.f;
+	float DepthStep = 40.f;
+
+
+	for(int32 i = 0; i < MaxAttempts; ++i)
 	{
-		FVector WallInnerDir = -WallHitResult.ImpactNormal;
-
-		FVector HighStart = WallHitResult.ImpactPoint + FVector(0, 0, HighTraceHeight);
+		FVector HighStart = WallHitResult.ImpactPoint + FVector(0, 0, HighTraceHeight) + (WallInnerDir * CurrentDepth);
 		FVector HighEnd = HighStart - FVector(0, 0, HighTraceHeight + 50.f);
-		FHitResult TopHitResult;
-		bool bHitTop = GetWorld()->LineTraceSingleByChannel(
-			TopHitResult, HighStart, HighEnd, ECC_WorldStatic, Params
-		);
 
-		if (bDrawDebug) DrawDebugLine(GetWorld(), HighStart, HighEnd, bHitTop ? FColor::Green : FColor::Red);
+		bool bHitTop = GetWorld()->LineTraceSingleByChannel(TopHitResult, HighStart, HighEnd, ECC_WorldStatic, Params);
+
+		if (bDrawDebug) DrawDebugLine(GetWorld(), HighStart, HighEnd, bHitTop ? FColor::Cyan : FColor::Red, false, 2.f, 0, 1.f);
 
 		if (bHitTop)
 		{
-			WallHeight = TopHitResult.ImpactPoint.Z - Owner->GetActorLocation().Z;
-
-			WarpTargetLocation = TopHitResult.ImpactPoint + (WallHitResult.ImpactNormal * 1.f);
-			WarpTargetRotation = (-WallHitResult.ImpactNormal).Rotation();
-			UE_LOG(LogTemp, Warning, TEXT("벽 높이: %f cm"), WallHeight);
-			if (bDrawDebug) DrawDebugSphere(GetWorld(), WarpTargetLocation, 10.0f, 12, FColor::Yellow, false, 2.0f);
-
-			FVector LandStart = TopHitResult.ImpactPoint + (WallInnerDir * 100.0f);
-			FVector LandEnd = LandStart - FVector(0, 0, 250.0f);
-
-			FHitResult LandHitResult;
-			bool bHitLand = GetWorld()->LineTraceSingleByChannel(
-				LandHitResult, LandStart, LandEnd, ECC_WorldStatic, Params
-			);
-
-			if (bDrawDebug) DrawDebugLine(GetWorld(), LandStart, LandEnd, bHitLand ? FColor::Purple : FColor::Red, false, 2.0f, 0, 2.0f);
-
-			if (bHitLand)
+			if (TopHitResult.ImpactNormal.Z > 0.7f)
 			{
-				WallThickness = FVector::Dist(TopHitResult.ImpactPoint, LandHitResult.ImpactPoint);
-				UE_LOG(LogTemp, Warning, TEXT("착지 가능! 두께: %f"), WallThickness);
+				bFoundValidTop = true;
+				break;
+			}
+			else
+			{
+				CurrentDepth += DepthStep;
 			}
 		}
+		else
+		{
+			break;
+		}
 	}
+
+	if (bFoundValidTop)
+	{
+		WallHeight = TopHitResult.ImpactPoint.Z - Owner->GetActorLocation().Z;
+
+		WarpTargetLocation = TopHitResult.ImpactPoint + (WallHitResult.ImpactNormal * 5.f);
+		FRotator TempRot = (-WallHitResult.ImpactNormal).Rotation();
+		WarpTargetRotation = FRotator(0.0f, TempRot.Yaw, 0.0f);
+
+		if (bDrawDebug) DrawDebugSphere(GetWorld(), WarpTargetLocation, 10.0f, 12, FColor::Yellow, false, 2.0f);
+
+		FVector LandStart = TopHitResult.ImpactPoint + (WallInnerDir * 100.0f);
+		FVector LandEnd = LandStart - FVector(0, 0, 250.0f);
+
+		FHitResult LandHitResult;
+
+		bool bHitLand = GetWorld()->LineTraceSingleByChannel(
+			LandHitResult, LandStart, LandEnd, ECC_WorldStatic, Params
+		);
+
+		if (bDrawDebug) DrawDebugLine(GetWorld(), LandStart, LandEnd, bHitLand ? FColor::Purple : FColor::Red, false, 2.0f, 0, 2.0f);
+
+		if (bHitLand)
+		{
+			WallThickness = FVector::Dist(TopHitResult.ImpactPoint, LandHitResult.ImpactPoint);
+			UE_LOG(LogTemp, Warning, TEXT("착지 가능! 두께: %f"), WallThickness);
+		}
+		else
+		{
+			WallThickness = 9999.f;
+		}
+
+		return true;
+	}
+	return false;
 }
 
 void UBAParkourComponent::ExecuteParkour(EParkourType ParkourType)
