@@ -70,6 +70,9 @@ protected:
     //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     //TObjectPtr<USpringArmComponent> CameraBoom;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spring Arm")
+    USpringArmComponent* SpringArm;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
     // --- 1인칭 관련 컴포넌트 ---
@@ -180,6 +183,8 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StopTurnMontage();
 
+    void StopMontage();
+
 public:
 
     //조준상태
@@ -203,6 +208,8 @@ public:
     float RunningSpeed = 800.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float SpringArmZ;
 
 
     //최대 조준시 좌우 시선 회전 각도
@@ -221,7 +228,9 @@ public:
     float RemoteViewYaw;
     FRotator ControlRot;
     float CurrentTurnSpeed;
-    FRotator DeltaRot;
+
+    float LastBodyYaw;
+    float RootYawOffset;
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")

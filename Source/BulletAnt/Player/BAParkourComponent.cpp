@@ -39,7 +39,7 @@ bool UBAParkourComponent::AttemptParkour()
 		{
 			EParkourType TypeToPlay = EParkourType::None;
 
-			if (WallHeight <= 120.0f) TypeToPlay = EParkourType::Vault;
+			if (WallHeight <= 60.0f) TypeToPlay = EParkourType::Vault;
 			else if (WallHeight <= 250.0f) TypeToPlay = EParkourType::Climb;
 
 			if (TypeToPlay != EParkourType::None)
