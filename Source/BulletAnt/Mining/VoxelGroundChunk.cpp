@@ -192,7 +192,6 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 	for (int32 Idx = 0; TriangleTable[CubeIdx][Idx] != -1; Idx += 3)
 	{
 		FIntVector NewTriangle{};
-		EVoxelType TriangleType = EVoxelType::None;
 		for (int32 TriangleIdx = 0; TriangleIdx < 3; ++TriangleIdx)
 		{
 			int32 EdgeIdx = TriangleTable[CubeIdx][Idx + TriangleIdx];
@@ -201,15 +200,6 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 			int32 E2 = EdgeIndexTable[EdgeIdx][1];
 
 			int32 GroundVertex = (Density[E1] > Context.IsoLevel) ? E1 : E2;
-
-			if (TriangleType == EVoxelType::None)
-			{
-				TriangleType = VoxelTypes[GroundVertex];
-			}
-			else if (TriangleType != VoxelTypes[GroundVertex])
-			{
-				TriangleType = EVoxelType::NormalRock;
-			}
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[E1], VertexInfo[E2]);
 
@@ -226,11 +216,16 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
 				Context.OutVertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
+				FVector4f Color(
+					VoxelTypes[GroundVertex] == EVoxelType::BedRock,
+					VoxelTypes[GroundVertex] == EVoxelType::NormalRock,
+					VoxelTypes[GroundVertex] == EVoxelType::Gold,
+					VoxelTypes[GroundVertex] == EVoxelType::Mineral);
+				Context.OutMeshData.VertexColor.Add(Color);
 			}
 		}
 
 		Context.OutMeshData.Triangles.Add(NewTriangle);
-		Context.OutMeshData.MaterialIDs.Add((uint8)TriangleType);
 	}
 }
 
@@ -295,7 +290,6 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	for (int32 i = 0; i < TriangleCount; ++i)
 	{
 		FIntVector NewTriangle{};
-		EVoxelType TriangleType = EVoxelType::None;
 		for (int32 TriangleIdx = 0; TriangleIdx < 3; ++TriangleIdx)
 		{
 			int32 TableIdx = bFlipped ? (i * 3 + (2 - TriangleIdx)) : (i * 3 + TriangleIdx);
@@ -305,16 +299,6 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 			int32 Edge1 = EdgeData & 0x0F;
 
 			int32 GroundVertex = (Density[Edge0] > Context.IsoLevel) ? Edge0 : Edge1;
-
-			//TriangleType = (TriangleType == EVoxelType::NormalRock || VoxelTypes[GroundVertex] < TriangleType) ? VoxelTypes[GroundVertex] : TriangleType;
-			if (TriangleType == EVoxelType::None)
-			{
-				TriangleType = VoxelTypes[GroundVertex];
-			}
-			else if (TriangleType != VoxelTypes[GroundVertex])
-			{
-				TriangleType = EVoxelType::NormalRock;
-			}
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[Edge0], VertexInfo[Edge1]);
 
@@ -330,11 +314,16 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
 				Context.OutVertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
+				FVector4f Color(
+					VoxelTypes[GroundVertex] == EVoxelType::BedRock,
+					VoxelTypes[GroundVertex] == EVoxelType::NormalRock,
+					VoxelTypes[GroundVertex] == EVoxelType::Gold,
+					VoxelTypes[GroundVertex] == EVoxelType::Mineral);
+				Context.OutMeshData.VertexColor.Add(Color);
 			}
 		}
 
 		Context.OutMeshData.Triangles.Add(NewTriangle);
-		Context.OutMeshData.MaterialIDs.Add((uint8)TriangleType);
 	}
 }
 
@@ -443,18 +432,23 @@ void UVoxelGroundChunk::UpdateChunk(int32 UpdateID, const FChunkMeshData& MeshDa
 	DynamicMesh3.Clear();
 
 	DynamicMesh3.EnableAttributes();
-	DynamicMesh3.Attributes()->EnableMaterialID();
 
-	for (const FVector& Vertex : MeshData.Vertices)
+	// DynamicMesh는 VertexColor를 가지고는 있지만 적용이 안됨. PrimaryColor 이용해야 함.
+	DynamicMesh3.Attributes()->EnablePrimaryColors();
+	UE::Geometry::FDynamicMeshColorOverlay* Colors = DynamicMesh3.Attributes()->PrimaryColors();
+	Colors->ClearElements();
+
+	for (int32 Idx = 0; Idx < MeshData.Vertices.Num(); ++Idx)
 	{
-		DynamicMesh3.AppendVertex(Vertex);
+		DynamicMesh3.AppendVertex(MeshData.Vertices[Idx]);
+		Colors->AppendElement(MeshData.VertexColor[Idx]);
 	}
 
 	for (int32 Idx = 0; Idx < MeshData.Triangles.Num(); ++Idx)
 	{
 		const FIntVector& Triangle = MeshData.Triangles[Idx];
 		int32 TriangleID = DynamicMesh3.AppendTriangle(Triangle.X, Triangle.Y, Triangle.Z);
-		DynamicMesh3.Attributes()->GetMaterialID()->SetValue(TriangleID, (int32)MeshData.MaterialIDs[Idx]);
+		Colors->SetTriangle(TriangleID, UE::Geometry::FIndex3i(Triangle.X, Triangle.Y, Triangle.Z));
 	}
 
 	UE::Geometry::FMeshNormals::QuickComputeVertexNormals(DynamicMesh3);

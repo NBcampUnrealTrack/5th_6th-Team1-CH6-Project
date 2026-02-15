@@ -32,5 +32,5 @@ public:
 	EVoxelType PillarVoxelType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
-	TMap<EVoxelType, TObjectPtr<UMaterialInterface>> GroundMaterials;
+	TObjectPtr<UMaterialInterface> GroundMaterial;
 };

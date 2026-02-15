@@ -442,7 +442,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							float Roughness = RoughNoise * 4.0f;
 
 							VoxelType = VeinVoxelType;
-							FinalDensity = (uint8)FMath::Clamp(FinalDensity + 25, 0, 200);
+							FinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
 						};
 
 					auto CalculatePillar =
@@ -592,13 +592,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	FVector RelativeLocation = GetChunkOffset(Coord.X, Coord.Y, Coord.Z);
 
 	UVoxelGroundChunk* NewChunk = NewObject<UVoxelGroundChunk>(this);
-
-	int32 MaterialIdx = 0;
-	for (const auto& Pair : Setting->GroundMaterials)
-	{
-		NewChunk->SetMaterial(MaterialIdx++, Pair.Value);
-	}
-
+	NewChunk->SetMaterial(0, Setting->GroundMaterial);
 	NewChunk->RegisterComponent();
 	NewChunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	NewChunk->bUseAsyncCooking = true;
