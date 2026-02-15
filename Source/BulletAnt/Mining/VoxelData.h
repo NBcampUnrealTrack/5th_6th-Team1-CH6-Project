@@ -2,6 +2,17 @@
 
 #include "CoreMinimal.h"
 
+UENUM()
+enum class EVoxelType : uint8
+{
+	BedRock,
+	NormalRock,
+	Gold,
+	Mineral,
+
+	None				UMETA(Hidden)
+};
+
 struct FChunkMeshData
 {
 	TArray<FVector> Vertices;

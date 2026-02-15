@@ -9,9 +9,10 @@ class UVoxelGroundChunk;
 struct FNeighborLOD;
 class ABAPlayerController;
 class UGroundSettingPreset;
+class UBoxComponent;
 
 UENUM()
-enum class EChunkState
+enum class EChunkState : uint8
 {
 	Ground,								// 기반암 없는 땅만
 	Air,								// 공기만
@@ -27,6 +28,8 @@ struct FVoxelGroundChunkData
 	EChunkState ChunkState = EChunkState::Ground;
 	UPROPERTY()
 	TArray<uint8> DensityValues;						// 200 초과: 기반암
+	UPROPERTY()
+	TArray<EVoxelType> VoxelTypes;
 	UPROPERTY()
 	int32 LODLevel = 0;									// 0이 가장 정밀한 LOD
 
@@ -162,6 +165,8 @@ protected:
 	TArray<FVoxelGroundChunkData> ChunkDatas;
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UBoxComponent> BoundBox;
 
 	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMin;
