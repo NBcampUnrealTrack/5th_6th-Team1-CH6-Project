@@ -162,7 +162,7 @@ bool UBAParkourComponent::DetectWall()
 		WallHitResult,
 		Start,
 		End,
-		ECC_WorldStatic,
+		ECC_GameTraceChannel5,
 		Params
 	);
 
@@ -189,7 +189,7 @@ bool UBAParkourComponent::DetectWall()
 		FVector HighStart = WallHitResult.ImpactPoint + FVector(0, 0, HighTraceHeight) + (WallInnerDir * CurrentDepth);
 		FVector HighEnd = HighStart - FVector(0, 0, HighTraceHeight + 50.f);
 
-		bool bHitTop = GetWorld()->LineTraceSingleByChannel(TopHitResult, HighStart, HighEnd, ECC_WorldStatic, Params);
+		bool bHitTop = GetWorld()->LineTraceSingleByChannel(TopHitResult, HighStart, HighEnd, ECC_GameTraceChannel5, Params);
 
 		if (bDrawDebug) DrawDebugLine(GetWorld(), HighStart, HighEnd, bHitTop ? FColor::Cyan : FColor::Red, false, 2.f, 0, 1.f);
 
