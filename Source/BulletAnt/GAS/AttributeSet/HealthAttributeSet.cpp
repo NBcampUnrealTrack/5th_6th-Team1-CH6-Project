@@ -2,6 +2,7 @@
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
 #include "Common/OnDeathInterface.h"
+#include "AbilitySystemComponent.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -33,10 +34,26 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 			if (GetHealth() == 0.f)
 			{
 				AActor* TargetActor = Data.Target.GetAvatarActor();
+
 				if (IOnDeathInterface* Target = Cast<IOnDeathInterface>(TargetActor))
 				{
 					Target->OnDeath();
 				}
+
+				UAbilitySystemComponent* ASC = &Data.Target;
+				if (!ASC) return;
+
+				if (!ASC->GetOwnerActor()->HasAuthority())
+				{
+					return;
+				}
+				
+				FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Dead"));
+				if (!ASC->HasMatchingGameplayTag(DeadTag))
+				{
+					ASC->AddLooseGameplayTag(DeadTag);
+				}
+				
 			}
 		}
 
