@@ -1,0 +1,50 @@
+﻿
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/LocalPlayerSubsystem.h"
+#include "UI/UIConfig.h"
+#include "UISubsystem.generated.h"
+
+class UUW_RootHUD;
+class UCanvasPanelSlot;
+
+UCLASS()
+class BULLETANT_API UUISubsystem : public ULocalPlayerSubsystem
+{
+	GENERATED_BODY()
+	
+public:
+	UUISubsystem();
+
+	virtual void PlayerControllerChanged(APlayerController* NewPlayerController) override;
+
+	UUserWidget* ShowUI(EUIType Type);
+
+	template<typename TWidget>
+	TWidget* ShowUI(EUIType Type)
+	{
+		static_assert(TIsDerivedFrom<TWidget, UUserWidget>::IsDerived, "TWidget must derive from UUserWidget");
+
+		return Cast<TWidget>(ShowUI(Type));
+	}
+
+	void HideUI(EUIType Type);
+
+	void ResetAllUI();
+
+private:
+	void InitRootHUD();
+	void ApplyLayoutPreset(UCanvasPanelSlot* Slot, const FUILayoutPreset& Layout);
+
+
+private:
+	UPROPERTY()
+	TObjectPtr<UUW_RootHUD> RootHUD;
+
+	UPROPERTY()
+	TObjectPtr<UUIConfig> UIConfigData;
+
+	UPROPERTY()
+	TMap<EUIType, TObjectPtr<UUserWidget>> SingleWidgets;
+};

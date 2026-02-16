@@ -10,20 +10,20 @@ public class BulletAnt : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"Core", 
-			"CoreUObject", 
-			"Engine", 
-			"InputCore", 
-			"EnhancedInput", 
-            "GeometryFramework", "GeometryCore",
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
+			"EnhancedInput",
+			"GeometryFramework", "GeometryCore",
 
 			//Character
 			"AnimGraphRuntime",
-            "MotionWarping",
+			"MotionWarping",
 			
 			// GAS
-			"GameplayAbilities", 
-			"GameplayTags", 
+			"GameplayAbilities",
+			"GameplayTags",
 			"GameplayTasks",
 			
 			// AI
@@ -35,7 +35,12 @@ public class BulletAnt : ModuleRules
 
 			// ChaosDestruction
 			"GeometryCollectionEngine",
-        });
+
+			// UI
+			"UMG",
+			"Slate",
+			"SlateCore"
+		});
 
 		PublicIncludePaths.AddRange(new string[] {
             "BulletAnt" });
