@@ -5,6 +5,8 @@
 #include "BAGameState.generated.h"
 
 enum class EVoxelType : uint8;
+class ABaseCore;
+class ABAPlayerController;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EVoxelType, OreType, int32, OreCount);
 
@@ -30,4 +32,27 @@ private:
 
 	UPROPERTY()
 	FOnOreChanged OnOreChanged;
+
+#pragma region Enemy
+public:
+	ABaseCore* GetTargetCore() const;
+
+	void SetTargetCore(ABaseCore* InTargetCore);
+
+	void AddPlayerController(ABAPlayerController* NewPlayer);
+
+	void RemovePlayerController(ABAPlayerController* ExitingPlayer);
+
+	TArray<ABAPlayerController*> GetAllPlayerControllers() const;
+
+	ABAPlayerController* GetPlayerControllerByIndex(int32 Index) const;
+
+protected:
+	UPROPERTY()
+	TObjectPtr<ABaseCore> TargetCore;
+
+	UPROPERTY()
+	TArray<TObjectPtr<ABAPlayerController>> ConnectedPlayers;
+
+#pragma endregion
 };

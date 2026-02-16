@@ -49,6 +49,13 @@ EStateTreeRunStatus URotateToTargetTask::EnterState(FStateTreeExecutionContext& 
 	}
 	CachedAIController->SetFocus(TargetActor);
 
+	bool ShouldTickStart = ShouldRotateStart();
+	if (!ShouldTickStart)
+	{
+		TransitionState();
+		return EStateTreeRunStatus::Succeeded;
+	}
+
 	return EStateTreeRunStatus::Running;
 }
 
@@ -79,7 +86,39 @@ void URotateToTargetTask::ExitState(FStateTreeExecutionContext& Context, const F
 		ActiveGEHandle.Invalidate();
 	}
 
+	if (IsValid(ContextActor))
+	{
+		ContextActor->bIsTurning = false;
+	}
+
 	Super::ExitState(Context, Transition);
+}
+
+bool URotateToTargetTask::ShouldRotateStart()
+{
+	if (!IsValid(ContextActor) || !IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	FVector ForwardDirection = ContextActor->GetActorForwardVector();
+	FVector ToTargetDirection = (TargetActor->GetActorLocation() - ContextActor->GetActorLocation());
+	ToTargetDirection.Z = 0.f;	// 정사영
+	ToTargetDirection = ToTargetDirection.GetSafeNormal();
+	float DotResult = FVector::DotProduct(ForwardDirection, ToTargetDirection);			// 각도 판단
+	float CrossResult = FVector::CrossProduct(ToTargetDirection, ForwardDirection).Z;	// 좌우 판단
+	float Threshold = FMath::Cos(FMath::DegreesToRadians(RotateThreshold));
+
+	if (DotResult < Threshold)
+	{
+		ContextActor->bIsTurning = true;
+		ContextActor->bIsTurningLeft = (CrossResult > 0);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool URotateToTargetTask::IsFacingTarget()

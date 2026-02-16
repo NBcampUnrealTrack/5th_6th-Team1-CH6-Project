@@ -9,6 +9,10 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
+#include "Net/UnrealNetwork.h"
+#include "Building/BaseCore.h"
+#include "Framework/BAGameState.h"
+#include "Player/BAPlayerController.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -58,6 +62,41 @@ void ABaseEnemyCharacter::BeginPlay()
 	
 	if (HasAuthority())
 	{		
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
+			{
+				const TArray<ABAPlayerController*>& AllPlayerControllers = BAGameState->GetAllPlayerControllers();
+				const int32 TargetNum = AllPlayerControllers.Num();
+				const int32 RandomIndex = FMath::RandRange(0, TargetNum);
+
+				if (RandomIndex == TargetNum)
+				{
+					TargetActor = BAGameState->GetTargetCore();
+				}
+				else
+				{
+					APawn* Pawn = AllPlayerControllers[RandomIndex]->GetPawn();
+					if (IsValid(Pawn))
+					{
+						TargetActor = Pawn;
+					}
+					else
+					{
+						TargetActor = BAGameState->GetTargetCore();
+					}
+				}
+			}
+		}
+
+		if (!TargetActor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BaseEnemyCharacter BeginPlay : TargetActor Missing"));
+			Destroy();
+		}
+
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
 		{
 			return;
@@ -97,22 +136,16 @@ void ABaseEnemyCharacter::BeginPlay()
 			}
 		}
 		
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-			if (IsValid(SpawnManagerSubsystem))
-			{
-				TargetActor = SpawnManagerSubsystem->GetTargetActor();			
-			}
-			else
-			{
-				TargetActor = nullptr;
-			}
-		}
-		
 		StateTreeComponent->StartLogic();
 	}
+}
+
+void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
+	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
 }
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
