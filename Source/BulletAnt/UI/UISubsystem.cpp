@@ -8,7 +8,7 @@
 
 UUISubsystem::UUISubsystem()
 {
-    static ConstructorHelpers::FObjectFinder<UUIConfig> ConfigObj(TEXT(""));
+    static ConstructorHelpers::FObjectFinder<UUIConfig> ConfigObj(TEXT("/Game/BulletAnt/UI/DA_UIConfig.DA_UIConfig"));
     if (ConfigObj.Succeeded())
     {
         UIConfigData = ConfigObj.Object;

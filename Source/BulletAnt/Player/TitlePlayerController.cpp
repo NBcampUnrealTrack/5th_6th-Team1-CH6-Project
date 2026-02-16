@@ -58,4 +58,5 @@ void ATitlePlayerController::HandleJoinRequested(const FText& InIpPort)
 
 void ATitlePlayerController::HandleOptionRequested()
 {
+	UGameplayStatics::OpenLevel(GetWorld(), FName("MainLevel"), true, "listen?port=17777");
 }
