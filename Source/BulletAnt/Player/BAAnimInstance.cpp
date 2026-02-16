@@ -19,7 +19,7 @@ void UBAAnimInstance::NativeInitializeAnimation()
 		if (Character)
 			Movement = Character->GetCharacterMovement();
 	}
-	Tag_Ranged = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Rifle"));
+	Tag_Ranged = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Ranged"));
 	Tag_Mining = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Mining"));
 	Tag_Melee = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Melee"));
 }
