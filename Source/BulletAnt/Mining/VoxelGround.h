@@ -184,8 +184,6 @@ protected:
 	TArray<FVoxelGroundChunkData> ChunkDatas;
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UBoxComponent> BoundBox;
 
 	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMin;
@@ -210,4 +208,28 @@ protected:
 	TQueue<FVoxelChunkEditData> EditDataQueue;
 
 #pragma endregion
+
+#pragma region Bound
+
+protected:
+	void SetBoundBox();
+
+	UFUNCTION()
+	void OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	class ASkyAtmosphere* GetSkyAtmosphere() const;
+
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UBoxComponent> BoundBox;
+	UPROPERTY()
+	TWeakObjectPtr<class ASkyAtmosphere> SkyAtmosphere;
+
+	float OriginReighScatterScale = 0.0f;
+	
+#pragma endregion
+
 };

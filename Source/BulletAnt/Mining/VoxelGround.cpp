@@ -6,6 +6,8 @@
 #include "Mining/GroundSettingPreset.h"
 #include "Components/BoxComponent.h"
 #include "Framework/BAGameMode.h"
+#include "EngineUtils.h"
+#include "Components/SkyAtmosphereComponent.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -15,8 +17,15 @@ AVoxelGround::AVoxelGround()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
+	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
 	BoundBox = CreateDefaultSubobject<UBoxComponent>(TEXT("BoundBox"));
-	// BoundBox 진입 시, SkyAtmosphere 설정 변경
+	BoundBox->SetupAttachment(SceneRoot);
+	BoundBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BoundBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BoundBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	BoundBox->SetGenerateOverlapEvents(true);
 }
 
 void AVoxelGround::BeginPlay()
@@ -41,6 +50,14 @@ void AVoxelGround::BeginPlay()
 		1.0f,
 		true,
 		0.25f);
+
+	if (IsValid(BoundBox) == true)
+	{
+		SetBoundBox();
+
+		BoundBox->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnPlayerEnter);
+		BoundBox->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnPlayerExit);
+	}
 }
 
 void AVoxelGround::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -485,23 +502,23 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 								return;
 
 							// 안정적으로 만들기 위해 일단 셀 중앙에서만 생성
-							FVector Center(
+							FVector PillarCenter(
 								(CellX + 0.5f) * CellSize,
 								(CellY + 0.5f) * CellSize,
 								(CellZ + 0.5f) * CellSize);
 
 							// 노이즈 기반으로 맵을 생성했기 때문에 지표면 근처는 Density가 IsoLevel에 가까움
-							bool bIsNearSurface = FMath::Abs(CalculateCave(Center) - IsoLevel) < 8;
+							bool bIsNearSurface = FMath::Abs(CalculateCave(PillarCenter) - IsoLevel) < 8;
 							if (bIsNearSurface == false)
 								return;
 
-							float Dx = CalculateCave(Center + FVector(ChunkVoxelSize, 0, 0)) - CalculateCave(Center - FVector(ChunkVoxelSize, 0, 0));
-							float Dy = CalculateCave(Center + FVector(0, ChunkVoxelSize, 0)) - CalculateCave(Center - FVector(0, ChunkVoxelSize, 0));
-							float Dz = CalculateCave(Center + FVector(0, 0, ChunkVoxelSize)) - CalculateCave(Center - FVector(0, 0, ChunkVoxelSize));
+							float Dx = CalculateCave(PillarCenter + FVector(ChunkVoxelSize, 0, 0)) - CalculateCave(PillarCenter - FVector(ChunkVoxelSize, 0, 0));
+							float Dy = CalculateCave(PillarCenter + FVector(0, ChunkVoxelSize, 0)) - CalculateCave(PillarCenter - FVector(0, ChunkVoxelSize, 0));
+							float Dz = CalculateCave(PillarCenter + FVector(0, 0, ChunkVoxelSize)) - CalculateCave(PillarCenter - FVector(0, 0, ChunkVoxelSize));
 
 							// 지형에 Normal한 방향으로 기둥이 자라야 함. Density가 큰 쪽이 지형이므로 -연산.
 							FVector Normal = -FVector(Dx, Dy, Dz).GetSafeNormal();
-							FVector Delta = WorldPos - Center;
+							FVector Delta = WorldPos - PillarCenter;
 							float AlongNormal = FVector::DotProduct(Delta, Normal);
 							float Radial = (Delta - (Normal * AlongNormal)).Length();
 							float Radius = 240.f;
@@ -1023,4 +1040,65 @@ void AVoxelGround::EditGroundChunk(const FVoxelChunkEditData& Data)
 void AVoxelGround::EnqueueChunkEditData(const FVoxelChunkEditData& Data)
 {
 	EditDataQueue.Enqueue(Data);
+}
+
+void AVoxelGround::SetBoundBox()
+{
+	const FVector& GroundSize = Setting->GroundSize;
+	const FVector BoundMinRange = FVector(-GroundSize.X * 0.48f, -GroundSize.Y * 0.48f, -GroundSize.Z);
+	const FVector BoundMaxRange = FVector(GroundSize.X * 0.48f, GroundSize.Y * 0.48f, -100.0f);
+	const FVector Center = (BoundMinRange + BoundMaxRange) * 0.5f;
+	const FVector HalfSize = (BoundMaxRange - BoundMinRange) * 0.5f;
+
+	BoundBox->SetBoxExtent(HalfSize);
+	BoundBox->SetRelativeLocation(Center);
+	BoundBox->bHiddenInGame = false;
+}
+
+void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	if (IsValid(Character) == false || Character->IsLocallyControlled() == false)
+		return;
+
+	SkyAtmosphere = SkyAtmosphere.IsValid() == false ? GetSkyAtmosphere() : SkyAtmosphere;
+	if (SkyAtmosphere.IsValid() == false)
+		return;
+
+	USkyAtmosphereComponent* SkyComp = SkyAtmosphere->GetComponentByClass<USkyAtmosphereComponent>();
+	if (IsValid(SkyComp) == false)
+		return;
+
+	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
+	SkyComp->SetRayleighScatteringScale(0.0f);
+}
+
+void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	if (IsValid(Character) == false || Character->IsLocallyControlled() == false)
+		return;
+
+	SkyAtmosphere = SkyAtmosphere.IsValid() == false ? GetSkyAtmosphere() : SkyAtmosphere;
+	if (SkyAtmosphere.IsValid() == false)
+		return;
+
+	USkyAtmosphereComponent* SkyComp = SkyAtmosphere->GetComponentByClass<USkyAtmosphereComponent>();
+	if (IsValid(SkyComp) == false)
+		return;
+
+	SkyComp->SetRayleighScatteringScale(OriginReighScatterScale);
+}
+
+ASkyAtmosphere* AVoxelGround::GetSkyAtmosphere() const
+{
+	UWorld* World = GetWorld();
+	if (IsValid(World) == false)
+		return nullptr;
+
+	for (TActorIterator<ASkyAtmosphere> It(World); It; ++It)
+	{
+		return *It;
+	}
+	return nullptr;
 }
