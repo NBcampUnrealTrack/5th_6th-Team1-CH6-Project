@@ -20,8 +20,6 @@ void UAnimNotifyState_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshCom
 		Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		if (!Data) return;
 	}
-
-	HitActors.Empty();
 }
 
 void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
@@ -60,7 +58,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 	}
 
 	TArray<FOverlapResult> Overlaps;
-	FCollisionQueryParams Params(NAME_None, true, OwnerActor);
+	FCollisionQueryParams Params(NAME_None, false, OwnerActor);
 	Params.AddIgnoredActors(HitActors);
 
 	bool bHit = OwnerActor->GetWorld()->OverlapMultiByChannel(

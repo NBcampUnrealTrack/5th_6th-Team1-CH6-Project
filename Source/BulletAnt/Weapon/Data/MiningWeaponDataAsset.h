@@ -11,7 +11,16 @@ class BULLETANT_API UMiningWeaponDataAsset : public UWeaponDataAsset
 	
 public:
 	UPROPERTY(EditDefaultsOnly)
+	float TraceRadius = 20.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	float DigRadius = 200.f;
+
+	UPROPERTY(EditDefaultsOnly)
 	float DigPerMinute = 180.f;
+
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UAnimMontage> MiningMontage;
 
 	UPROPERTY(EditDefaultsOnly)
 	uint8 bAutoActive : 1 = true;

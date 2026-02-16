@@ -5,14 +5,18 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayTagContainer.h"
+#include "AbilitySystemComponent.h" 
+#include "AbilitySystemGlobals.h"
+#include "Player/BACharacter.h"
 #include "BAAnimInstance.generated.h"
 
 /**
  * 
  */
 
-class ABACharacter;
 class UCharacterMovementComponent;
+
 UCLASS()
 class BULLETANT_API UBAAnimInstance : public UAnimInstance
 {
@@ -25,6 +29,14 @@ public:
 	// 매 프레임 실행 함수
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
+
+protected:
+	FRotator CameraTargetOffset();
+
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	EEquipmentType CurrentEquipmentType;
+
 protected:
 	// 매번 Cast 안하기 위한 포인터
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
@@ -34,9 +46,15 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	TObjectPtr <UCharacterMovementComponent> Movement;
 
+	FGameplayTag Tag_Ranged;
+	FGameplayTag Tag_Mining;
+    FGameplayTag Tag_Melee;
+
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GroundSpeed;
 
+	float TargetPitch;
+	float TargetYaw;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float AOPitch;
@@ -66,4 +84,9 @@ protected:
 	//수직 이동 속도
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float VerticalVelocity;
+
+	FRotator PreviousRotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "TurnInPlace")
+	float RootYawOffset;
 };

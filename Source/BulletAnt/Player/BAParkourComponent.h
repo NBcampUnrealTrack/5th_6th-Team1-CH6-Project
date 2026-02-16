@@ -33,12 +33,12 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 protected:
 	UFUNCTION(Server, Reliable)
-	void ServerRPC_AttemptParkour();
+	void ServerRPC_AttemptParkour(EParkourType ParkourType, FVector TargetLocation, FRotator TargetRotation);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ExecuteParkour(EParkourType ParkourType, FVector TargetLocation, FRotator TargetRotation);
 private:
-	void DetectWall();
+	bool DetectWall();
 	void ExecuteParkour(EParkourType ParkourType);
 	void OnParkourMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
@@ -67,4 +67,6 @@ private:
 	float WallThickness;
 	FVector WarpTargetLocation;
 	FRotator WarpTargetRotation;
+
+	bool bIsParkour;
 };

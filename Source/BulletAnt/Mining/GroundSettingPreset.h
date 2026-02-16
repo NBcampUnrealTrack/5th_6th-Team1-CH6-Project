@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Mining/VoxelData.h"
 #include "GroundSettingPreset.generated.h"
 
 UCLASS()
@@ -25,8 +26,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	float CaveThreshold = 0.2f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
+	EVoxelType VeinVoxelType;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
+	EVoxelType PillarVoxelType;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
-	TObjectPtr<UMaterialInterface> BedrockMaterial;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
-	TObjectPtr<UMaterialInterface> NormalGroundMaterial;
+	TObjectPtr<UMaterialInterface> GroundMaterial;
 };
