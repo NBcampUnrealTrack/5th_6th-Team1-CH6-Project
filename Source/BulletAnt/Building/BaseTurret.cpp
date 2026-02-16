@@ -55,8 +55,6 @@ void ABaseTurret::BeginPlay()
 		ASC->InitAbilityActorInfo(this, this);
 		GiveDefaultAbilities();
 
-		StartAutoFire();
-
 		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseTurret::OnTargetBeginOverlap);
 		TargetSerchingSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseTurret::OnTargetEndOverlap);
 
@@ -138,9 +136,9 @@ UAbilitySystemComponent* ABaseTurret::GetAbilitySystemComponent() const
 
 FVector ABaseTurret::GetFireStartLocation() const
 {
-	if (StaticMeshComp && StaticMeshComp->DoesSocketExist(MuzzleSocketName))
+	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
 	{
-		return StaticMeshComp->GetSocketLocation(MuzzleSocketName);
+		return BarrelMesh->GetSocketLocation(MuzzleSocketName);
 	}
 
 	return GetActorLocation();
@@ -148,9 +146,9 @@ FVector ABaseTurret::GetFireStartLocation() const
 
 FVector ABaseTurret::GetFireDirection() const
 {
-	if (StaticMeshComp && StaticMeshComp->DoesSocketExist(MuzzleSocketName))
+	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
 	{
-		const FTransform SocketTM = StaticMeshComp->GetSocketTransform(MuzzleSocketName, RTS_World);
+		const FTransform SocketTM = BarrelMesh->GetSocketTransform(MuzzleSocketName, RTS_World);
 		return SocketTM.GetUnitAxis(EAxis::X);
 	}
 
@@ -170,6 +168,14 @@ void ABaseTurret::OnDeath()
 	}
 
 	bDead = true;
+
+	if (ASC && TurretData)
+	{
+		FGameplayTagContainer FireTags;
+		FireTags.AddTag(TurretData->WeaponTag);
+		ASC->CancelAbilities(&FireTags, nullptr, nullptr);
+	}
+
 	OnRep_Dead();
 	Multicast_PlayDestruction(GetActorLocation());
 }
@@ -179,34 +185,6 @@ void ABaseTurret::GiveDefaultAbilities()
 	if (HasAuthority())
 	{
 		ASC->GiveAbility(FGameplayAbilitySpec(UGA_Fire::StaticClass(), 1));
-	}
-}
-
-void ABaseTurret::StartAutoFire()
-{
-	if (HasAuthority() && TurretData)
-	{
-		const float AttackRate = TurretData->RoundPerMinute;
-		GetWorldTimerManager().SetTimer(
-			FireTimerHandle,
-			this,
-			&ABaseTurret::Server_FireTick,
-			AttackRate,
-			true
-		);
-	}
-}
-
-void ABaseTurret::Server_FireTick()
-{
-	if (HasAuthority())
-	{
-		const FGameplayTag FireAbilityTag = TurretData->WeaponTag;
-
-		FGameplayTagContainer AbilityTags;
-		AbilityTags.AddTag(FireAbilityTag);
-
-		ASC->TryActivateAbilitiesByTag(AbilityTags);
 	}
 }
 
@@ -232,10 +210,12 @@ void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor
 
 void ABaseTurret::UpdateCurrentTarget()
 {
-	if (!HasAuthority())
+	if (!HasAuthority() || bDead || !ASC || !TurretData)
 	{
 		return;
 	}
+
+	AActor* PrevTarget = CurrentTarget;
 
 	AActor* BestTarget = nullptr;
 	float BestDistSq = FLT_MAX;
@@ -261,6 +241,20 @@ void ABaseTurret::UpdateCurrentTarget()
 	}
 
 	CurrentTarget = BestTarget;
+
+	FGameplayTagContainer FireTags;
+	FireTags.AddTag(TurretData->WeaponTag);
+
+	// 타겟 생김
+	if (!IsValid(PrevTarget) && IsValid(CurrentTarget))
+	{
+		ASC->TryActivateAbilitiesByTag(FireTags);
+	}
+	// 타겟 잃음
+	else if (!IsValid(CurrentTarget))
+	{
+		ASC->CancelAbilities(&FireTags);
+	}
 }
 
 void ABaseTurret::OnRep_Dead()

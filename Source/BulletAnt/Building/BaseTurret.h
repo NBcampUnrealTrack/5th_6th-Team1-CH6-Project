@@ -48,10 +48,6 @@ protected:
 	virtual void OnDeath() override;
 
 	void GiveDefaultAbilities();
-	void StartAutoFire();
-
-	UFUNCTION()
-	void Server_FireTick();
 
 private:
 	UFUNCTION()
