@@ -5,7 +5,8 @@
 void ABaseRangedWeapon::BeginPlay()
 {
 	Super::BeginPlay();
-	URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(WeaponData);
+	Data = Cast<URangedWeaponDataAsset>(WeaponData);
 
 	bAutoActive = Data->bAutoFire;
 }
+

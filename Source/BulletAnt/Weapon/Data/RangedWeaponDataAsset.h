@@ -22,9 +22,6 @@ public:
 	int32 MaxAmmo;
 
 	UPROPERTY(EditDefaultsOnly)
-	float ReloadTime;
-
-	UPROPERTY(EditDefaultsOnly)
 	float Range;
 
 	UPROPERTY(EditDefaultsOnly)
@@ -37,14 +34,14 @@ public:
 	float SpreadDegree;
 
 	UPROPERTY(EditDefaultsOnly)
-	float RecoilPitchMax = 0.f;
+	UAnimMontage* ReloadMontage;
 
-	UPROPERTY(EditDefaultsOnly)
-	float RecoilPitchMin = 0.f;
-
-	UPROPERTY(EditDefaultsOnly)
-	float RecoilYawMax = 0.f;
+	UPROPERTY(EditDefaultsOnly, meta = (EditCondition = "ReloadMontage == nullptr", EditConditionHides))
+	float ReloadTime = 5.f;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UGameplayEffect> FireCueEffect;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> ReloadEffect;
 };

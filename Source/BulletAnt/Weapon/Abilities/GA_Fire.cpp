@@ -8,6 +8,7 @@
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h" 
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -81,15 +82,24 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
 	if (!FireStart) return;
 
-	if (ActorInfo->IsLocallyControlled())
-	{
-		ApplyRecoil();
-	}
-
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
 
-	const FVector Start = FireStart->GetFireStartLocation();
+	CachedASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!CachedASC) return;
 
+	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
+	if (AmmoSet)
+	{
+		if (AmmoSet->GetCurrentAmmo() <= 0.f)
+		{
+			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
+	}
+
+	const FVector Start = FireStart->GetFireStartLocation();
+	
+	//총알 발사시 발생하는 이펙트 큐
 	if (RangedData->FireCueEffect)
 	{
 		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
@@ -150,9 +160,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			RangedData
 		);
 	}
-
-	/*ApplyAttackCue(Start, RangedData, ActorInfo->AbilitySystemComponent.Get());*/
-	
 }
 
 void UGA_Fire::StartAutoFireLoop()
@@ -199,35 +206,11 @@ void UGA_Fire::ApplyDamageEffect(
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
 }
 
-void UGA_Fire::ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC)
-{
-	if (!WeaponData || !ASC) return;
-	FGameplayCueParameters Params;
-	Params.Location = Location;
-	Params.SourceObject = WeaponData;
-
-	ASC->AddGameplayCue(
-		TAG_GameplayCue_Weapon_Fire,
-		Params
-	);
-}
-
 FVector UGA_Fire::ApplySpread(const FVector& Dir, float Degree)
 {
 	if (Degree <= 0.f) return Dir;
 
 	const float HalfRad = FMath::DegreesToRadians(Degree * 0.5f);
 	return FMath::VRandCone(Dir, HalfRad);
-}
-
-void UGA_Fire::ApplyRecoil()
-{
-	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
-	if (!FireStart) return;
-
-	CurrentRecoilPitch = FMath::RandRange(RangedData->RecoilPitchMin, RangedData->RecoilPitchMax);
-	CurrentRecoilYaw = FMath::RandRange(-RangedData->RecoilYawMax, RangedData->RecoilYawMax);
-
-	FireStart->AddRecoilImpuls(CurrentRecoilPitch, CurrentRecoilYaw);
 }
 

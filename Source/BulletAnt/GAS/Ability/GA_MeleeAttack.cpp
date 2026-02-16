@@ -32,8 +32,6 @@ void UGA_MeleeAttack::ActivateAbility(
 		return;
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
-
 	IDataAssetInterface* Interface = Cast<IDataAssetInterface>(GetAvatarActorFromActorInfo());
 	if (!Interface || !Interface->GetDataAsset())
 	{

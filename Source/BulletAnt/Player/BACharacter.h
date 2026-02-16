@@ -18,8 +18,10 @@ class UHealthAttributeSet;
 class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
+class UAmmoAttributeSet;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -102,10 +104,13 @@ public:
     UInputAction* LookAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* AttackAction;
+    UInputAction* ReloadAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* SwitchAction;
+    UInputAction* AttackAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* SwitchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* AimAction;
@@ -137,6 +142,7 @@ protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void StartAttack(const FInputActionValue& Value);
+    void Reload(const FInputActionValue& Value);
     void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
@@ -298,7 +304,6 @@ public:
 
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
-    virtual void AddRecoilImpuls(float Pitch, float Yaw) override;
 
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
@@ -308,6 +313,14 @@ public:
 
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
+
+    UPROPERTY()
+    UAmmoAttributeSet* AmmoAttributeSet;
+
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnAmmoChangedDelegate OnAmmoChanged;
+
+    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
