@@ -37,6 +37,25 @@ struct FVoxelGroundChunkData
 	int32 GroundVoxelCount = 0;
 };
 
+// 정정ㅁ Density 변경 후 반환할 데이터
+USTRUCT()
+struct FVoxelChangedResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	EVoxelType PrevType = EVoxelType::None;
+	UPROPERTY()
+	EVoxelType CurrType = EVoxelType::None;
+	UPROPERTY()
+	uint8 PrevDensity = 0;
+	UPROPERTY()
+	uint8 CurrDensity = 0;
+
+	UPROPERTY()
+	uint8 bTypeChanged : 1 = false;
+};
+
 USTRUCT()
 struct FVoxelPointEditData
 {
@@ -105,7 +124,7 @@ protected:
 
 public:
 	void DigGround(const FVector& WorldLocation, float Radius);
-	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData);
+	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap);
 
 	bool MakeChunkSaveData(int32 ChunkIdx, FVoxelGroundChunkSaveData& OutData);
 	bool LoadChunkSaveData(const FVoxelGroundChunkSaveData& Data);
@@ -122,7 +141,7 @@ protected:
 	UFUNCTION()
 	void UpdateChunkLODs();
 
-	bool ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue);
+	bool ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue, FVoxelChangedResult& OutResult);
 	uint8 GetChunkDensityValue(int32 ChunkIdx, int32 PointIdx);
 
 	int32 GetChunkIndex(int32 X, int32 Y, int32 Z) const;

@@ -5,6 +5,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Mining/GroundSettingPreset.h"
 #include "Components/BoxComponent.h"
+#include "Framework/BAGameMode.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -132,6 +133,7 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 	int32 MinZ = FMath::FloorToInt((RelativeLocation.Z - Radius) / ChunkSize);
 	int32 MaxZ = FMath::FloorToInt((RelativeLocation.Z + Radius) / ChunkSize);
 
+	TMap<EVoxelType, int32> MinedOreMap;
 	for (int32 Z = MinZ; Z <= MaxZ; ++Z)
 	{
 		for (int32 Y = MinY; Y <= MaxY; ++Y)
@@ -144,7 +146,7 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 
 				FVector ChunkOffset = FVector(X, Y, Z) * ChunkSize;
 				FVoxelChunkEditData SaveData;
-				bool bDig = DigGround(ChunkIdx, ChunkOffset, WorldLocation, Radius, SaveData);
+				bool bDig = DigGround(ChunkIdx, ChunkOffset, WorldLocation, Radius, SaveData, MinedOreMap);
 				if (bDig == true)
 				{
 					EnqueueChunkEditData(SaveData);
@@ -152,15 +154,30 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 			}
 		}
 	}
+
+	for (const auto& Pair : MinedOreMap)
+	{
+		if (Pair.Key == EVoxelType::BedRock ||
+			Pair.Key == EVoxelType::NormalRock ||
+			Pair.Key == EVoxelType::None)
+			continue;
+
+		ABAGameMode* GameMode = GetWorld()->GetAuthGameMode<ABAGameMode>();
+		if (IsValid(GameMode) == true)
+		{
+			GameMode->MineOre(Pair.Key, Pair.Value);
+		}
+	}
 }
 
-bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData)
+bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap)
 {
-	FVector RelativeLocation = WorldLocation - GetActorLocation();
-	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
+	const FVector RelativeLocation = WorldLocation - GetActorLocation();
+	const float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
+	const int32 ChunkPoints = Setting->ChunkGridSize + 1;
+	const float RadiusSquared = Radius * Radius;
+
 	bool bChunkModified = false;
-	int32 ChunkPoints = Setting->ChunkGridSize + 1;
-	float RadiusSquared = Radius * Radius;
 
 	OutData.ChunkIdx = ChunkIdx;
 	for (int32 Z = 0; Z < ChunkPoints; ++Z)
@@ -184,9 +201,17 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 					// 기반암(> 200)은 Dig 불가
 					if (CurrentDensity <= 200 && TargetDensity < CurrentDensity)
 					{
-						ChangeChunkDensityValue(ChunkIdx, PointIdx, TargetDensity);
-						OutData.PointEditDatas.Add({ PointIdx, TargetDensity });
-						bChunkModified = true;
+						FVoxelChangedResult OutResult;
+						bool bChanged = ChangeChunkDensityValue(ChunkIdx, PointIdx, TargetDensity, OutResult);
+						if (bChanged == true)
+						{
+							bChunkModified = true;
+							OutData.PointEditDatas.Add({ PointIdx, TargetDensity });
+							if (OutResult.bTypeChanged == true && OutResult.CurrType == EVoxelType::None)
+							{
+								++MinedOreMap.FindOrAdd(OutResult.PrevType);
+							}
+						}
 					}
 				}
 			}
@@ -702,7 +727,7 @@ void AVoxelGround::UpdateChunkLODs()
 	}
 }
 
-bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue)
+bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue, FVoxelChangedResult& OutResult)
 {
 	if (ChunkDatas.IsValidIndex(ChunkIdx) == false)
 		return false;
@@ -713,8 +738,7 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 		return false;
 
 	bool bIsGroundNew = NewDensityValue > Setting->IsoLevel;
-	TArray<uint8>& DensityValues = ChunkDatas[ChunkIdx].DensityValues;
-	if (DensityValues.IsEmpty() == true)
+	if (ChunkDatas[ChunkIdx].DensityValues.IsEmpty() == true)
 	{
 		ensureMsgf(ChunkDatas[ChunkIdx].ChunkState == EChunkState::Complex, TEXT("Complex Chunk, but no density values"));
 		if ((bIsGroundNew == true && ChunkDatas[ChunkIdx].ChunkState == EChunkState::Ground) ||
@@ -725,11 +749,19 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 	}
 
 	// 기반암이면 변경 X
-	if (DensityValues[PointIdx] > 200)
+	if (ChunkDatas[ChunkIdx].DensityValues[PointIdx] > 200)
 		return false;
 
-	bool bIsGroundOld = DensityValues[PointIdx] > Setting->IsoLevel;
-	DensityValues[PointIdx] = NewDensityValue;
+	const uint8 IsoLevel = Setting->IsoLevel;
+
+	OutResult.PrevDensity = ChunkDatas[ChunkIdx].DensityValues[PointIdx];
+	OutResult.CurrDensity = NewDensityValue;
+	OutResult.PrevType = ChunkDatas[ChunkIdx].VoxelTypes[PointIdx];
+	OutResult.CurrType = NewDensityValue <= IsoLevel ? EVoxelType::None : OutResult.PrevType;
+	OutResult.bTypeChanged = OutResult.PrevType != OutResult.CurrType;
+
+	bool bIsGroundOld = ChunkDatas[ChunkIdx].DensityValues[PointIdx] > IsoLevel;
+	ChunkDatas[ChunkIdx].DensityValues[PointIdx] = NewDensityValue;
 	if (bIsGroundOld != bIsGroundNew)
 	{
 		ChunkDatas[ChunkIdx].GroundVoxelCount += bIsGroundNew == true ? 1 : -1;
@@ -924,7 +956,7 @@ void AVoxelGround::UpdateDirtyChunks()
 		}
 	}
 
-	UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));
+	//UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));
 }
 
 void AVoxelGround::UpdatePriorityDirtyChunks()
@@ -969,7 +1001,8 @@ void AVoxelGround::EditGroundChunk(const FVoxelChunkEditData& Data)
 	{
 		for (const FVoxelPointEditData& PointData : Data.PointEditDatas)
 		{
-			ChangeChunkDensityValue(ChunkIdx, PointData.VoxelIndex, PointData.NewDensityValue);
+			FVoxelChangedResult OutResult;
+			ChangeChunkDensityValue(ChunkIdx, PointData.VoxelIndex, PointData.NewDensityValue, OutResult);
 		}
 
 		if (ChunkDatas[ChunkIdx].ChunkState == EChunkState::Complex)
