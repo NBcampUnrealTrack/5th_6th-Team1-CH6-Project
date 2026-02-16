@@ -2,19 +2,21 @@
 
 
 #include "Building/BaseCore.h"
-#include "Enemy/Spawn/SpawnManagerSubsystem.h"
+#include "Framework/BAGameState.h"
 
 void ABaseCore::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UWorld* World = GetWorld();
-	if (IsValid(World))
+	if (HasAuthority())
 	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
+		UWorld* World = GetWorld();
+		if (IsValid(World))
 		{
-			SpawnManagerSubsystem->SetTargetCore(this);
+			if (ABAGameState* GS = World->GetGameState<ABAGameState>())
+			{
+				GS->SetTargetCore(this);
+			}
 		}
 	}
 }

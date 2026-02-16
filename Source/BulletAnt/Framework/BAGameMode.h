@@ -12,6 +12,12 @@ class BULLETANT_API ABAGameMode : public AGameMode
 	GENERATED_BODY()
 	
 public:
+	ABAGameMode();
+
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	virtual void Logout(AController* Exiting) override;
+
 	void MineOre(EVoxelType OreType, int32 PointCount);
 
 protected:

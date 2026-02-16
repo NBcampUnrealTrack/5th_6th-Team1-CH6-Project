@@ -11,6 +11,8 @@
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
 #include "Net/UnrealNetwork.h"
 #include "Building/BaseCore.h"
+#include "Framework/BAGameState.h"
+#include "Player/BAPlayerController.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -63,14 +65,29 @@ void ABaseEnemyCharacter::BeginPlay()
 		UWorld* World = GetWorld();
 		if (IsValid(World))
 		{
-			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-			if (IsValid(SpawnManagerSubsystem))
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
 			{
-				TargetActor = SpawnManagerSubsystem->GetTargetCore();			
-			}
-			else
-			{
-				TargetActor = nullptr;
+				const TArray<ABAPlayerController*>& AllPlayerControllers = BAGameState->GetAllPlayerControllers();
+				const int32 TargetNum = AllPlayerControllers.Num();
+				const int32 RandomIndex = FMath::RandRange(0, TargetNum);
+
+				if (RandomIndex == TargetNum)
+				{
+					TargetActor = BAGameState->GetTargetCore();
+				}
+				else
+				{
+					APawn* Pawn = AllPlayerControllers[RandomIndex]->GetPawn();
+					if (IsValid(Pawn))
+					{
+						TargetActor = Pawn;
+					}
+					else
+					{
+						TargetActor = BAGameState->GetTargetCore();
+					}
+				}
 			}
 		}
 

@@ -15,10 +15,6 @@ class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 	
 public:
 	 void OnEnemyDie();
-
-	 ABaseCore* GetTargetCore() const;
-
-	 void SetTargetCore(ABaseCore* InTargetCore);
 	
 protected:	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;

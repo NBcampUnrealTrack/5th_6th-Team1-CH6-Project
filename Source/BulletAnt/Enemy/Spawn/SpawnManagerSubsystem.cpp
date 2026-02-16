@@ -5,6 +5,7 @@
 #include "Enemy/Spawn/EnemySpawnerEntry.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Building/BaseCore.h"
+#include "Framework/BAGameState.h"
 
 void USpawnManagerSubsystem::OnEnemyDie()
 {
@@ -16,16 +17,6 @@ void USpawnManagerSubsystem::OnEnemyDie()
 	}
 }
 
-ABaseCore* USpawnManagerSubsystem::GetTargetCore() const
-{
-	return TargetCore;
-}
-
-void USpawnManagerSubsystem::SetTargetCore(ABaseCore* InTargetCore)
-{
-	TargetCore = InTargetCore;
-}
-
 void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -35,7 +26,7 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 30.f, false);
 }
 
 void USpawnManagerSubsystem::Deinitialize()
@@ -104,7 +95,17 @@ void USpawnManagerSubsystem::SetSpawnDataTable()
 
 void USpawnManagerSubsystem::StartWave()
 {
-	GetWorld()->GetTimerManager().ClearTimer(WaveTimer);
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+	World->GetTimerManager().ClearTimer(WaveTimer);
+
+	if (ABAGameState* GS = World->GetGameState<ABAGameState>())
+	{
+		TargetCore = GS->GetTargetCore();
+	}
 	
 	//if (TargetActor == nullptr)
 	//{
