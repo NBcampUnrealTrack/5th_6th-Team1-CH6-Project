@@ -14,7 +14,7 @@ void UVoxelGroundChunk::InitializeChunk(int32 InGridSize, float InVoxelSize, uin
 	IsoLevel = InIsoLevel;
 }
 
-void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const FNeighborLOD& NeighborLOD, int32 LODLevel)
+void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(CalculateMeshDataAsync);
 
@@ -27,6 +27,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 	}
 
 	TArray<uint8> LocalDensity = DensityValues;
+	TArray<EVoxelType> LocalVoxelTypes = VoxelTypes;
 	TWeakObjectPtr<UVoxelGroundChunk> WeakThis(this);
 	TWeakObjectPtr<AVoxelGround> WeakGround(VoxelGround);
 
@@ -39,7 +40,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 	const int32 LocalChunkIdx = ChunkIdxV;
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
-		[UpdateID, LocalChunkIdx, WeakThis, WeakGround, LocalDensity = MoveTemp(LocalDensity), NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
+		[UpdateID, LocalChunkIdx, WeakThis, WeakGround, LocalDensity = MoveTemp(LocalDensity), LocalVoxelTypes = MoveTemp(LocalVoxelTypes), NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
 		{
 			FChunkMeshData MeshData;
 			TMap<uint64, int32> VertexCache;
@@ -57,7 +58,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 				}
 			}
 
-			FVoxelGenerationContext Context(LocalDensity, LocalLODLevel, Step, LocalVoxelSize, LocalGridSize, LocalIsoLevel, NeighborMask, MeshData, VertexCache);
+			FVoxelGenerationContext Context(LocalDensity, LocalVoxelTypes, LocalLODLevel, Step, LocalVoxelSize, LocalGridSize, LocalIsoLevel, NeighborMask, MeshData, VertexCache);
 
 			auto CallGenerateTransition = [&](int32 X, int32 Y, int32 Z, int32 FaceIdx)
 				{
@@ -163,12 +164,15 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 {
 	FVector Pos[8]{};
 	uint8 Density[8]{};
+	EVoxelType VoxelTypes[8]{};
 	uint32 VertexInfo[8]{};
 	for (int32 Idx = 0; Idx < 8; ++Idx)
 	{
 		FIntVector Corner(X + CornerTable[Idx][0] * Context.Step, Y + CornerTable[Idx][1] * Context.Step, Z + CornerTable[Idx][2] * Context.Step);
 		FVector LocalPos = FVector(Corner.X, Corner.Y, Corner.Z) * Context.VoxelSize;
-		Density[Idx] = Context.Density[GetIndex(Corner.X, Corner.Y, Corner.Z, Context.GridSize)];
+		int32 PointIdx = GetIndex(Corner.X, Corner.Y, Corner.Z, Context.GridSize);
+		Density[Idx] = Context.Density[PointIdx];
+		VoxelTypes[Idx] = Context.VoxelTypes[PointIdx];
 		uint8 ShrinkMask = GetAdjustedPosition(LocalPos, Pos[Idx], Context.LODLevel, Context.NeighborMask, Context.VoxelSize, Context.GridSize);
 		VertexInfo[Idx] = GetVertexInfoForKey(Corner.X, Corner.Y, Corner.Z, ShrinkMask);
 	}
@@ -188,7 +192,6 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 	for (int32 Idx = 0; TriangleTable[CubeIdx][Idx] != -1; Idx += 3)
 	{
 		FIntVector NewTriangle{};
-		bool bBedRock = true;
 		for (int32 TriangleIdx = 0; TriangleIdx < 3; ++TriangleIdx)
 		{
 			int32 EdgeIdx = TriangleTable[CubeIdx][Idx + TriangleIdx];
@@ -197,10 +200,6 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 			int32 E2 = EdgeIndexTable[EdgeIdx][1];
 
 			int32 GroundVertex = (Density[E1] > Context.IsoLevel) ? E1 : E2;
-			if (Density[GroundVertex] <= 200)
-			{
-				bBedRock = false;
-			}
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[E1], VertexInfo[E2]);
 
@@ -217,11 +216,16 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
 				Context.OutVertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
+				FVector4f Color(
+					VoxelTypes[GroundVertex] == EVoxelType::BedRock,
+					VoxelTypes[GroundVertex] == EVoxelType::NormalRock,
+					VoxelTypes[GroundVertex] == EVoxelType::Gold,
+					VoxelTypes[GroundVertex] == EVoxelType::Mineral);
+				Context.OutMeshData.VertexColor.Add(Color);
 			}
 		}
 
 		Context.OutMeshData.Triangles.Add(NewTriangle);
-		Context.OutMeshData.MaterialIDs.Add(bBedRock == true ? 0 : 1);
 	}
 }
 
@@ -230,6 +234,7 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	FIntVector VIdx[9]{};
 	FVector Pos[13]{};
 	uint8 Density[13]{};
+	EVoxelType VoxelTypes[13]{};
 	uint32 VertexInfo[13]{};
 	int32 CaseCode = 0;
 
@@ -244,7 +249,9 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 
 		VIdx[Idx] = FIntVector(X, Y, Z) + SwizzledPos;
 		Pos[Idx] = FVector(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z) * Context.VoxelSize;
-		Density[Idx] = Context.Density[GetIndex(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, Context.GridSize)];
+		int32 PointIdx = GetIndex(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, Context.GridSize);
+		Density[Idx] = Context.Density[PointIdx];
+		VoxelTypes[Idx] = Context.VoxelTypes[PointIdx];
 		VertexInfo[Idx] = GetVertexInfoForKey(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, 0);
 	}
 
@@ -253,6 +260,7 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 		{
 			uint8 ShrinkMask = GetAdjustedPosition(Pos[IdxSource], Pos[Idx], Context.LODLevel, Context.NeighborMask, Context.VoxelSize, Context.GridSize);
 			Density[Idx] = Density[IdxSource];
+			VoxelTypes[Idx] = VoxelTypes[IdxSource];
 			VertexInfo[Idx] = GetVertexInfoForKey(VIdx[IdxSource].X, VIdx[IdxSource].Y, VIdx[IdxSource].Z, ShrinkMask);
 		};
 
@@ -282,7 +290,6 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 	for (int32 i = 0; i < TriangleCount; ++i)
 	{
 		FIntVector NewTriangle{};
-		bool bBedRock = true;
 		for (int32 TriangleIdx = 0; TriangleIdx < 3; ++TriangleIdx)
 		{
 			int32 TableIdx = bFlipped ? (i * 3 + (2 - TriangleIdx)) : (i * 3 + TriangleIdx);
@@ -292,10 +299,6 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 			int32 Edge1 = EdgeData & 0x0F;
 
 			int32 GroundVertex = (Density[Edge0] > Context.IsoLevel) ? Edge0 : Edge1;
-			if (Density[GroundVertex] <= 200)
-			{
-				bBedRock = false;
-			}
 
 			uint64 VertexKey = GetVertexKey(VertexInfo[Edge0], VertexInfo[Edge1]);
 
@@ -311,11 +314,16 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 				int32 VertexIdx = Context.OutMeshData.Vertices.Add(FinalPos);
 				Context.OutVertexCache.Add(VertexKey, VertexIdx);
 				NewTriangle[TriangleIdx] = VertexIdx;
+				FVector4f Color(
+					VoxelTypes[GroundVertex] == EVoxelType::BedRock,
+					VoxelTypes[GroundVertex] == EVoxelType::NormalRock,
+					VoxelTypes[GroundVertex] == EVoxelType::Gold,
+					VoxelTypes[GroundVertex] == EVoxelType::Mineral);
+				Context.OutMeshData.VertexColor.Add(Color);
 			}
 		}
 
 		Context.OutMeshData.Triangles.Add(NewTriangle);
-		Context.OutMeshData.MaterialIDs.Add(bBedRock == true ? 0 : 1);
 	}
 }
 
@@ -424,18 +432,23 @@ void UVoxelGroundChunk::UpdateChunk(int32 UpdateID, const FChunkMeshData& MeshDa
 	DynamicMesh3.Clear();
 
 	DynamicMesh3.EnableAttributes();
-	DynamicMesh3.Attributes()->EnableMaterialID();
 
-	for (const FVector& Vertex : MeshData.Vertices)
+	// DynamicMesh는 VertexColor를 가지고는 있지만 적용이 안됨. PrimaryColor 이용해야 함.
+	DynamicMesh3.Attributes()->EnablePrimaryColors();
+	UE::Geometry::FDynamicMeshColorOverlay* Colors = DynamicMesh3.Attributes()->PrimaryColors();
+	Colors->ClearElements();
+
+	for (int32 Idx = 0; Idx < MeshData.Vertices.Num(); ++Idx)
 	{
-		DynamicMesh3.AppendVertex(Vertex);
+		DynamicMesh3.AppendVertex(MeshData.Vertices[Idx]);
+		Colors->AppendElement(MeshData.VertexColor[Idx]);
 	}
 
 	for (int32 Idx = 0; Idx < MeshData.Triangles.Num(); ++Idx)
 	{
 		const FIntVector& Triangle = MeshData.Triangles[Idx];
 		int32 TriangleID = DynamicMesh3.AppendTriangle(Triangle.X, Triangle.Y, Triangle.Z);
-		DynamicMesh3.Attributes()->GetMaterialID()->SetValue(TriangleID, (int32)MeshData.MaterialIDs[Idx]);
+		Colors->SetTriangle(TriangleID, UE::Geometry::FIndex3i(Triangle.X, Triangle.Y, Triangle.Z));
 	}
 
 	UE::Geometry::FMeshNormals::QuickComputeVertexNormals(DynamicMesh3);

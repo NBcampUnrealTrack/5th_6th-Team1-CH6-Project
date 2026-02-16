@@ -6,6 +6,7 @@
 #include "VoxelGroundChunk.generated.h"
 
 class AVoxelGround;
+enum class EVoxelType : uint8;
 
 struct FNeighborLOD
 {
@@ -16,6 +17,7 @@ struct FNeighborLOD
 struct FVoxelGenerationContext
 {
 	const TArray<uint8>& Density;
+	const TArray<EVoxelType>& VoxelTypes;
 	int32 LODLevel;
 	int32 Step;
 	float VoxelSize;
@@ -28,6 +30,7 @@ struct FVoxelGenerationContext
 
 	FVoxelGenerationContext(
 		const TArray<uint8>& InDensity,
+		const TArray<EVoxelType>& InVoxelTypes,
 		int32 InLODLevel, int32 InStep,
 		float InVoxelSize,
 		int32 InGridSize,
@@ -36,6 +39,7 @@ struct FVoxelGenerationContext
 		FChunkMeshData& InMeshData,
 		TMap<uint64, int32>& InVertexCache)
 		: Density(InDensity)
+		, VoxelTypes(InVoxelTypes)
 		, LODLevel(InLODLevel)
 		, Step(InStep)
 		, VoxelSize(InVoxelSize)
@@ -53,7 +57,7 @@ class BULLETANT_API UVoxelGroundChunk : public UDynamicMeshComponent
 
 public:
 	void InitializeChunk(int32 InGridSize, float InVoxelSize, uint8 InIsoLevel);
-	void CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const FNeighborLOD& NeighborLOD, int32 LODLevel = -1);
+	void CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel = -1);
 	void UpdateChunk(int32 UpdateID, const FChunkMeshData& MeshData, bool bUpdatePhysics = false);
 
 	FORCEINLINE int32 GetCurrentLODLevel() const { return CurrentLODLevel; }
