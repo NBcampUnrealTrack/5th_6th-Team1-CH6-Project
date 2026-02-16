@@ -10,6 +10,7 @@
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
 #include "Net/UnrealNetwork.h"
+#include "Building/BaseCore.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -59,6 +60,26 @@ void ABaseEnemyCharacter::BeginPlay()
 	
 	if (HasAuthority())
 	{		
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+			if (IsValid(SpawnManagerSubsystem))
+			{
+				TargetActor = SpawnManagerSubsystem->GetTargetCore();			
+			}
+			else
+			{
+				TargetActor = nullptr;
+			}
+		}
+
+		if (!TargetActor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BaseEnemyCharacter BeginPlay : TargetActor Missing"));
+			Destroy();
+		}
+
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
 		{
 			return;
@@ -95,20 +116,6 @@ void ABaseEnemyCharacter::BeginPlay()
 						AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 					}
 				}
-			}
-		}
-		
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-			if (IsValid(SpawnManagerSubsystem))
-			{
-				TargetActor = SpawnManagerSubsystem->GetTargetActor();			
-			}
-			else
-			{
-				TargetActor = nullptr;
 			}
 		}
 		
