@@ -8,6 +8,7 @@
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h" 
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -41,9 +42,14 @@ void UGA_Fire::ActivateAbility(
 	RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
 	if (!RangedData) return;
 
+	CachedASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!CachedASC) return;
+
 	const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
 
 	AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+
+	ContinuousBullet = 0;
 	
 	if (RangedData->bAutoFire)
 	{
@@ -73,17 +79,45 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
-	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
-
 	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
 	if (!FireStart) return;
-	
+
+	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
+
+	CachedASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!CachedASC) return;
+
+	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
+	if (AmmoSet)
+	{
+		if (AmmoSet->GetCurrentAmmo() <= 0.f)
+		{
+			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
+	}
+
 	const FVector Start = FireStart->GetFireStartLocation();
 	
+	//총알 발사시 발생하는 이펙트 큐
+	if (RangedData->FireCueEffect)
+	{
+		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+		Context.AddSourceObject(RangedData);
+		Context.AddOrigin(Start);
 
+		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(RangedData->FireCueEffect, 1.0f, Context);
+		if (SpecHandle.IsValid())
+		{
+			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
+	
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(SourceActor);
+
+	ContinuousBullet++;	
 
 	for (int32 i = 0; i < RangedData->FirePerShot; ++i)
 	{
@@ -100,7 +134,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			LocalHit,
 			Start,
 			End,
-			ECC_Visibility,
+			ECC_GameTraceChannel1,
 			Params
 		);
 
@@ -126,8 +160,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			RangedData
 		);
 	}
-
-	ApplyAttackCue(Start, RangedData, ActorInfo->AbilitySystemComponent.Get());
 }
 
 void UGA_Fire::StartAutoFireLoop()
@@ -172,19 +204,6 @@ void UGA_Fire::ApplyDamageEffect(
 	);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
-}
-
-void UGA_Fire::ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC)
-{
-	if (!WeaponData || !ASC) return;
-	FGameplayCueParameters Params;
-	Params.Location = Location;
-	Params.SourceObject = WeaponData;
-
-	ASC->ExecuteGameplayCue(
-		TAG_GameplayCue_Weapon_Fire,
-		Params
-	);
 }
 
 FVector UGA_Fire::ApplySpread(const FVector& Dir, float Degree)

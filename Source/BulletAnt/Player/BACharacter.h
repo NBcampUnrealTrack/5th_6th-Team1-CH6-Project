@@ -18,8 +18,10 @@ class UHealthAttributeSet;
 class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
+class UAmmoAttributeSet;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -36,6 +38,14 @@ enum class EAbilityInputID : uint8
     Fire,
     Reload,
     Aim
+};
+
+UENUM(BlueprintType)
+enum class EEquipmentType : uint8
+{
+    Ranged       UMETA(DisplayName = "Ranged"),
+    Mining      UMETA(DisplayName = "Mining"),
+    Melee       UMETA(DisplayName = "Melee")
 };
 
 UCLASS()
@@ -60,21 +70,21 @@ public:
     virtual void OnRep_Controller() override;
 
 
-    FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetFPSMesh() { return FPSMesh; } const
     //TEST
-    FORCEINLINE UCameraComponent* GetCamera() const { return FirstPersonCameraComponent; }
-
+    FORCEINLINE UCameraComponent* GetCamera() const { return CameraComponent; }
+    void SpringArmRot(bool check);
 
 protected:
     // --- 카메라 관련 컴포넌트 ---
     //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     //TObjectPtr<USpringArmComponent> CameraBoom;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spring Arm")
+    USpringArmComponent* SpringArm;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-    TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
-    // --- 1인칭 관련 컴포넌트 ---
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS")
-    TObjectPtr<USkeletalMeshComponent> FPSMesh;
+    TObjectPtr<UCameraComponent> CameraComponent;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
     TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
 
@@ -99,10 +109,13 @@ public:
     UInputAction* LookAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* AttackAction;
+    UInputAction* ReloadAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    class UInputAction* SwitchAction;
+    UInputAction* AttackAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* SwitchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* AimAction;
@@ -134,6 +147,7 @@ protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void StartAttack(const FInputActionValue& Value);
+    void Reload(const FInputActionValue& Value);
     void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
@@ -180,19 +194,24 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StopTurnMontage();
 
+    void StopMontage();
+
+    UFUNCTION(Server, Reliable)
+    void Server_SetAiming(bool bNewIsAiming);
+
+    UFUNCTION(Server, Reliable)
+    void Server_SetRunning(bool bNewIsRunning);
 public:
 
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
-    UFUNCTION(Server, Reliable)
-    void ServerSetAiming(bool bNewIsAiming);
 
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsRunning;
-    UFUNCTION(Server, Reliable)
-    void ServerSetRunning(bool bNewIsRunning);
+    UPROPERTY(BlueprintReadOnly, Category = "Combat")
+    EEquipmentType CurrentEquipmentType = EEquipmentType::Ranged;
 
     // --- 에디터 수정 가능 ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -203,6 +222,8 @@ public:
     float RunningSpeed = 800.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float SpringArmZ;
 
 
     //최대 조준시 좌우 시선 회전 각도
@@ -221,7 +242,9 @@ public:
     float RemoteViewYaw;
     FRotator ControlRot;
     float CurrentTurnSpeed;
-    FRotator DeltaRot;
+
+    float LastBodyYaw;
+    float RootYawOffset;
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
@@ -290,8 +313,6 @@ public:
     virtual FVector GetFireStartLocation() const override;
     virtual FVector GetFireDirection() const override;
 
-
-
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
@@ -301,8 +322,20 @@ public:
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
+    UPROPERTY()
+    UAmmoAttributeSet* AmmoAttributeSet;
+
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnAmmoChangedDelegate OnAmmoChanged;
+
+    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
+
+    float InterpSpeed = 10.f;
+    float CurrentRecoilPitch = 0.f;
+    float CurrentRecoilYaw = 0.f;
 
 #pragma endregion
     

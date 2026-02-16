@@ -60,7 +60,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 	}
 
 	TArray<FOverlapResult> Overlaps;
-	FCollisionQueryParams Params(NAME_None, true, OwnerActor);
+	FCollisionQueryParams Params(NAME_None, false, OwnerActor);
 	Params.AddIgnoredActors(HitActors);
 
 	bool bHit = OwnerActor->GetWorld()->OverlapMultiByChannel(

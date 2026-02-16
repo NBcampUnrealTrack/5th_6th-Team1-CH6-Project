@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
@@ -16,7 +14,8 @@ enum class EWeaponType : uint8
 	Melee	UMETA(DisplayName = "Melee"),
 	Shotgun UMETA(DisplayName = "Shotgun"),
 	Sniper	UMETA(DisplayName = "Sniper"),
-	Mining  UMETA(DisplayName = "Mining")
+	Mining  UMETA(DisplayName = "Mining"),
+	Jetpack UMETA(DisplayName = "Jetpack")
 };
 
 UCLASS(BlueprintType)

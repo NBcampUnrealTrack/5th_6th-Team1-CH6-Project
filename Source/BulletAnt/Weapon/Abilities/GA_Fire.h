@@ -39,8 +39,6 @@ protected:
 		AActor* Target,
 		const URangedWeaponDataAsset* WeaponData);
 
-	void ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC);
-
 	UFUNCTION()
 	FVector ApplySpread(const FVector& Dir, float Degree);
 
@@ -56,4 +54,11 @@ protected:
 
 	UPROPERTY()
 	FTimerHandle FireTimerHandler;
+
+	UPROPERTY()
+	UAbilitySystemComponent* CachedASC;
+
+	int32 ContinuousBullet;
+	float CurrentRecoilPitch;
+	float CurrentRecoilYaw;
 };
