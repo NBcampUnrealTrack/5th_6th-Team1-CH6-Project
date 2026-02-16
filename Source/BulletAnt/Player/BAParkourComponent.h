@@ -67,4 +67,6 @@ private:
 	float WallThickness;
 	FVector WarpTargetLocation;
 	FRotator WarpTargetRotation;
+
+	bool bIsParkour;
 };

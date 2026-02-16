@@ -5,14 +5,18 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayTagContainer.h"
+#include "AbilitySystemComponent.h" 
+#include "AbilitySystemGlobals.h"
+#include "Player/BACharacter.h"
 #include "BAAnimInstance.generated.h"
 
 /**
  * 
  */
 
-class ABACharacter;
 class UCharacterMovementComponent;
+
 UCLASS()
 class BULLETANT_API UBAAnimInstance : public UAnimInstance
 {
@@ -30,6 +34,8 @@ protected:
 	FRotator CameraTargetOffset();
 
 public:
+	UPROPERTY(BlueprintReadOnly, Category = "Combat")
+	EEquipmentType CurrentEquipmentType;
 
 protected:
 	// 매번 Cast 안하기 위한 포인터
@@ -39,6 +45,10 @@ protected:
 	// 매번 Cast 안하기 위한 포인터
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	TObjectPtr <UCharacterMovementComponent> Movement;
+
+	FGameplayTag Tag_Ranged;
+	FGameplayTag Tag_Mining;
+    FGameplayTag Tag_Melee;
 
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GroundSpeed;
