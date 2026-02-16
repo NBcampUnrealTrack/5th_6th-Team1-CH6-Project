@@ -9,6 +9,7 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
+#include "Net/UnrealNetwork.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -113,6 +114,14 @@ void ABaseEnemyCharacter::BeginPlay()
 		
 		StateTreeComponent->StartLogic();
 	}
+}
+
+void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
+	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
 }
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const

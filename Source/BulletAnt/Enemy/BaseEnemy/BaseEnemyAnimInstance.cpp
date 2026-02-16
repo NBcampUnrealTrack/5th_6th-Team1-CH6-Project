@@ -5,7 +5,6 @@
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
-#include "AIController.h"
 
 void UBaseEnemyAnimInstance::NativeInitializeAnimation()
 {
@@ -24,7 +23,6 @@ void UBaseEnemyAnimInstance::NativeInitializeAnimation()
 	}
 
 	MovementComponent = Enemy->GetCharacterMovement();
-	CachedController = Enemy->GetController<AAIController>();
 }
 
 void UBaseEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -43,18 +41,8 @@ void UBaseEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bShouldMove = true;
 	}
 
-	if (!CachedController.IsValid())
-	{
-		CachedController = Enemy->GetController<AAIController>();
-		if (!CachedController.IsValid())
-		{
-			return;
-		}
-	}
-	FVector DesiredVector = CachedController->GetControlRotation().Vector();
-	FRotator EnemyRotator = Enemy->GetActorRotation();
-	Direction = UKismetAnimationLibrary::CalculateDirection(DesiredVector, EnemyRotator);
-
+	bIsTurning = Enemy->bIsTurning;
+	bIsTurningLeft = Enemy->bIsTurningLeft;
 
 	bIsFalling = MovementComponent->IsFalling();
 }
