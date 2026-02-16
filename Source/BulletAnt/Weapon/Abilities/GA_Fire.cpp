@@ -84,19 +84,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
 
-	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC) return;
-
-	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
-	if (AmmoSet)
-	{
-		if (AmmoSet->GetCurrentAmmo() <= 0.f)
-		{
-			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-			return;
-		}
-	}
-
 	const FVector Start = FireStart->GetFireStartLocation();
 	
 	//총알 발사시 발생하는 이펙트 큐
@@ -165,6 +152,19 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 void UGA_Fire::StartAutoFireLoop()
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+
+	CachedASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!CachedASC) return;
+
+	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
+	if (AmmoSet)
+	{
+		if (AmmoSet->GetCurrentAmmo() <= 0.f)
+		{
+			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
+	}
 
 	FireOnce(ActorInfo);
 
