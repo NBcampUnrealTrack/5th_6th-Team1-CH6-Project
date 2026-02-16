@@ -2,7 +2,6 @@
 
 
 #include "Player/BAAnimInstance.h"
-#include "Player/BACharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -20,6 +19,9 @@ void UBAAnimInstance::NativeInitializeAnimation()
 		if (Character)
 			Movement = Character->GetCharacterMovement();
 	}
+	Tag_Ranged = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Rifle"));
+	Tag_Mining = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Mining"));
+	Tag_Melee = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Melee"));
 }
 
 void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -28,7 +30,20 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//캐릭터 없으면 nullptr 반환
 	if (Character == nullptr || Movement == nullptr) return;
 
-	
+	CurrentEquipmentType = Character->CurrentEquipmentType;
+	AActor* OwningActor = GetOwningActor();
+
+	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor);
+
+	if (ASC)
+	{
+		if (ASC->HasMatchingGameplayTag(Tag_Ranged))
+			CurrentEquipmentType = EEquipmentType::Ranged;
+		if (ASC->HasMatchingGameplayTag(Tag_Mining))
+			CurrentEquipmentType = EEquipmentType::Mining;
+		if (ASC->HasMatchingGameplayTag(Tag_Melee))
+			CurrentEquipmentType = EEquipmentType::Melee;
+	}
 
 	//UCharacterMovementComponent에서 Velocity 변수 가져오기
 	FVector Velocity = Movement->Velocity;
