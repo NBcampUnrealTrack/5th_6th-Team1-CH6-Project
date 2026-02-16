@@ -2,15 +2,12 @@
 
 
 #include "Building/BaseTurret.h"
-#include "AbilitySystemComponent.h"
 #include "GameplayTagContainer.h"
 #include "Net/UnrealNetwork.h"
+#include "AbilitySystemComponent.h"
 #include "Weapon/Abilities/GA_Fire.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Components/SphereComponent.h"
-#include "GAS/AttributeSet/HealthAttributeSet.h"
-#include "GeometryCollection/GeometryCollectionComponent.h"
-#include "GeometryCollection/GeometryCollection.h"
 
 ABaseTurret::ABaseTurret()
 {
@@ -24,12 +21,6 @@ ABaseTurret::ABaseTurret()
 	BarrelMesh->SetupAttachment(BodyMesh);
 	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
-	ASC->SetIsReplicated(true);
-	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
-
-	HealthSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
-
 	TargetSerchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSerchingSphere"));
 	TargetSerchingSphere->SetupAttachment(RootComponent);
 
@@ -37,13 +28,6 @@ ABaseTurret::ABaseTurret()
 	TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TargetSerchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	TargetSerchingSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-
-	DestructionComp = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("DestructionComp"));
-	DestructionComp->SetupAttachment(RootComponent);
-	DestructionComp->SetHiddenInGame(true);
-	DestructionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	DestructionComp->SetSimulatePhysics(false);
-	DestructionComp->SetIsReplicated(false);
 }
 
 void ABaseTurret::BeginPlay()
@@ -65,11 +49,6 @@ void ABaseTurret::BeginPlay()
 			TargetSearchInterval,
 			true
 		);
-	}
-
-	if (DestructionCollection)
-	{
-		DestructionComp->SetRestCollection(DestructionCollection);
 	}
 }
 
@@ -129,11 +108,6 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 
-UAbilitySystemComponent* ABaseTurret::GetAbilitySystemComponent() const
-{
-	return ASC;
-}
-
 FVector ABaseTurret::GetFireStartLocation() const
 {
 	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
@@ -162,12 +136,7 @@ UDataAsset* ABaseTurret::GetDataAsset() const
 
 void ABaseTurret::OnDeath()
 {
-	if (!HasAuthority() || bDead)
-	{
-		return;
-	}
-
-	bDead = true;
+	Super::OnDeath();
 
 	if (ASC && TurretData)
 	{
@@ -176,7 +145,6 @@ void ABaseTurret::OnDeath()
 		ASC->CancelAbilities(&FireTags, nullptr, nullptr);
 	}
 
-	OnRep_Dead();
 	Multicast_PlayDestruction(GetActorLocation());
 }
 
@@ -259,16 +227,8 @@ void ABaseTurret::UpdateCurrentTarget()
 
 void ABaseTurret::OnRep_Dead()
 {
-	if (!bDead)
-	{
-		return;
-	}
+	Super::OnRep_Dead();
 
-	if (StaticMeshComp)
-	{
-		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		StaticMeshComp->SetHiddenInGame(true);
-	}
 	if (BodyMesh)
 	{
 		BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -278,28 +238,4 @@ void ABaseTurret::OnRep_Dead()
 	{
 		BarrelMesh->SetHiddenInGame(true);
 	}
-}
-
-void ABaseTurret::Multicast_PlayDestruction_Implementation(const FVector& ImpulseOrigin)
-{
-	if (!DestructionComp || !DestructionCollection)
-	{
-		return;
-	}
-
-	// 렌더 켬
-	DestructionComp->SetHiddenInGame(false);
-
-	// 충돌/물리 켬
-	DestructionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-	// 시뮬 켬
-	DestructionComp->SetSimulatePhysics(true);
-
-	// 임펄스
-	const float Strength = 500.f;
-	FVector Dir = (GetActorLocation() - ImpulseOrigin);
-	Dir = Dir.IsNearlyZero() ? FVector(1, 0, 1).GetSafeNormal() : Dir.GetSafeNormal();
-
-	DestructionComp->AddImpulse(Dir * Strength, NAME_None, true);
 }

@@ -5,6 +5,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/BoxComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "AbilitySystemComponent.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GeometryCollection/GeometryCollectionComponent.h"
+#include "GeometryCollection/GeometryCollection.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -27,6 +31,19 @@ ABaseBuilding::ABaseBuilding()
 
 	BuildingBounds->SetHiddenInGame(false);
 	BuildingBounds->SetGenerateOverlapEvents(true);
+
+	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	ASC->SetIsReplicated(true);
+	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	HealthSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
+
+	DestructionComp = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("DestructionComp"));
+	DestructionComp->SetupAttachment(RootComponent);
+	DestructionComp->SetHiddenInGame(true);
+	DestructionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DestructionComp->SetSimulatePhysics(false);
+	DestructionComp->SetIsReplicated(false);
 }
 
 void ABaseBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -36,6 +53,31 @@ void ABaseBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(ABaseBuilding, BuildingBoxExtent);
 }
 
+UAbilitySystemComponent* ABaseBuilding::GetAbilitySystemComponent() const
+{
+	return ASC;
+}
+
+void ABaseBuilding::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (DestructionCollection)
+	{
+		DestructionComp->SetRestCollection(DestructionCollection);
+	}
+}
+
+void ABaseBuilding::OnDeath()
+{
+	if (!HasAuthority() || bDead)
+	{
+		return;
+	}
+
+	bDead = true;
+	OnRep_Dead();
+}
 
 void ABaseBuilding::ApplyBuildingBounds(const FVector& InBoxExtent)
 {
@@ -117,6 +159,45 @@ void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const
 	OutEdges.Add({ P2, P3 });
 	OutEdges.Add({ P3, P0 });
 }
+
+void ABaseBuilding::OnRep_Dead()
+{
+	if (!bDead)
+	{
+		return;
+	}
+
+	if (StaticMeshComp)
+	{
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		StaticMeshComp->SetHiddenInGame(true);
+	}
+}
+
+void ABaseBuilding::Multicast_PlayDestruction_Implementation(const FVector& ImpulseOrigin)
+{
+	if (!DestructionComp || !DestructionCollection)
+	{
+		return;
+	}
+
+	// 렌더 켬
+	DestructionComp->SetHiddenInGame(false);
+
+	// 충돌/물리 켬
+	DestructionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+	// 시뮬 켬
+	DestructionComp->SetSimulatePhysics(true);
+
+	// 임펄스
+	const float Strength = 500.f;
+	FVector Dir = (GetActorLocation() - ImpulseOrigin);
+	Dir = Dir.IsNearlyZero() ? FVector(1, 0, 1).GetSafeNormal() : Dir.GetSafeNormal();
+
+	DestructionComp->AddImpulse(Dir * Strength, NAME_None, true);
+}
+
 
 void ABaseBuilding::OnRep_BuildingBoxExtent()
 {

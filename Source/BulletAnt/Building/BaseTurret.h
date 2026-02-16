@@ -3,25 +3,17 @@
 
 #include "CoreMinimal.h"
 #include "Building/BaseBuilding.h"
-#include "AbilitySystemInterface.h"
 #include "Common/FireStartInterface.h"
 #include "Common/DataAssetInterface.h"
-#include "Common/OnDeathInterface.h"
 #include "BaseTurret.generated.h"
 
-class UAbilitySystemComponent;
 class URangedWeaponDataAsset;
 class USphereComponent;
-class UHealthAttributeSet;
-class UGeometryCollection;
-class UGeometryCollectionComponent;
 
 UCLASS()
 class BULLETANT_API ABaseTurret : public ABaseBuilding
-								, public IAbilitySystemInterface
 								, public IFireStartInterface
 								, public IDataAssetInterface
-								, public IOnDeathInterface
 {
 	GENERATED_BODY()
 	
@@ -34,7 +26,6 @@ protected:
 public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
 	// IFireStartInterface
@@ -46,6 +37,7 @@ protected:
 
 	// IOnDeathInterface
 	virtual void OnDeath() override;
+	virtual void OnRep_Dead() override;
 
 	void GiveDefaultAbilities();
 
@@ -58,12 +50,6 @@ private:
 
 	UFUNCTION()
 	void UpdateCurrentTarget();
-	
-	UFUNCTION()
-	void OnRep_Dead();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayDestruction(const FVector& ImpulseOrigin);
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
@@ -71,12 +57,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
 	TObjectPtr<UStaticMeshComponent> BarrelMesh;
-
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UAbilitySystemComponent> ASC;
-
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UHealthAttributeSet> HealthSet;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
 	TObjectPtr<URangedWeaponDataAsset> TurretData;
@@ -111,13 +91,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
 	float PitchMax = 90.f;
-
-	UPROPERTY(ReplicatedUsing = OnRep_Dead)
-	bool bDead = false;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Destruction")
-	TObjectPtr<UGeometryCollection> DestructionCollection;
-
-	UPROPERTY(VisibleAnywhere, Category = "Turret|Destruction")
-	TObjectPtr<UGeometryCollectionComponent> DestructionComp;
 };
