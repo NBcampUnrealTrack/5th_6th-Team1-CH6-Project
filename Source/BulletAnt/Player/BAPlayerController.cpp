@@ -9,7 +9,7 @@ void ABAPlayerController::BeginPlay()
 	Super::BeginPlay();
 	if (!IsLocalController()) return;
 
-	FInputModeGameAndUI GameAndUI;
+	FInputModeGameOnly GameAndUI;
 	SetInputMode(GameAndUI);
 	bShowMouseCursor = false;
 
