@@ -3,25 +3,17 @@
 
 #include "CoreMinimal.h"
 #include "Building/BaseBuilding.h"
-#include "AbilitySystemInterface.h"
 #include "Common/FireStartInterface.h"
 #include "Common/DataAssetInterface.h"
-#include "Common/OnDeathInterface.h"
 #include "BaseTurret.generated.h"
 
-class UAbilitySystemComponent;
 class URangedWeaponDataAsset;
 class USphereComponent;
-class UHealthAttributeSet;
-class UGeometryCollection;
-class UGeometryCollectionComponent;
 
 UCLASS()
 class BULLETANT_API ABaseTurret : public ABaseBuilding
-								, public IAbilitySystemInterface
 								, public IFireStartInterface
 								, public IDataAssetInterface
-								, public IOnDeathInterface
 {
 	GENERATED_BODY()
 	
@@ -34,7 +26,6 @@ protected:
 public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
 	// IFireStartInterface
@@ -46,12 +37,9 @@ protected:
 
 	// IOnDeathInterface
 	virtual void OnDeath() override;
+	virtual void OnRep_Dead() override;
 
 	void GiveDefaultAbilities();
-	void StartAutoFire();
-
-	UFUNCTION()
-	void Server_FireTick();
 
 private:
 	UFUNCTION()
@@ -63,15 +51,12 @@ private:
 	UFUNCTION()
 	void UpdateCurrentTarget();
 
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayDestruction(const FVector& ImpulseOrigin);
-
 protected:
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UAbilitySystemComponent> ASC;
+	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
+	TObjectPtr<UStaticMeshComponent> BodyMesh;
 
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UHealthAttributeSet> HealthSet;
+	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
+	TObjectPtr<UStaticMeshComponent> BarrelMesh;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
 	TObjectPtr<URangedWeaponDataAsset> TurretData;
@@ -85,13 +70,13 @@ protected:
 	TObjectPtr<USphereComponent> TargetSerchingSphere;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float SerchingSphereRadius = 300.f;
+	float SerchingSphereRadius = 1000.f;
 
 	UPROPERTY()
 	TArray<TWeakObjectPtr<AActor>> TargetCandidates;
 
-	UPROPERTY()
-	TWeakObjectPtr<AActor> CurrentTarget;
+	UPROPERTY(Replicated)
+	TObjectPtr<AActor> CurrentTarget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
 	float TargetSearchInterval = 1.f;
@@ -101,12 +86,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
 	float TurnSpeedDegPerSec = 180.f;
 
-	UPROPERTY(Replicated)
-	bool bDead = false;
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
+	float PitchMin = -20.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Destruction")
-	TObjectPtr<UGeometryCollection> DestructionCollection;
-
-	UPROPERTY(VisibleAnywhere, Category = "Turret|Destruction")
-	TObjectPtr<UGeometryCollectionComponent> DestructionComp;
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
+	float PitchMax = 90.f;
 };

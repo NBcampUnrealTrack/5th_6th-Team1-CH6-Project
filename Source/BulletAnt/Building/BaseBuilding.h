@@ -4,9 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "AbilitySystemInterface.h"
+#include "Common/OnDeathInterface.h"
 #include "BaseBuilding.generated.h"
 
 class UBoxComponent;
+class UAbilitySystemComponent;
+class UHealthAttributeSet;
+class UGeometryCollection;
+class UGeometryCollectionComponent;
 
 USTRUCT()
 struct FBuildingEdge
@@ -34,6 +40,8 @@ struct FBuildingEdge
 
 UCLASS()
 class BULLETANT_API ABaseBuilding : public AActor
+								  , public IAbilitySystemInterface
+								  , public IOnDeathInterface
 {
 	GENERATED_BODY()
 	
@@ -42,6 +50,15 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+protected:
+	virtual void BeginPlay() override;
+
+	// IOnDeathInterface
+	virtual void OnDeath() override;
+
+public:
 	void ApplyBuildingBounds(const FVector& InBoxExtent);
 	FVector GetBuildingBoxExtent() const { return BuildingBoxExtent; }
 	void SetBuildingBoxExtent(const FVector& InBoxExtent);
@@ -52,6 +69,12 @@ public:
 
 protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
+
+	UFUNCTION()
+	virtual void OnRep_Dead();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayDestruction(const FVector& ImpulseOrigin);
 
 private:
 	UFUNCTION()
@@ -70,4 +93,19 @@ public:
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_BuildingBoxExtent, VisibleAnywhere, Category = "Build")
 	FVector BuildingBoxExtent;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UAbilitySystemComponent> ASC;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UHealthAttributeSet> HealthSet;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Dead)
+	bool bDead = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Destruction")
+	TObjectPtr<UGeometryCollection> DestructionCollection;
+
+	UPROPERTY(VisibleAnywhere, Category = "Build|Destruction")
+	TObjectPtr<UGeometryCollectionComponent> DestructionComp;
 };

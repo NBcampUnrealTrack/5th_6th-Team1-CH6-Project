@@ -8,6 +8,11 @@ void ABAPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	if (!IsLocalController()) return;
+
+	FInputModeGameAndUI GameAndUI;
+	SetInputMode(GameAndUI);
+	bShowMouseCursor = false;
+
 	bIsBuildMode = false;
 
 	if(UEnhancedInputLocalPlayerSubsystem* Subsystem 
