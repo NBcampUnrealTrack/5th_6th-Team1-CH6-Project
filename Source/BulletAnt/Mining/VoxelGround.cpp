@@ -643,6 +643,8 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->SetCollisionResponseToAllChannels(ECR_Ignore);
 	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_EngineTraceChannel5, ECR_Block);
 	NewChunk->SetComplexAsSimpleCollisionEnabled(true);
 	NewChunk->SetRelativeLocation(RelativeLocation);
 	AddInstanceComponent(NewChunk);

@@ -6,6 +6,7 @@
 
 class ABACharacter;
 class UProgressBar;
+class UTextBlock;
 
 UCLASS()
 class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
@@ -16,8 +17,14 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* HealthBar;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* AmmoText;
+
 	UPROPERTY(BlueprintReadWrite, meta = (ExposeOnSpawn = "true"))
 	ABACharacter* OwnerCharacter;
+
+	UFUNCTION()
+	void UpdateAmmo(float Current, float Max);
 
 	virtual void NativeConstruct() override;
 protected:

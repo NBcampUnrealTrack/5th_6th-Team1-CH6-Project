@@ -12,6 +12,8 @@
 #include "BAAnimInstance.h"
 #include "BAParkourComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "UI/UW_PlayerHUDWidget.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -65,6 +67,7 @@ ABACharacter::ABACharacter()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
+	AmmoAttributeSet = CreateDefaultSubobject<UAmmoAttributeSet>(TEXT("AmmoSet"));
 
 	//Test
 	//앉기 기능 활성화
@@ -108,7 +111,6 @@ void ABACharacter::Tick(float DeltaTime)
 	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetControlRotation().Yaw - LastBodyYaw);
 
 	IdleTurning(DeltaTime);
-
 }
 
 // 입력 바인딩
@@ -151,6 +153,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABACharacter::StartAttack);
 			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &ABACharacter::StopAttack);
+		}
+
+		if (ReloadAction) 
+		{
+			EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ABACharacter::Reload);
 		}
 		// 조준
 		if (AimAction)
@@ -204,6 +211,9 @@ void ABACharacter::OnRep_Controller()
 
 			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 		}
 	}
 }
@@ -320,6 +330,17 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
 }
 
+void ABACharacter::Reload(const FInputActionValue& Value)
+{
+	if (!AbilitySystemComponent) return;
+	FGameplayTag ReloadTag = FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Reload"));
+
+	FGameplayTagContainer Tag;
+	Tag.AddTag(ReloadTag);
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
 void ABACharacter::StopAttack(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
@@ -358,6 +379,8 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 	}
 
 	if (DefaultWeaponClass)
@@ -410,9 +433,9 @@ FVector ABACharacter::GetFireStartLocation() const
 	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 	{
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
-		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->MuzzleSocketName))
+		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			return WeaponMesh->GetSocketLocation(Weapon->MuzzleSocketName);
+			return WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
 		}
 	}
 
@@ -424,13 +447,18 @@ FVector ABACharacter::GetFireDirection() const
 	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 	{
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
-		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->MuzzleSocketName))
+		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			return WeaponMesh->GetSocketRotation(Weapon->MuzzleSocketName).Vector();
+			return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
 		}
 	}
 
 	return GetActorRotation().Vector();
+}
+
+void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
+{
+	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
 }
 
 //조준 시작
@@ -446,7 +474,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 //조준 끝
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
+	if (!bIsAiming) return;
 	bIsAiming = false;
 
     GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();

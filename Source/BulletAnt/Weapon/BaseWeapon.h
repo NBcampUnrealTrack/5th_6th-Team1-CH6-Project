@@ -35,6 +35,9 @@ public:
 	uint8 bAutoActive : 1 = false;
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Root")
+	TObjectPtr<USceneComponent> RootComp;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
 

@@ -32,8 +32,6 @@ void UGA_MeleeAttack::ActivateAbility(
 		return;
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
-
 	IDataAssetInterface* Interface = Cast<IDataAssetInterface>(GetAvatarActorFromActorInfo());
 	if (!Interface || !Interface->GetDataAsset())
 	{
@@ -46,6 +44,7 @@ void UGA_MeleeAttack::ActivateAbility(
 	UAbilityTask_WaitGameplayEvent* WaitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, Data->HitEventTag);
 	WaitTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnHitEventReceived);
 	WaitTask->ReadyForActivation();
+
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->AttackMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);

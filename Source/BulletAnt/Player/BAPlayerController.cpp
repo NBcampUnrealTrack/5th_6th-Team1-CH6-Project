@@ -28,7 +28,7 @@ void ABAPlayerController::BeginPlay()
 	{
 		if (HUDClass) 
 		{
-			UUW_PlayerHUDWidget* HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
+			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
 
 			HUD->OwnerCharacter = PlayerCharacter;
 			HUD->AddToViewport();

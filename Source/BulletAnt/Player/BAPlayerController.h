@@ -26,10 +26,15 @@ public:
 	bool bIsBuildMode;
 
 	void SwitchingMode();
+
+	FORCEINLINE UUW_PlayerHUDWidget* GetHUD() { return HUD; };
 protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	TSubclassOf<UUW_PlayerHUDWidget> HUDClass;
+
+	UPROPERTY()
+	TObjectPtr<UUW_PlayerHUDWidget> HUD;
 	
 };

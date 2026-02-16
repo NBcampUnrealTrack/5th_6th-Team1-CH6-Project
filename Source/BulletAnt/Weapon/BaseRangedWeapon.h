@@ -8,7 +8,7 @@
 #include "GameplayTagContainer.h"
 #include "BaseRangedWeapon.generated.h"
 
-
+class URangedWeaponDataAsset;
 
 UCLASS()
 class BULLETANT_API ABaseRangedWeapon : public ABaseWeapon
@@ -20,7 +20,10 @@ public:
 
 	FORCEINLINE FName GetMuzzleSocketName() const { return MuzzleSocketName; }
 
+protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Data")
 	FName MuzzleSocketName;
 
+	UPROPERTY()
+	URangedWeaponDataAsset* Data;
 };
