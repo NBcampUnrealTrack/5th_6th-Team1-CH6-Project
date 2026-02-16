@@ -48,9 +48,9 @@ ABACharacter::ABACharacter()
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->bUsePawnControlRotation = true;
 	// 카메라 생성 및 설정
-	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FirstPersonCameraComponent->bUsePawnControlRotation = false;
-	FirstPersonCameraComponent->SetupAttachment(SpringArm);
+	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	CameraComponent->bUsePawnControlRotation = false;
+	CameraComponent->SetupAttachment(SpringArm);
 
 	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
 	MotionWarpingComp->bAutoActivate = true;
@@ -216,6 +216,11 @@ void ABACharacter::OnRep_Controller()
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 		}
 	}
+}
+
+void ABACharacter::SpringArmRot(bool check)
+{
+	SpringArm->bUsePawnControlRotation = check;
 }
 
 //상태에 따른 이동속도
@@ -485,8 +490,8 @@ void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
-    FVector Start = FirstPersonCameraComponent->GetComponentLocation();
-    FVector Forward = FirstPersonCameraComponent->GetForwardVector();
+    FVector Start = CameraComponent->GetComponentLocation();
+    FVector Forward = CameraComponent->GetForwardVector();
     FVector End = Start + (Forward * LineTraceRange);
 
     FHitResult HitResult;

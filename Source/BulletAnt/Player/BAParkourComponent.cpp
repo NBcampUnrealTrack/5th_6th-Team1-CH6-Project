@@ -3,6 +3,7 @@
 
 #include "Player/BAParkourComponent.h"
 #include "Player/BACharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "MotionWarpingComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -16,6 +17,7 @@ UBAParkourComponent::UBAParkourComponent()
 	TraceDistance = 150.0f;
 	HighTraceHeight = 200.0f;
 	bDrawDebug = true;
+	bIsParkour = false;
 }
 
 // Called when the game starts
@@ -35,16 +37,17 @@ bool UBAParkourComponent::AttemptParkour()
 {
 	if (DetectWall())
 	{
-		if (WallHeight >= 50.0f)
+		if (WallHeight >= 50.0f && !bIsParkour)
 		{
 			EParkourType TypeToPlay = EParkourType::None;
 
-			if (WallHeight <= 60.0f) TypeToPlay = EParkourType::Vault;
+			if (WallHeight <= 100.0f) TypeToPlay = EParkourType::Vault;
 			else if (WallHeight <= 250.0f) TypeToPlay = EParkourType::Climb;
 
 			if (TypeToPlay != EParkourType::None)
 			{
 				ServerRPC_AttemptParkour(TypeToPlay, WarpTargetLocation, WarpTargetRotation);
+				bIsParkour = true;
 				return true;
 			}
 		}
@@ -71,7 +74,11 @@ void UBAParkourComponent::ServerRPC_AttemptParkour_Implementation(EParkourType P
 void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType ParkourType, FVector TargetLocation, FRotator TargetRotation)
 {
 	ABACharacter* Character = Cast<ABACharacter>(GetOwner());
-	if (!Character || !MotionWarpingComp) return;
+	if (!Character || !MotionWarpingComp)
+	{
+		bIsParkour = false;
+		return;
+	}
 
 	UAnimMontage* MontageToPlay = nullptr;
 	FName WarpTargetName = NAME_None;
@@ -91,32 +98,42 @@ void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType P
 	if (MontageToPlay)
 	{
 		Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-		Character->SetActorEnableCollision(false);
+
+		/*Character->bUseControllerRotationYaw = false;
+		Character->SpringArmRot(false);*/
+
+
+		if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+		{
+			FRotator NewRot = Character->GetActorRotation();
+			NewRot.Pitch = PC->GetControlRotation().Pitch;
+			NewRot.Roll = 0.0f;
+			PC->SetControlRotation(NewRot);
+			PC->SetIgnoreLookInput(true);
+		}
 		
 		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
 			WarpTargetName,
 			TargetLocation,
 			TargetRotation
 		);
-		USkeletalMeshComponent* FPSMesh = Character->GetFPSMesh();
-		if (FPSMesh && FPSMesh->GetAnimInstance())
+
+		float Duration = Character->PlayAnimMontage(MontageToPlay);
+
+		if (Duration > 0.f)
 		{
-			FPSMesh->GetAnimInstance()->Montage_Play(MontageToPlay);
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &UBAParkourComponent::OnParkourMontageEnded);
+			Character->GetMesh()->GetAnimInstance()->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
 		}
-		if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+		else
 		{
-			FRotator ViewRotation = TargetRotation;
-
-			ViewRotation.Pitch = 0.0f;
-
-			PC->SetControlRotation(ViewRotation);
+			OnParkourMontageEnded(MontageToPlay, true);
 		}
-
-		Character->PlayAnimMontage(MontageToPlay);
-
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &UBAParkourComponent::OnParkourMontageEnded);
-		Character->GetMesh()->GetAnimInstance()->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+	}
+	else
+	{
+		bIsParkour = false;
 	}
 }
 
@@ -145,7 +162,7 @@ bool UBAParkourComponent::DetectWall()
 		WallHitResult,
 		Start,
 		End,
-		ECC_WorldStatic,
+		ECC_GameTraceChannel5,
 		Params
 	);
 
@@ -172,7 +189,7 @@ bool UBAParkourComponent::DetectWall()
 		FVector HighStart = WallHitResult.ImpactPoint + FVector(0, 0, HighTraceHeight) + (WallInnerDir * CurrentDepth);
 		FVector HighEnd = HighStart - FVector(0, 0, HighTraceHeight + 50.f);
 
-		bool bHitTop = GetWorld()->LineTraceSingleByChannel(TopHitResult, HighStart, HighEnd, ECC_WorldStatic, Params);
+		bool bHitTop = GetWorld()->LineTraceSingleByChannel(TopHitResult, HighStart, HighEnd, ECC_GameTraceChannel5, Params);
 
 		if (bDrawDebug) DrawDebugLine(GetWorld(), HighStart, HighEnd, bHitTop ? FColor::Cyan : FColor::Red, false, 2.f, 0, 1.f);
 
@@ -197,10 +214,25 @@ bool UBAParkourComponent::DetectWall()
 	if (bFoundValidTop)
 	{
 		WallHeight = TopHitResult.ImpactPoint.Z - Owner->GetActorLocation().Z;
+		ABACharacter* Character = Cast<ABACharacter>(Owner);
+		if (Character)
+		{
+			float CapsuleHalfHeight = Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
-		WarpTargetLocation = TopHitResult.ImpactPoint + (WallHitResult.ImpactNormal * 5.f);
-		FRotator TempRot = (-WallHitResult.ImpactNormal).Rotation();
-		WarpTargetRotation = FRotator(0.0f, TempRot.Yaw, 0.0f);
+			float FeetZ = Character->GetActorLocation().Z - CapsuleHalfHeight;
+
+			WallHeight = TopHitResult.ImpactPoint.Z - FeetZ;
+		}
+
+		float ForwardOffset = 10.f; 
+
+		float HeightOffset = 2.f;
+
+		FVector NormalDir = WallHitResult.ImpactNormal;
+		FVector UpDir = FVector::UpVector;
+
+		WarpTargetLocation = TopHitResult.ImpactPoint + (NormalDir * ForwardOffset) + (UpDir * HeightOffset);
+		WarpTargetRotation = FRotator(0.0f, (-NormalDir).Rotation().Yaw, 0.0f);
 
 		if (bDrawDebug) DrawDebugSphere(GetWorld(), WarpTargetLocation, 10.0f, 12, FColor::Yellow, false, 2.0f);
 
@@ -253,7 +285,6 @@ void UBAParkourComponent::ExecuteParkour(EParkourType ParkourType)
 	if (MontageToPlay)
 	{
 		Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-		Character->SetActorEnableCollision(false);
 
 		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
 			WarpTargetName,
@@ -275,12 +306,18 @@ void UBAParkourComponent::ExecuteParkour(EParkourType ParkourType)
 
 void UBAParkourComponent::OnParkourMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	ABACharacter* Character = Cast<ABACharacter>(GetOwner());
 	if (!Character) return;
 
 	Character->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 
-	Character->SetActorEnableCollision(true);
 
-	UE_LOG(LogTemp, Warning, TEXT("파쿠르 종료! 다시 걷기 모드."));
+	/*Character->bUseControllerRotationYaw = true;
+	Character->SpringArmRot(true);*/
+	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	{
+		PC->SetIgnoreLookInput(false);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("파쿠르 종료! 카메라 동기화 완료."));
+	bIsParkour = false;
 }
