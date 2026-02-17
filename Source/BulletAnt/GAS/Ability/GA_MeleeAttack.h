@@ -37,4 +37,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	FGameplayTag AttackTag;
+	
+	FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
+
 };
