@@ -8,8 +8,6 @@
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
 
-static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
-
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
@@ -18,6 +16,7 @@ UGA_MeleeAttack::UGA_MeleeAttack()
 	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.MeleeAttack")));
 	
 	ActivationOwnedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Attacking")));
+	TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 }
 
 void UGA_MeleeAttack::ActivateAbility(

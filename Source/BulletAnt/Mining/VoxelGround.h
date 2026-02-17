@@ -185,11 +185,8 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
 
-	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMin;
-	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMax;
-	UPROPERTY(Replicated)
 	FIntVector GridWidth;
 
 	FTimerHandle UpdateChunkLODTimerHandle;
