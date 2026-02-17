@@ -26,7 +26,7 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 30.f, false);
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
 }
 
 void USpawnManagerSubsystem::Deinitialize()
@@ -107,18 +107,6 @@ void USpawnManagerSubsystem::StartWave()
 		TargetCore = GS->GetTargetCore();
 	}
 	
-	//if (TargetActor == nullptr)
-	//{
-	//	if (IsValid(GetWorld()->GetFirstPlayerController()))
-	//	{
-	//		TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
-	//	}
-	//	else
-	//	{
-	//		UE_LOG(LogTemp, Error, TEXT("USpawnManagerSubsystem-StartWave : TargetActor Error"))
-	//	}
-	//}
-	
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		SetSpawnDataTable();
@@ -137,11 +125,6 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
 		return;
 	}
-	//if (IsValid(TargetActor) == false)
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : TargetActor Error"));
-	//	return;
-	//}
 	
 	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(SpawnContextString); 
 	if (Row == nullptr)
@@ -175,11 +158,15 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
 		
 		FVector SpawnLocation = TargetCore->GetActorLocation() + (RandomDirection * RandomDistance);
-		
+		SpawnLocation.Z += 50.f;
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 		ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
 			EnemyClass,
 			SpawnLocation,
-			FRotator::ZeroRotator
+			FRotator::ZeroRotator,
+			SpawnParams
 		);
 		if (IsValid(Enemy))
 		{
