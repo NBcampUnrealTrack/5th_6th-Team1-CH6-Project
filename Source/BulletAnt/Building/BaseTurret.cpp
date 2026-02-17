@@ -104,7 +104,6 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABaseTurret, bDead);
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 

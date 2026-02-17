@@ -51,6 +51,7 @@ void ABaseBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABaseBuilding, BuildingBoxExtent);
+	DOREPLIFETIME(ABaseBuilding, bDead);
 }
 
 UAbilitySystemComponent* ABaseBuilding::GetAbilitySystemComponent() const
