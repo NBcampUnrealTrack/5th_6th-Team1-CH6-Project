@@ -635,6 +635,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 
 	UVoxelGroundChunk* NewChunk = NewObject<UVoxelGroundChunk>(this);
 	NewChunk->SetMaterial(0, Setting->GroundMaterial);
+	NewChunk->SetIsReplicated(false);
 	NewChunk->RegisterComponent();
 	NewChunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	NewChunk->bUseAsyncCooking = true;
@@ -644,7 +645,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
-	NewChunk->SetCollisionResponseToChannel(ECC_EngineTraceChannel5, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);
 	NewChunk->SetComplexAsSimpleCollisionEnabled(true);
 	NewChunk->SetRelativeLocation(RelativeLocation);
 	AddInstanceComponent(NewChunk);
