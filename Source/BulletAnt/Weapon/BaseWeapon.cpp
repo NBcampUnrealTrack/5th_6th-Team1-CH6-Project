@@ -6,6 +6,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GAS/BAGameplayTags.h"
 
+
 ABaseWeapon::ABaseWeapon()
 {
 	PrimaryActorTick.bCanEverTick = false;

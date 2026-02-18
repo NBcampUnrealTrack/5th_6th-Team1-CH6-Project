@@ -4,11 +4,8 @@
 #include "BulletAnt/Common/BAWorldSettings.h"
 #include "Enemy/Spawn/EnemySpawnerEntry.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
-
-AActor* USpawnManagerSubsystem::GetTargetActor() const
-{
-	return TargetActor;
-}
+#include "Building/BaseCore.h"
+#include "Framework/BAGameState.h"
 
 void USpawnManagerSubsystem::OnEnemyDie()
 {
@@ -29,7 +26,7 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 30.f, false);
 }
 
 void USpawnManagerSubsystem::Deinitialize()
@@ -98,19 +95,29 @@ void USpawnManagerSubsystem::SetSpawnDataTable()
 
 void USpawnManagerSubsystem::StartWave()
 {
-	GetWorld()->GetTimerManager().ClearTimer(WaveTimer);
-	
-	if (TargetActor == nullptr)
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
 	{
-		if (IsValid(GetWorld()->GetFirstPlayerController()))
-		{
-			TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("USpawnManagerSubsystem-StartWave : TargetActor Error"))
-		}
+		return;
 	}
+	World->GetTimerManager().ClearTimer(WaveTimer);
+
+	if (ABAGameState* GS = World->GetGameState<ABAGameState>())
+	{
+		TargetCore = GS->GetTargetCore();
+	}
+	
+	//if (TargetActor == nullptr)
+	//{
+	//	if (IsValid(GetWorld()->GetFirstPlayerController()))
+	//	{
+	//		TargetActor = GetWorld()->GetFirstPlayerController()->GetPawn();
+	//	}
+	//	else
+	//	{
+	//		UE_LOG(LogTemp, Error, TEXT("USpawnManagerSubsystem-StartWave : TargetActor Error"))
+	//	}
+	//}
 	
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
@@ -130,11 +137,11 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
 		return;
 	}
-	if (IsValid(TargetActor) == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : TargetActor Error"));
-		return;
-	}
+	//if (IsValid(TargetActor) == false)
+	//{
+	//	UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : TargetActor Error"));
+	//	return;
+	//}
 	
 	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(SpawnContextString); 
 	if (Row == nullptr)
@@ -167,7 +174,7 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		RandomDirection.Normalize();
 		float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
 		
-		FVector SpawnLocation = TargetActor->GetActorLocation() + (RandomDirection * RandomDistance);
+		FVector SpawnLocation = TargetCore->GetActorLocation() + (RandomDirection * RandomDistance);
 		
 		ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
 			EnemyClass,

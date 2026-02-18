@@ -14,4 +14,7 @@ class BULLETANT_API ABaseCore : public ABaseBuilding
 {
 	GENERATED_BODY()
 	
+protected:
+	virtual void BeginPlay() override;
+
 };

@@ -114,13 +114,11 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 
 	if (Result == EPathFollowingRequestResult::RequestSuccessful)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("RequestSuccessful"))
 		MoveRequestResult = EMoveRequestResult::RequestAccepted;
 		CurrentRequestID = CachedAIController->GetCurrentMoveRequestID();
 	}
 	else if (Result == EPathFollowingRequestResult::AlreadyAtGoal)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AlreadyAtGoal"))
 		MoveRequestResult = EMoveRequestResult::AlreadyArrived;
 		CurrentRequestID = CachedAIController->GetCurrentMoveRequestID();
 	}
@@ -134,7 +132,6 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 // 도착 또는 멈췄을 시의 콜백함수
 void UMoveToTargetActorTask::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
-	UE_LOG(LogTemp, Warning, TEXT("OnMoveCompleted"))
 	// 이 Task가 요청한 움직일 때만 처리
 	if (RequestID != CurrentRequestID)
 	{

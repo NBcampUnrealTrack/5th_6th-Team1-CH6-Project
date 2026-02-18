@@ -43,7 +43,7 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 				UAbilitySystemComponent* ASC = &Data.Target;
 				if (!ASC) return;
-
+				if (!ASC->GetOwnerActor()) return;
 				if (!ASC->GetOwnerActor()->HasAuthority())
 				{
 					return;

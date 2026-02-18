@@ -9,6 +9,7 @@
 #include "Components/StateTreeComponent.h"
 #include "GAS/BAGameplayTags.h"
 
+
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;

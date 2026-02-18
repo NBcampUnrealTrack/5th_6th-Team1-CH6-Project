@@ -6,13 +6,14 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "SpawnManagerSubsystem.generated.h"
 
+class ABaseCore;
+
 UCLASS()
 class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 	
 public:
-	 AActor* GetTargetActor() const;
 	 void OnEnemyDie();
 	
 protected:	
@@ -26,7 +27,7 @@ protected:
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<AActor> TargetActor;
+	TObjectPtr<ABaseCore> TargetCore;
 	
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	//TObjectPtr<UDataTable> SpawnDataTable;

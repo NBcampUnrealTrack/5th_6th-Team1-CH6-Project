@@ -1,6 +1,40 @@
 ﻿#include "Framework/BAGameMode.h"
 #include "Mining/VoxelData.h"
 #include "Framework/BAGameState.h"
+#include "Player/BAPlayerController.h"
+
+ABAGameMode::ABAGameMode()
+{
+	GameStateClass = ABAGameState::StaticClass();
+}
+
+void ABAGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	ABAPlayerController* BAPlayerController = Cast<ABAPlayerController>(NewPlayer);
+	if (IsValid(BAPlayerController))
+	{
+		if (ABAGameState* BAGameState = GetGameState<ABAGameState>())
+		{
+			BAGameState->AddPlayerController(BAPlayerController);
+		}
+	}
+}
+
+void ABAGameMode::Logout(AController* Exiting)
+{
+	ABAPlayerController* BAPlayerController = Cast<ABAPlayerController>(Exiting);
+	if (IsValid(BAPlayerController))
+	{
+		if (ABAGameState* BAGameState = GetGameState<ABAGameState>())
+		{
+			BAGameState->RemovePlayerController(BAPlayerController);
+		}
+	}
+
+	Super::Logout(Exiting);
+}
 
 void ABAGameMode::MineOre(EVoxelType OreType, int32 PointCount)
 {

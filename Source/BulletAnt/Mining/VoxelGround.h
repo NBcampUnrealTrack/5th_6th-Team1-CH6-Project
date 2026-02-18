@@ -10,6 +10,7 @@ struct FNeighborLOD;
 class ABAPlayerController;
 class UGroundSettingPreset;
 class UBoxComponent;
+enum class EGroundType : uint8;
 
 UENUM()
 enum class EChunkState : uint8
@@ -56,40 +57,6 @@ struct FVoxelChangedResult
 	uint8 bTypeChanged : 1 = false;
 };
 
-USTRUCT()
-struct FVoxelPointEditData
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	int32 VoxelIndex = 0;
-	UPROPERTY()
-	uint8 NewDensityValue = 0;
-};
-
-USTRUCT()
-struct FVoxelChunkEditData
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	int32 ChunkIdx = -1;
-	UPROPERTY()
-	TArray<FVoxelPointEditData> PointEditDatas;
-
-	UPROPERTY()
-	int32 SendIdx = 0;			// Queue에서 전달할 때 사용
-};
-
-USTRUCT()
-struct FVoxelChunkEditPacket
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TArray<FVoxelChunkEditData> ChunkEditDatas;
-};
-
 // 레벨 전환 시 데이터 저장용
 USTRUCT()
 struct FVoxelGroundChunkSaveData
@@ -120,9 +87,9 @@ protected:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 public:
+	void InitializeGround(int32 InSeed, const UGroundSettingPreset* InSetting);
+
 	void DigGround(const FVector& WorldLocation, float Radius);
 	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap);
 
@@ -131,13 +98,14 @@ public:
 
 	void EnqueueChunkUpdateResult(FChunkUpdateResult&& Result);
 
+	void ApplyEditPacket(const FVoxelChunkEditPacket& Packet);
+
 protected:
-	void InitializeGround();
 	void InitializeChunkData(int32 ChunkIdx);
 	void InitializeChunkDensities(int32 ChunkIdx);
 	void SpawnChunk(int32 ChunkIdx);
 
-	void UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords);
+	void UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged);
 	UFUNCTION()
 	void UpdateChunkLODs();
 
@@ -159,10 +127,7 @@ protected:
 	void UpdateDirtyChunks();
 	void UpdatePriorityDirtyChunks();
 
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_EditGround(const FVoxelChunkEditPacket& Packet);
 	void EditGroundChunk(const FVoxelChunkEditData& Data);
-	void EnqueueChunkEditData(const FVoxelChunkEditData& Data);
 
 #pragma region GroundSetting
 
@@ -185,15 +150,14 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
 
-	UPROPERTY(Replicated)
+	int32 Seed = 0;
+
 	FIntVector ChunkRangeMin;
-	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMax;
-	UPROPERTY(Replicated)
 	FIntVector GridWidth;
 
 	FTimerHandle UpdateChunkLODTimerHandle;
-	TSet<int32> LastNearByChunkIdxs;
+	TSet<FIntVector> LastPlayerCoords;
 
 	FTimerHandle UpdateDirtyChunkTimerHandle;
 	TBitArray<> ChunkMeshDirties;
@@ -204,8 +168,6 @@ protected:
 	TQueue<FChunkUpdateResult, EQueueMode::Mpsc> ChunkUpdateResultQueue;
 	int32 NextChunkUpdateID = 0;
 	const int32 MaxUpdatePerFrame = 20;
-
-	TQueue<FVoxelChunkEditData> EditDataQueue;
 
 #pragma endregion
 
