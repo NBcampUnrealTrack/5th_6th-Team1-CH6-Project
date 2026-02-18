@@ -105,7 +105,7 @@ protected:
 	void InitializeChunkDensities(int32 ChunkIdx);
 	void SpawnChunk(int32 ChunkIdx);
 
-	void UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords);
+	void UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged);
 	UFUNCTION()
 	void UpdateChunkLODs();
 
@@ -157,7 +157,7 @@ protected:
 	FIntVector GridWidth;
 
 	FTimerHandle UpdateChunkLODTimerHandle;
-	TSet<int32> LastNearByChunkIdxs;
+	TSet<FIntVector> LastPlayerCoords;
 
 	FTimerHandle UpdateDirtyChunkTimerHandle;
 	TBitArray<> ChunkMeshDirties;

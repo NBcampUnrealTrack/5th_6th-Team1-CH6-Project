@@ -5,6 +5,8 @@
 #include "Mining/GroundSettingPreset.h"
 #include "Components/BoxComponent.h"
 #include "Framework/BAGameMode.h"
+#include "Framework/BAGameState.h"
+#include "GameFramework/PlayerState.h"
 #include "EngineUtils.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Mining/VoxelGroundSubsystem.h"
@@ -617,21 +619,20 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->ChunkIdxV = ChunkIdx;
 }
 
-void AVoxelGround::UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords)
+void AVoxelGround::UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged)
 {
-	if (PlayerChunkCoords.IsEmpty() == true)
+	if (CoordsChanged.IsEmpty() == true)
 		return;
 
-	TSet<int32> CurrNearByChunkIdxs;
-	TSet<int32> ChunkIdxsToCheck = LastNearByChunkIdxs;
+	TSet<int32> ChunkIdxsToCheck;
 
 	int32 MaxDistWithMargin = LODDistance.Last() + LODDistMargin;
 
-	for (const FIntVector& PlayerChunkCoord : PlayerChunkCoords)
+	for (const FIntVector& CoordChanged : CoordsChanged)
 	{
 		int32 MaxDistance = MaxDistWithMargin;
-		FIntVector MinRange = PlayerChunkCoord - FIntVector(MaxDistance, MaxDistance, MaxDistance);
-		FIntVector MaxRange = PlayerChunkCoord + FIntVector(MaxDistance, MaxDistance, MaxDistance);
+		FIntVector MinRange = CoordChanged - FIntVector(MaxDistance, MaxDistance, MaxDistance);
+		FIntVector MaxRange = CoordChanged + FIntVector(MaxDistance, MaxDistance, MaxDistance);
 
 		for (int32 Z = MinRange.Z; Z <= MaxRange.Z; ++Z)
 		{
@@ -656,7 +657,8 @@ void AVoxelGround::UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoord
 		int32 OldLODLevel = ChunkDatas[ChunkIdx].LODLevel;
 		int32 NewLODLevel = LODDistance.Num();
 
-		for (const FIntVector& PlayerChunkCoord : PlayerChunkCoords)
+		// LastPlayerCoords 갱신 후이므로 현재 PlayerCoords
+		for (const FIntVector& PlayerChunkCoord : LastPlayerCoords)
 		{
 			int32 CurrentPlayerLODLevel = GetLODLevelByPlayer(ChunkCoord, PlayerChunkCoord, OldLODLevel);
 			NewLODLevel = FMath::Min(NewLODLevel, CurrentPlayerLODLevel);
@@ -667,27 +669,26 @@ void AVoxelGround::UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoord
 			ChunkDatas[ChunkIdx].LODLevel = NewLODLevel;
 			UpdateChunkMesh(ChunkIdx, true);
 		}
-
-		if (NewLODLevel < LODDistance.Num())
-		{
-			CurrNearByChunkIdxs.Add(ChunkIdx);
-		}
 	}
-
-	LastNearByChunkIdxs = MoveTemp(CurrNearByChunkIdxs);
 }
 
 void AVoxelGround::UpdateChunkLODs()
 {
-	TArray<FIntVector> AllPlayerChunkCoords;
+	TSet<FIntVector> CoordsChanged = LastPlayerCoords;
+	TSet<FIntVector> CurrentPlayerCoords;
+
 	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+
+	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+	ensureMsgf(IsValid(GS) == true, TEXT("GameState is not valid"));
+
+	const auto& PlayerStates = GS->PlayerArray;
+	for (APlayerState* PS : PlayerStates)
 	{
-		APlayerController* PlayerController = It->Get();
-		if (IsValid(PlayerController) == false)
+		if (IsValid(PS) == false)
 			continue;
 
-		APawn* CharacterPawn = PlayerController->GetPawn();
+		APawn* CharacterPawn = PS->GetPawn();
 		if (IsValid(CharacterPawn) == false)
 			continue;
 
@@ -699,12 +700,27 @@ void AVoxelGround::UpdateChunkLODs()
 			FMath::FloorToInt(RelativePlayerLocation.Y / ChunkSize),
 			FMath::FloorToInt(RelativePlayerLocation.Z / ChunkSize));
 
-		AllPlayerChunkCoords.Add(CurrentPlayerChunkCoord);
+		CurrentPlayerCoords.Add(CurrentPlayerChunkCoord);
 	}
 
-	if (AllPlayerChunkCoords.IsEmpty() == false)
+	for (const auto& CurrentChunkCoord : CurrentPlayerCoords)
 	{
-		UpdateNearByChunks(AllPlayerChunkCoords);
+		// 기존에도 플레이어가 있던 청크는 검사 X
+		// 위치가 변경된 플레이어의 이동 전, 이동 후 청크만 검사
+		if (CoordsChanged.Contains(CurrentChunkCoord) == true)
+		{
+			CoordsChanged.Remove(CurrentChunkCoord);
+		}
+		else
+		{
+			CoordsChanged.Add(CurrentChunkCoord);
+		}
+	}
+	LastPlayerCoords = CurrentPlayerCoords;
+
+	if (CoordsChanged.IsEmpty() == false)
+	{
+		UpdateNearByChunks(CoordsChanged);
 	}
 }
 
