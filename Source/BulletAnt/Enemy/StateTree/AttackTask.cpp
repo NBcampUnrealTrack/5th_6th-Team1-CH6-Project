@@ -15,15 +15,15 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 {
 	Super::EnterState(Context, Transition);
 	
-	if (!IsValid(ContextActor) || !IsValid(TargetActor))
+	if (!IsValid(ContextActor))
 	{
-		UE_LOG(LogTemp, Error, TEXT("UAttackTask-EnterState : ContextTargetActor Error"));
+		UE_LOG(LogTemp, Error, TEXT("UAttackTask-EnterState : ContextActor Error"));
 		// 해당 몬스터 제거 후 다시 스폰
 		return EStateTreeRunStatus::Failed;
 	}
 
 	CachedAIController = ContextActor->GetController<AAIController>();
-	if (!ensureMsgf(CachedAIController.IsValid(), TEXT("MoveToTargetActorTask : AIController Error")))
+	if (!ensureMsgf(CachedAIController.IsValid(), TEXT("AttackTask-EnterState : AIController Error")))
 	{
 		return EStateTreeRunStatus::Failed;
 	}

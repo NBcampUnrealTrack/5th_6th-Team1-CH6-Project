@@ -8,6 +8,8 @@
 #include "Enemy/BaseEnemy/BaseEnemyDataAsset.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Framework/BAGameState.h"
+#include "Building/BaseCore.h"
 
 URotateToTargetTask::URotateToTargetTask(const FObjectInitializer& ObjectInitializer) : 
 	Super(ObjectInitializer)
@@ -20,7 +22,7 @@ EStateTreeRunStatus URotateToTargetTask::EnterState(FStateTreeExecutionContext& 
 {
 	Super::EnterState(Context, Transition);
 
-	if (!IsValid(ContextActor) || !IsValid(TargetActor))
+	if (!IsValid(ContextActor))
 	{
 		UE_LOG(LogTemp, Error, TEXT("URotateToTargetTask : StartState Error"));
 		// 해당 몬스터 제거 후 다시 스폰
@@ -32,6 +34,23 @@ EStateTreeRunStatus URotateToTargetTask::EnterState(FStateTreeExecutionContext& 
 		return EStateTreeRunStatus::Failed;
 	} 
 	if (!ensureMsgf(IsValid(ContextActor->BaseEnemyDataAsset->RotateEffect), TEXT("UMoveURotateToTargetTaskToTargetActorTask : RotateEffect Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	if (TargetActor == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
+			{
+				TargetActor = BAGameState->GetTargetCore();
+			}
+		}
+	}
+	if (!IsValid(TargetActor))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
@@ -123,6 +142,11 @@ bool URotateToTargetTask::ShouldRotateStart()
 
 bool URotateToTargetTask::IsFacingTarget()
 {
+	if (!IsValid(ContextActor) || !IsValid(TargetActor))
+	{
+		return false;
+	}
+
 	FVector ForwardDirection = ContextActor->GetActorForwardVector();
 	FVector ToTargetDirection = (TargetActor->GetActorLocation() - ContextActor->GetActorLocation());
 	ToTargetDirection.Z = 0.f;	// 정사영

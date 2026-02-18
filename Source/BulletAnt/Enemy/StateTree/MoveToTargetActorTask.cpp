@@ -7,13 +7,15 @@
 #include "AIController.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Enemy/BaseEnemy/BaseEnemyDataAsset.h"
+#include "Framework/BAGameState.h"
+#include "Building/BaseCore.h"
 
 EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContext& Context,
                                                        const FStateTreeTransitionResult& Transition)
 {
 	Super::EnterState(Context, Transition);
 	
-	if (!IsValid(ContextActor) || !IsValid(TargetActor))
+	if (!IsValid(ContextActor))
 	{
 		UE_LOG(LogTemp, Error, TEXT("UMoveToTargetActorTask : StartState Error"));
 		// 해당 몬스터 제거 후 다시 스폰
@@ -40,6 +42,23 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 		return EStateTreeRunStatus::Failed;
 	}
 	
+	if (TargetActor == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
+			{
+				TargetActor = BAGameState->GetTargetCore();
+			}
+		}
+	}
+	if (!IsValid(TargetActor))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
 	// 적의 이동 완료시 콜백함수 바인딩
 	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
 	StartMoveToTarget();
