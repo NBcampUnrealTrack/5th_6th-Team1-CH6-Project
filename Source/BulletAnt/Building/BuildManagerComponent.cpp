@@ -3,6 +3,8 @@
 #include "Building/BuildPreview.h"
 #include "Building/BaseBuilding.h"
 #include "Engine/OverlapResult.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_BuildMenu.h"
 #include <InputActionValue.h>
 
 UBuildManagerComponent::UBuildManagerComponent()
@@ -86,6 +88,23 @@ void UBuildManagerComponent::EnterBuildMode()
     CurrentYaw = 0.f;
 
     SetComponentTickEnabled(true);
+
+    if (auto* PC = CachedPC.Get())
+    {
+        if (auto* LP = PC->GetLocalPlayer())
+        {
+            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+            {
+                UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+                if (IsValid(BuildMenuWidget))
+                {
+                    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+                    PC->SetShowMouseCursor(true);
+                }
+            }
+        }
+    }
+    
 }
 
 void UBuildManagerComponent::ExitBuildMode()
@@ -103,6 +122,11 @@ void UBuildManagerComponent::ExitBuildMode()
         PreviewActor->Destroy();
         PreviewActor = nullptr;
     }
+}
+
+void UBuildManagerComponent::OnBuildMenuSelected(FName NewRow)
+{
+    SetCurrentBuildingRow(NewRow);
 }
 
 void UBuildManagerComponent::TryPlace()
