@@ -2,12 +2,14 @@
 #include "Mining/VoxelGroundChunk.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
-#include "Net/UnrealNetwork.h"
 #include "Mining/GroundSettingPreset.h"
 #include "Components/BoxComponent.h"
 #include "Framework/BAGameMode.h"
+#include "Framework/BAGameState.h"
+#include "GameFramework/PlayerState.h"
 #include "EngineUtils.h"
 #include "Components/SkyAtmosphereComponent.h"
+#include "Mining/VoxelGroundSubsystem.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -15,7 +17,6 @@ const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 },
 AVoxelGround::AVoxelGround()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	bReplicates = true;
 
 	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -33,31 +34,6 @@ void AVoxelGround::BeginPlay()
 	Super::BeginPlay();
 
 	UVoxelGroundChunk::SetMaxLODLevel(LODDistance.Num());
-	
-	InitializeGround();
-
-	GetWorldTimerManager().SetTimer(
-		UpdateChunkLODTimerHandle,
-		this,
-		&ThisClass::UpdateChunkLODs,
-		0.5f,
-		true);
-
-	GetWorldTimerManager().SetTimer(
-		UpdateDirtyChunkTimerHandle,
-		this,
-		&ThisClass::UpdateDirtyChunks,
-		1.0f,
-		true,
-		0.25f);
-
-	if (IsValid(BoundBox) == true)
-	{
-		SetBoundBox();
-
-		BoundBox->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnPlayerEnter);
-		BoundBox->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnPlayerExit);
-	}
 }
 
 void AVoxelGround::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -86,57 +62,11 @@ void AVoxelGround::Tick(float DeltaSeconds)
 
 		++UpdateCount;
 	}
-
-	if (HasAuthority() == true)
-	{
-		int32 SyncLimit = 100;
-		int32 SyncCount = 0;
-		FVoxelChunkEditPacket EditData;
-		while (EditDataQueue.IsEmpty() == false && SyncCount < SyncLimit)
-		{
-			FVoxelChunkEditData* QueueData = EditDataQueue.Peek();
-			if (QueueData->SendIdx >= QueueData->PointEditDatas.Num())
-			{
-				EditDataQueue.Pop();
-				continue;
-			}
-
-			int32 RemainLimit = SyncLimit - SyncCount;
-			int32 RemainData = QueueData->PointEditDatas.Num() - QueueData->SendIdx;
-			int32 Count = FMath::Min(RemainLimit, RemainData);
-
-			FVoxelChunkEditData SendData;
-			SendData.ChunkIdx = QueueData->ChunkIdx;
-			SendData.PointEditDatas.SetNum(Count);
-			for (int32 Idx = 0; Idx < Count; ++Idx)
-			{
-				SendData.PointEditDatas[Idx] = QueueData->PointEditDatas[QueueData->SendIdx + Idx];
-			}
-			EditData.ChunkEditDatas.Add(MoveTemp(SendData));
-
-			QueueData->SendIdx += Count;
-			SyncCount += Count;
-		}
-
-		if (SyncCount > 0)
-		{
-			Multicast_EditGround(EditData);
-		}
-	}
-}
-
-void AVoxelGround::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ThisClass, ChunkRangeMin);
-	DOREPLIFETIME(ThisClass, ChunkRangeMax);
-	DOREPLIFETIME(ThisClass, GridWidth);
 }
 
 void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 {
-	if (HasAuthority() == false)
+	if (GetNetMode() != NM_ListenServer)
 		return;
 
 	TRACE_CPUPROFILER_EVENT_SCOPE(DigGround);
@@ -150,6 +80,9 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 	int32 MinZ = FMath::FloorToInt((RelativeLocation.Z - Radius) / ChunkSize);
 	int32 MaxZ = FMath::FloorToInt((RelativeLocation.Z + Radius) / ChunkSize);
 
+	UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
+	ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
+
 	TMap<EVoxelType, int32> MinedOreMap;
 	for (int32 Z = MinZ; Z <= MaxZ; ++Z)
 	{
@@ -162,11 +95,11 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 					continue;
 
 				FVector ChunkOffset = FVector(X, Y, Z) * ChunkSize;
-				FVoxelChunkEditData SaveData;
-				bool bDig = DigGround(ChunkIdx, ChunkOffset, WorldLocation, Radius, SaveData, MinedOreMap);
+				FVoxelChunkEditData EditData;
+				bool bDig = DigGround(ChunkIdx, ChunkOffset, WorldLocation, Radius, EditData, MinedOreMap);
 				if (bDig == true)
 				{
-					EnqueueChunkEditData(SaveData);
+					GroundSubsystem->EnqueueEditData(EditData);
 				}
 			}
 		}
@@ -312,9 +245,15 @@ void AVoxelGround::EnqueueChunkUpdateResult(FChunkUpdateResult&& Result)
 	ChunkUpdateResultQueue.Enqueue(Forward<FChunkUpdateResult>(Result));
 }
 
-void AVoxelGround::InitializeGround()
+void AVoxelGround::InitializeGround(int32 InSeed, const UGroundSettingPreset* InSetting)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(InitializeGround);
+	
+	Seed = InSeed;
+	Setting = InSetting;
+
+	ensureMsgf(IsValid(Setting) == true, TEXT("Setting is not valid"));
+
 	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
 
 	const FVector& GroundSize = Setting->GroundSize;
@@ -359,6 +298,29 @@ void AVoxelGround::InitializeGround()
 				UpdateChunkMeshImmediately(ChunkIdx, false);
 			}
 		}
+	}
+
+	GetWorldTimerManager().SetTimer(
+		UpdateChunkLODTimerHandle,
+		this,
+		&ThisClass::UpdateChunkLODs,
+		0.5f,
+		true);
+
+	GetWorldTimerManager().SetTimer(
+		UpdateDirtyChunkTimerHandle,
+		this,
+		&ThisClass::UpdateDirtyChunks,
+		1.0f,
+		true,
+		0.25f);
+
+	if (IsValid(BoundBox) == true)
+	{
+		SetBoundBox();
+
+		BoundBox->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnPlayerEnter);
+		BoundBox->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnPlayerExit);
 	}
 }
 
@@ -634,10 +596,10 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	FVector RelativeLocation = GetChunkOffset(Coord.X, Coord.Y, Coord.Z);
 
 	UVoxelGroundChunk* NewChunk = NewObject<UVoxelGroundChunk>(this);
-	NewChunk->SetMaterial(0, Setting->GroundMaterial);
 	NewChunk->SetIsReplicated(false);
 	NewChunk->RegisterComponent();
 	NewChunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	NewChunk->SetMaterial(0, Setting->GroundMaterial);
 	NewChunk->bUseAsyncCooking = true;
 	NewChunk->bCastVolumetricTranslucentShadow = false;
 	NewChunk->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -647,6 +609,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);
 	NewChunk->SetComplexAsSimpleCollisionEnabled(true);
+	NewChunk->SetGenerateOverlapEvents(false);
 	NewChunk->SetRelativeLocation(RelativeLocation);
 	AddInstanceComponent(NewChunk);
 	Chunks[ChunkIdx] = NewChunk;
@@ -656,21 +619,20 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->ChunkIdxV = ChunkIdx;
 }
 
-void AVoxelGround::UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords)
+void AVoxelGround::UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged)
 {
-	if (PlayerChunkCoords.IsEmpty() == true)
+	if (CoordsChanged.IsEmpty() == true)
 		return;
 
-	TSet<int32> CurrNearByChunkIdxs;
-	TSet<int32> ChunkIdxsToCheck = LastNearByChunkIdxs;
+	TSet<int32> ChunkIdxsToCheck;
 
 	int32 MaxDistWithMargin = LODDistance.Last() + LODDistMargin;
 
-	for (const FIntVector& PlayerChunkCoord : PlayerChunkCoords)
+	for (const FIntVector& CoordChanged : CoordsChanged)
 	{
 		int32 MaxDistance = MaxDistWithMargin;
-		FIntVector MinRange = PlayerChunkCoord - FIntVector(MaxDistance, MaxDistance, MaxDistance);
-		FIntVector MaxRange = PlayerChunkCoord + FIntVector(MaxDistance, MaxDistance, MaxDistance);
+		FIntVector MinRange = CoordChanged - FIntVector(MaxDistance, MaxDistance, MaxDistance);
+		FIntVector MaxRange = CoordChanged + FIntVector(MaxDistance, MaxDistance, MaxDistance);
 
 		for (int32 Z = MinRange.Z; Z <= MaxRange.Z; ++Z)
 		{
@@ -695,7 +657,8 @@ void AVoxelGround::UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoord
 		int32 OldLODLevel = ChunkDatas[ChunkIdx].LODLevel;
 		int32 NewLODLevel = LODDistance.Num();
 
-		for (const FIntVector& PlayerChunkCoord : PlayerChunkCoords)
+		// LastPlayerCoords 갱신 후이므로 현재 PlayerCoords
+		for (const FIntVector& PlayerChunkCoord : LastPlayerCoords)
 		{
 			int32 CurrentPlayerLODLevel = GetLODLevelByPlayer(ChunkCoord, PlayerChunkCoord, OldLODLevel);
 			NewLODLevel = FMath::Min(NewLODLevel, CurrentPlayerLODLevel);
@@ -706,27 +669,26 @@ void AVoxelGround::UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoord
 			ChunkDatas[ChunkIdx].LODLevel = NewLODLevel;
 			UpdateChunkMesh(ChunkIdx, true);
 		}
-
-		if (NewLODLevel < LODDistance.Num())
-		{
-			CurrNearByChunkIdxs.Add(ChunkIdx);
-		}
 	}
-
-	LastNearByChunkIdxs = MoveTemp(CurrNearByChunkIdxs);
 }
 
 void AVoxelGround::UpdateChunkLODs()
 {
-	TArray<FIntVector> AllPlayerChunkCoords;
+	TSet<FIntVector> CoordsChanged = LastPlayerCoords;
+	TSet<FIntVector> CurrentPlayerCoords;
+
 	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+
+	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+	ensureMsgf(IsValid(GS) == true, TEXT("GameState is not valid"));
+
+	const auto& PlayerStates = GS->PlayerArray;
+	for (APlayerState* PS : PlayerStates)
 	{
-		APlayerController* PlayerController = It->Get();
-		if (IsValid(PlayerController) == false)
+		if (IsValid(PS) == false)
 			continue;
 
-		APawn* CharacterPawn = PlayerController->GetPawn();
+		APawn* CharacterPawn = PS->GetPawn();
 		if (IsValid(CharacterPawn) == false)
 			continue;
 
@@ -738,12 +700,27 @@ void AVoxelGround::UpdateChunkLODs()
 			FMath::FloorToInt(RelativePlayerLocation.Y / ChunkSize),
 			FMath::FloorToInt(RelativePlayerLocation.Z / ChunkSize));
 
-		AllPlayerChunkCoords.Add(CurrentPlayerChunkCoord);
+		CurrentPlayerCoords.Add(CurrentPlayerChunkCoord);
 	}
 
-	if (AllPlayerChunkCoords.IsEmpty() == false)
+	for (const auto& CurrentChunkCoord : CurrentPlayerCoords)
 	{
-		UpdateNearByChunks(AllPlayerChunkCoords);
+		// 기존에도 플레이어가 있던 청크는 검사 X
+		// 위치가 변경된 플레이어의 이동 전, 이동 후 청크만 검사
+		if (CoordsChanged.Contains(CurrentChunkCoord) == true)
+		{
+			CoordsChanged.Remove(CurrentChunkCoord);
+		}
+		else
+		{
+			CoordsChanged.Add(CurrentChunkCoord);
+		}
+	}
+	LastPlayerCoords = CurrentPlayerCoords;
+
+	if (CoordsChanged.IsEmpty() == false)
+	{
+		UpdateNearByChunks(CoordsChanged);
 	}
 }
 
@@ -999,7 +976,7 @@ void AVoxelGround::UpdatePriorityDirtyChunks()
 	}
 }
 
-void AVoxelGround::Multicast_EditGround_Implementation(const FVoxelChunkEditPacket& Packet)
+void AVoxelGround::ApplyEditPacket(const FVoxelChunkEditPacket& Packet)
 {
 	for (const FVoxelChunkEditData& Data : Packet.ChunkEditDatas)
 	{
@@ -1009,7 +986,7 @@ void AVoxelGround::Multicast_EditGround_Implementation(const FVoxelChunkEditPack
 
 void AVoxelGround::EditGroundChunk(const FVoxelChunkEditData& Data)
 {
-	if (HasAuthority() == true)
+	if (GetNetMode() != NM_Client)
 		return;
 
 	if (ChunkDatas.IsValidIndex(Data.ChunkIdx) == false)
@@ -1038,11 +1015,6 @@ void AVoxelGround::EditGroundChunk(const FVoxelChunkEditData& Data)
 			}
 		}
 	}
-}
-
-void AVoxelGround::EnqueueChunkEditData(const FVoxelChunkEditData& Data)
-{
-	EditDataQueue.Enqueue(Data);
 }
 
 void AVoxelGround::SetBoundBox()
