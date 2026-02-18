@@ -2,9 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameState.h"
+#include "Mining/VoxelData.h"
 #include "BAGameState.generated.h"
 
-enum class EVoxelType : uint8;
 class ABaseCore;
 class ABAPlayerController;
 
@@ -14,7 +14,29 @@ UCLASS()
 class BULLETANT_API ABAGameState : public AGameState
 {
 	GENERATED_BODY()
+
+public:
+	ABAGameState();
+
+	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
+#pragma region Ground
+
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_EditGround(const struct FVoxelChunkEditPacket& Packet);
+	UFUNCTION()
+	void OnRep_SetInitParams();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_SetInitParams)
+	FGroundInitializeParams GroundInitParams;
+
+#pragma endregion
+
+#pragma region Ore
+
 public:
 	void SetOreCount(EVoxelType OreType, int32 Count);
 	int32 GetOreCount(EVoxelType OreType);
@@ -32,6 +54,8 @@ private:
 
 	UPROPERTY()
 	FOnOreChanged OnOreChanged;
+
+#pragma endregion
 
 #pragma region Enemy
 public:
