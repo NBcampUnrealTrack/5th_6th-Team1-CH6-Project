@@ -3,6 +3,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Common/OnDeathInterface.h"
 #include "AbilitySystemComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -47,11 +48,10 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 				{
 					return;
 				}
-				
-				FGameplayTag DeadTag = FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Dead"));
-				if (!ASC->HasMatchingGameplayTag(DeadTag))
+
+				if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead))
 				{
-					ASC->AddLooseGameplayTag(DeadTag);
+					ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
 				}
 				
 			}

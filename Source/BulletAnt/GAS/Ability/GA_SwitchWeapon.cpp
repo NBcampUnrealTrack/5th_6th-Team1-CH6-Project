@@ -2,6 +2,7 @@
 #include "Weapon/BaseWeapon.h"
 #include "Player/BACharacter.h"
 #include "AbilitySystemComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 UGA_SwitchWeapon::UGA_SwitchWeapon()
 {
@@ -40,7 +41,7 @@ void UGA_SwitchWeapon::ApplySwitchEffect(const FGameplayAbilityActorInfo* ActorI
 	const ABaseWeapon* Weapon = Cast<ABaseWeapon>(TriggerEventData->OptionalObject);
 	if (!Weapon || !ASC) return;
 
-	ASC->RemoveActiveEffectsWithAppliedTags(FGameplayTagContainer(TAG_Weapon_Equipped));
+	ASC->RemoveActiveEffectsWithAppliedTags(FGameplayTagContainer(FGameplayTag::RequestGameplayTag("Weapon.Equipped")));
 
 	SwitchEffectClass = Weapon->GetSwitchEffectClass();
 	if (!SwitchEffectClass) return;

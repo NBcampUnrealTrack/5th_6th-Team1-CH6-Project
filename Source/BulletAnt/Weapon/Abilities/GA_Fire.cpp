@@ -9,13 +9,14 @@
 #include "Common/FireStartInterface.h" 
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
+#include "GAS/BAGameplayTags.h"
 
 UGA_Fire::UGA_Fire()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Fire")));
+	AbilityTags.AddTag(TAG_Ability_Active_Fire);
 
 	TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 

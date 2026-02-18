@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h"
+#include "Common/OnDeathInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
 #include "BACharacter.generated.h"
@@ -49,7 +50,7 @@ enum class EEquipmentType : uint8
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface, public IOnDeathInterface
 {
 	GENERATED_BODY()
 
@@ -338,6 +339,13 @@ public:
     float CurrentRecoilYaw = 0.f;
 
 #pragma endregion
+
+protected:
+    UFUNCTION(BlueprintCallable)
+    virtual void OnDeath() override;
+
+    UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
+    float RespawnTime = 5.f;
     
 protected:
     UPROPERTY(VisibleAnywhere)

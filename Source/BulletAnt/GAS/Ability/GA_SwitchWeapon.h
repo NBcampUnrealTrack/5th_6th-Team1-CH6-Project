@@ -26,8 +26,5 @@ protected:
 
 	UPROPERTY()
 	TSubclassOf<UGameplayEffect> SwitchEffectClass;
-
-	const FGameplayTag TAG_Weapon_Equipped = FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped"));
-	const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
 	
 };
