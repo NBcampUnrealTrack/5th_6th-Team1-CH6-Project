@@ -14,6 +14,7 @@
 #include "Net/UnrealNetwork.h"
 #include "UI/UW_PlayerHUDWidget.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
+#include "GAS/BAGameplayTags.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
@@ -459,6 +460,15 @@ FVector ABACharacter::GetFireDirection() const
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
+}
+
+void ABACharacter::OnDeath()
+{
+	FGameplayEventData Payload;
+	Payload.EventTag = TAG_State_Combat_Dead;
+	Payload.EventMagnitude = RespawnTime;
+
+	AbilitySystemComponent->HandleGameplayEvent(Payload.EventTag, &Payload);
 }
 
 //조준 시작

@@ -4,8 +4,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
-
-static const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
+#include "GAS/BAGameplayTags.h"
 
 ABaseWeapon::ABaseWeapon()
 {
