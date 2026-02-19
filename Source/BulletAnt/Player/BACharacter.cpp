@@ -1,5 +1,6 @@
 ﻿#include "Player/BACharacter.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -44,6 +45,11 @@ ABACharacter::ABACharacter()
 	//GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+
+	DetectedCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectedCapsule"));
+	DetectedCapsule->SetupAttachment(RootComponent);
+	DetectedCapsule->SetCollisionProfileName(TEXT("Pawn"));
+	DetectedCapsule->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel3);
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
@@ -201,574 +207,575 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
-void ABACharacter::OnRep_Controller()
+void ABACharacter::OnRep_PlayerState()
 {
-	Super::OnRep_Controller();
-	if (IsLocallyControlled())
+	Super::OnRep_PlayerState();
+	if (AbilitySystemComponent)
 	{
+		{
+			if (IsLocallyControlled())
+			{
+				AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+				for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+				{
+					if (AbilityClass)
+					{
+						FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+						AbilitySystemComponent->GiveAbility(Spec);
+					}
+				}
+
+				AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+					.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+
+				AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+					.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+
+				AbilitySystemComponent->RegisterGameplayTagEvent(
+					TAG_State_Combat_Dead,
+					EGameplayTagEventType::NewOrRemoved
+				).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			}
+		}
+	}
+}
+	void ABACharacter::SpringArmRot(bool check)
+	{
+		SpringArm->bUsePawnControlRotation = check;
+	}
+
+	//상태에 따른 이동속도
+	float ABACharacter::UpdateMovementSpeed()
+	{
+		float NewSpeed = WalkSpeed;
+
+		if (bIsAiming)
+			NewSpeed = AimSpeed;
+		else if (bIsRunning)
+			NewSpeed = RunningSpeed;
+
+		return NewSpeed;
+	}
+
+	// 이동 함수 구현
+	void ABACharacter::Move(const FInputActionValue & Value)
+	{
+		if (!Controller) return;
+
+		StopMontage();
+
+		FVector2D MovementVector = Value.Get<FVector2D>();
+		// 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+		// 전방 방향 (W/S) 계산
+		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+
+		// 우측 방향 (A/D) 계산
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		// 이동 적용
+		AddMovementInput(ForwardDirection, MovementVector.Y);
+		AddMovementInput(RightDirection, MovementVector.X);
+	}
+
+	UDataAsset* ABACharacter::GetDataAsset() const
+	{
+		return EquippedWeapon ? EquippedWeapon->GetWeaponData() : nullptr;
+	}
+
+	void ABACharacter::StartRunning(const FInputActionValue & Value)
+	{
+		bIsRunning = true;
+		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+		Server_SetRunning(true);
+	}
+
+	void ABACharacter::StopRunning(const FInputActionValue & Value)
+	{
+		bIsRunning = false;
+		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+		Server_SetRunning(false);
+	}
+
+	void ABACharacter::Server_SetRunning_Implementation(bool bNewIsRunning)
+	{
+		bIsRunning = bNewIsRunning;
+		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	}
+
+	void ABACharacter::CrouchInput(const FInputActionValue & Value)
+	{
+		if (!bIsCrouched)
+		{
+			Crouch(false);
+			if (bIsRunning)
+				bIsRunning = false;
+			SpringArmZ = -30.f;
+
+			StopMontage();
+		}
+		else
+		{
+			UnCrouch(false);
+			SpringArmZ = 0.f;
+
+			StopMontage();
+		}
+	}
+
+	// 시선 처리 함수 구현
+	void ABACharacter::Look(const FInputActionValue & Value)
+	{
+		FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+		if (Controller != nullptr)
+		{
+			AddControllerYawInput(LookAxisVector.X);
+			AddControllerPitchInput(LookAxisVector.Y);
+		}
+	}
+
+	void ABACharacter::StartAttack(const FInputActionValue & Value)
+	{
+		if (!AbilitySystemComponent) return;
+		if (!EquippedWeapon) return;
+
+		FGameplayTagContainer Tag;
+
+		UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
+		if (!WeaponData) return;
+		Tag.AddTag(WeaponData->WeaponTag);
+
+		AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	}
+
+	void ABACharacter::Reload(const FInputActionValue & Value)
+	{
+		if (!AbilitySystemComponent) return;
+		FGameplayTagContainer Tag;
+		Tag.AddTag(TAG_Ability_Active_Reload);
+
+		AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	}
+
+	void ABACharacter::StopAttack(const FInputActionValue & Value)
+	{
+		if (!AbilitySystemComponent) return;
+		if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
+
+		FGameplayTagContainer CancelTags;
+		CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
+
+		AbilitySystemComponent->CancelAbilities(&CancelTags);
+	}
+
+	UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
+	{
+		return AbilitySystemComponent;
+	}
+
+	void ABACharacter::PossessedBy(AController * NewController)
+	{
+		Super::PossessedBy(NewController);
+
 		if (AbilitySystemComponent)
 		{
 			AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
+			if (HasAuthority())
+			{
+				for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+				{
+					if (AbilityClass)
+					{
+						FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+						AbilitySystemComponent->GiveAbility(Spec);
+					}
+				}
+			}
+
 			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-
 			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 
-			AbilitySystemComponent->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			if (IsLocallyControlled())
+			{
+				AbilitySystemComponent->RegisterGameplayTagEvent(
+					TAG_State_Combat_Dead,
+					EGameplayTagEventType::NewOrRemoved
+				).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			}
+		}
+
+		if (DefaultWeaponClass)
+		{
+			Server_EquipWeapon(DefaultWeaponClass);
 		}
 	}
-}
 
-void ABACharacter::SpringArmRot(bool check)
-{
-	SpringArm->bUsePawnControlRotation = check;
-}
-
-//상태에 따른 이동속도
-float ABACharacter::UpdateMovementSpeed()
-{
-	float NewSpeed = WalkSpeed;
-
-	if (bIsAiming)
-		NewSpeed = AimSpeed;
-	else if (bIsRunning)
-		NewSpeed = RunningSpeed;
-
-	return NewSpeed;
-}
-
-// 이동 함수 구현
-void ABACharacter::Move(const FInputActionValue& Value)
-{
-	if (!Controller) return;
-
-	StopMontage();
-
-	FVector2D MovementVector = Value.Get<FVector2D>();
-	// 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
-	const FRotator Rotation = Controller->GetControlRotation();
-	const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-	// 전방 방향 (W/S) 계산
-	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
-	// 우측 방향 (A/D) 계산
-	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-	// 이동 적용
-	AddMovementInput(ForwardDirection, MovementVector.Y);
-	AddMovementInput(RightDirection, MovementVector.X);
-}
-
-UDataAsset* ABACharacter::GetDataAsset() const
-{
-	return EquippedWeapon ? EquippedWeapon->GetWeaponData() : nullptr;
-}
-
-void ABACharacter::StartRunning(const FInputActionValue& Value)
-{
-	bIsRunning = true;
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	Server_SetRunning(true);
-}
-
-void ABACharacter::StopRunning(const FInputActionValue& Value)
-{
-	bIsRunning = false;
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	Server_SetRunning(false);
-}
-
-void ABACharacter::Server_SetRunning_Implementation(bool bNewIsRunning)
-{
-	bIsRunning = bNewIsRunning;
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-}
-
-void ABACharacter::CrouchInput(const FInputActionValue& Value)
-{
-	if (!bIsCrouched)
+	void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData & Data) const
 	{
-		Crouch(false);
-		if (bIsRunning)
-			bIsRunning = false;
-		SpringArmZ = -30.f;
-
-		StopMontage();
+		OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
 	}
-	else
+
+	void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> WeaponClass)
 	{
-		UnCrouch(false);
-		SpringArmZ = 0.f;
+		if (!HasAuthority()) return;
+		if (!WeaponClass) return;
 
-		StopMontage();
-	}
-}
-
-// 시선 처리 함수 구현
-void ABACharacter::Look(const FInputActionValue& Value)
-{
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
-
-	if (Controller != nullptr)
-	{
-		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
-	}
-}
-
-void ABACharacter::StartAttack(const FInputActionValue& Value)
-{
-	if (!AbilitySystemComponent) return;
-	if (!EquippedWeapon) return;
-
-	FGameplayTagContainer Tag;
-
-	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
-	if (!WeaponData) return;
-	Tag.AddTag(WeaponData->WeaponTag);
-
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
-}
-
-void ABACharacter::Reload(const FInputActionValue& Value)
-{
-	if (!AbilitySystemComponent) return;
-	FGameplayTagContainer Tag;
-	Tag.AddTag(TAG_Ability_Active_Reload);
-
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
-}
-
-void ABACharacter::StopAttack(const FInputActionValue& Value)
-{
-	if (!AbilitySystemComponent) return;
-	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
-
-	FGameplayTagContainer CancelTags;
-	CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
-
-	AbilitySystemComponent->CancelAbilities(&CancelTags);
-}
-
-UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
-}
-
-void ABACharacter::PossessedBy(AController* NewController)
-{
-	Super::PossessedBy(NewController);
-
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-		if (HasAuthority())
+		if (EquippedWeapon)
 		{
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+			/*EquippedWeapon->UnequipWeapon(AbilitySystemComponent);*/
+			EquippedWeapon->Destroy();
+			EquippedWeapon = nullptr;
+		}
+
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		Params.Instigator = this;
+
+		ABaseWeapon* NewWeapon = GetWorld()->SpawnActor<ABaseWeapon>(
+			WeaponClass,
+			Params
+		);
+
+		if (!NewWeapon) return;
+
+		NewWeapon->AttachToComponent(
+			GetMesh(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+			TEXT("WeaponSocket")
+		);
+
+		NewWeapon->EquipWeapon(AbilitySystemComponent);
+
+		EquippedWeapon = NewWeapon;
+	}
+
+	FVector ABACharacter::GetFireStartLocation() const
+	{
+		if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+		{
+			USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
+			if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 			{
-				if (AbilityClass)
+				return WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+			}
+		}
+
+		return GetActorLocation();
+	}
+
+	FVector ABACharacter::GetFireDirection() const
+	{
+		if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+		{
+			USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
+			if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
+			{
+				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+			}
+		}
+
+		return GetActorRotation().Vector();
+	}
+
+	void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData & Data) const
+	{
+		OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
+	}
+
+	void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
+	{
+		ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+		if (NewCount >= 1)
+		{
+			PC->StartRespawnBar(RespawnTime);
+		}
+		else if (NewCount == 0)
+		{
+			PC->StopRespawnBar();
+		}
+	}
+
+	//조준 시작
+	void ABACharacter::AimStart(const FInputActionValue & Value)
+	{
+		if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
+		bIsAiming = true;
+
+		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+		Server_SetAiming(true);
+	}
+
+	//조준 끝
+	void ABACharacter::AimStop(const FInputActionValue & Value)
+	{
+		if (!bIsAiming) return;
+		bIsAiming = false;
+
+		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+		Server_SetAiming(false);
+	}
+
+	void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
+	{
+		bIsAiming = bNewIsAiming;
+
+		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	}
+
+	void ABACharacter::Interaction(const FInputActionValue & Value)
+	{
+		FVector Start = CameraComponent->GetComponentLocation();
+		FVector Forward = CameraComponent->GetForwardVector();
+		FVector End = Start + (Forward * LineTraceRange);
+
+		FHitResult HitResult;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+
+		bool bHit = GetWorld()->LineTraceSingleByChannel(
+			HitResult,
+			Start,
+			End,
+			ECC_Visibility,
+			Params
+		);
+
+		if (bHit)
+		{
+			AActor* HitActor = HitResult.GetActor();
+
+			if (HitActor)
+			{
+				bool bHasInterface = HitActor->GetClass()->ImplementsInterface(UBAItemInterface::StaticClass());
+				if (bHasInterface)
 				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
-					AbilitySystemComponent->GiveAbility(Spec);
+					UE_LOG(LogTemp, Warning, TEXT("라인트레이스 상호작용: %s"), *HitActor->GetName());
+					IBAItemInterface::Execute_Use(HitActor, this);
 				}
 			}
 		}
+	}
 
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-
-		if (IsLocallyControlled())
+	void ABACharacter::EnterBuildMode(const FInputActionValue & Value)
+	{
+		UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
+		BuildManager->EnterBuildMode();
+		ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+		if (PC)
 		{
-			AbilitySystemComponent->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			PC->SwitchingMode();
 		}
 	}
 
-	if (DefaultWeaponClass)
+	void ABACharacter::ExitBuildMode(const FInputActionValue & Value)
 	{
-		Server_EquipWeapon(DefaultWeaponClass);
-	}
-}
-
-void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
-{
-	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
-}
-
-void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> WeaponClass)
-{
-	if (!HasAuthority()) return;
-	if (!WeaponClass) return;
-
-	if (EquippedWeapon)
-	{
-		/*EquippedWeapon->UnequipWeapon(AbilitySystemComponent);*/
-		EquippedWeapon->Destroy();
-		EquippedWeapon = nullptr;
-	}
-
-	FActorSpawnParameters Params;
-	Params.Owner = this;
-	Params.Instigator = this;
-
-	ABaseWeapon* NewWeapon = GetWorld()->SpawnActor<ABaseWeapon>(
-		WeaponClass,
-		Params
-	);
-
-	if (!NewWeapon) return;
-
-	NewWeapon->AttachToComponent(
-		GetMesh(),
-		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-		TEXT("WeaponSocket")
-	);
-
-	NewWeapon->EquipWeapon(AbilitySystemComponent);
-
-	EquippedWeapon = NewWeapon;
-}
-
-FVector ABACharacter::GetFireStartLocation() const
-{
-	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
-	{
-		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
-		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
+		BuildManager->ExitBuildMode();
+		ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+		if (PC)
 		{
-			return WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+			PC->SwitchingMode();
 		}
 	}
 
-	return GetActorLocation();
-}
-
-FVector ABACharacter::GetFireDirection() const
-{
-	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+	void ABACharacter::PlaceBuilding(const FInputActionValue & Value)
 	{
-		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
-		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
+		BuildManager->TryPlace();
+	}
+
+	void ABACharacter::RotateBuilding(const FInputActionValue & Value)
+	{
+		BuildManager->RotatePreviewByWheel(Value);
+	}
+
+	void ABACharacter::ToggleSnapMode(const FInputActionValue & Value)
+	{
+		BuildManager->ToggleSnapMode();
+	}
+
+	void ABACharacter::StartSwitchWeapon(const FInputActionValue & Value)
+	{
+		Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
+	}
+
+	void ABACharacter::JumpHandler(const FInputActionValue & Value)
+	{
+		bool bParkourStarted = false;
+
+		if (ParkourComponent)
 		{
-			return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+			bParkourStarted = ParkourComponent->AttemptParkour();
+		}
+
+		if (!bParkourStarted)
+		{
+			Jump();
 		}
 	}
-
-	return GetActorRotation().Vector();
-}
-
-void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
-{
-	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
-}
-
-void ABACharacter::OnDeath()
-{
-	FGameplayEventData Payload;
-	Payload.EventTag = TAG_State_Combat_Dead;
-	Payload.EventMagnitude = RespawnTime;
-
-	AbilitySystemComponent->HandleGameplayEvent(Payload.EventTag, &Payload);
-}
-
-void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
-{
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
-	if (NewCount >= 1)
+	void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&OutLifetimeProps) const
 	{
-		PC->StartRespawnBar(RespawnTime);
+		Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+		DOREPLIFETIME(ABACharacter, bIsAiming);
+		DOREPLIFETIME(ABACharacter, bIsRunning);
+		DOREPLIFETIME(ABACharacter, SyncAimYaw);
+		DOREPLIFETIME(ABACharacter, SyncAimPitch);
 	}
-	else if (NewCount == 0)
+
+	void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage * MontageToPlay, FTransform TargetTransform)
 	{
-		PC->StopRespawnBar();
-	}
-}
-
-//조준 시작
-void ABACharacter::AimStart(const FInputActionValue& Value)
-{
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
-	bIsAiming = true;
-
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	Server_SetAiming(true);
-}
-
-//조준 끝
-void ABACharacter::AimStop(const FInputActionValue& Value)
-{
-	if (!bIsAiming) return;
-	bIsAiming = false;
-
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	Server_SetAiming(false);
-}
-
-void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
-{
-	bIsAiming = bNewIsAiming;
-
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-}
-
-void ABACharacter::Interaction(const FInputActionValue& Value)
-{
-	FVector Start = CameraComponent->GetComponentLocation();
-	FVector Forward = CameraComponent->GetForwardVector();
-	FVector End = Start + (Forward * LineTraceRange);
-
-	FHitResult HitResult;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		HitResult,
-		Start,
-		End,
-		ECC_Visibility,
-		Params
-	);
-
-	if (bHit)
-	{
-		AActor* HitActor = HitResult.GetActor();
-
-		if (HitActor)
+		if (MotionWarpingComp)
 		{
-			bool bHasInterface = HitActor->GetClass()->ImplementsInterface(UBAItemInterface::StaticClass());
-			if (bHasInterface)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("라인트레이스 상호작용: %s"), *HitActor->GetName());
-				IBAItemInterface::Execute_Use(HitActor, this);
-			}
+			MotionWarpingComp->AddOrUpdateWarpTargetFromTransform(FName("TurnTarget"), TargetTransform);
 		}
+
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && MontageToPlay)
+		{
+			AnimInstance->Montage_Play(MontageToPlay);
+
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &ABACharacter::OnTurnMontageEnded);
+			AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+		}
+
+		bIsTurning = true;
+		CurrentTurnMontage = MontageToPlay;
 	}
-}
-
-void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
-{
-	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
-	BuildManager->EnterBuildMode();
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
-	if (PC)
+	void ABACharacter::ServerRPC_StopTurnMontage_Implementation()
 	{
-		PC->SwitchingMode();
+		Multicast_StopTurnMontage();
 	}
-}
-
-void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
-{
-	BuildManager->ExitBuildMode();
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
-	if (PC)
+	void ABACharacter::Multicast_StopTurnMontage_Implementation()
 	{
-		PC->SwitchingMode();
-	}
-}
-
-void ABACharacter::PlaceBuilding(const FInputActionValue& Value)
-{
-	BuildManager->TryPlace();
-}
-
-void ABACharacter::RotateBuilding(const FInputActionValue& Value)
-{
-	BuildManager->RotatePreviewByWheel(Value);
-}
-
-void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
-{
-	BuildManager->ToggleSnapMode();
-}
-
-void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
-{
-	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
-}
-
-void ABACharacter::JumpHandler(const FInputActionValue& Value)
-{
-	bool bParkourStarted = false;
-
-	if (ParkourComponent)
-	{
-		bParkourStarted = ParkourComponent->AttemptParkour();
-	}
-
-	if (!bParkourStarted)
-	{
-		Jump();
-	}
-}
-void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ABACharacter, bIsAiming);
-	DOREPLIFETIME(ABACharacter, bIsRunning);
-	DOREPLIFETIME(ABACharacter, SyncAimYaw);
-	DOREPLIFETIME(ABACharacter, SyncAimPitch);
-}
-
-void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)
-{
-	if (MotionWarpingComp)
-	{
-		MotionWarpingComp->AddOrUpdateWarpTargetFromTransform(FName("TurnTarget"), TargetTransform);
-	}
-
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && MontageToPlay)
-	{
-		AnimInstance->Montage_Play(MontageToPlay);
-
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &ABACharacter::OnTurnMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
-	}
-
-	bIsTurning = true;
-	CurrentTurnMontage = MontageToPlay;
-}
-void ABACharacter::ServerRPC_StopTurnMontage_Implementation()
-{
-	Multicast_StopTurnMontage();
-}
-void ABACharacter::Multicast_StopTurnMontage_Implementation()
-{
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && CurrentTurnMontage)
-	{
-		AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
-	}
-	SetTurnStatus();
-}
-
-void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (CurrentTurnMontage == Montage)
-	{
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && CurrentTurnMontage)
+		{
+			AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
+		}
 		SetTurnStatus();
 	}
-}
-void ABACharacter::IdleTurning(float DeltaTime)
-{
-	/*if (!HasAuthority()) return;
-	if (!bIsTurning)
+
+	void ABACharacter::OnTurnMontageEnded(UAnimMontage * Montage, bool bInterrupted)
 	{
-		if (FMath::Abs(RootYawOffset) > 90.f)
+		if (CurrentTurnMontage == Montage)
 		{
-			TurnDelayTimer += DeltaTime;
-			if (TurnDelayTimer > 0.1f)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("90도 넘음"));
-				bIsTurning = true;
-
-				bool bRight = (RootYawOffset < 0);
-
-				if (FMath::Abs(RootYawOffset) > 135.f)
-				{
-					TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
-					CurrentTurnSpeed = 15.f;
-				}
-				else if (FMath::Abs(RootYawOffset) > 90.f)
-				{
-					TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
-					CurrentTurnSpeed = 10.f;
-				}
-				CurrentTurnMontage = nullptr;
-				if (bIsCrouched)
-				{
-					switch (TurnType)
-					{
-					case ETurnType::Left90:
-						CurrentTurnMontage = CrouchTurnLeft90Montage;
-						break;
-					case ETurnType::Right90:
-						CurrentTurnMontage = CrouchTurnRight90Montage;
-						break;
-					case ETurnType::Left180:
-						CurrentTurnMontage = CrouchTurnLeft180Montage;
-						break;
-					case ETurnType::Right180:
-						CurrentTurnMontage = CrouchTurnRight180Montage;
-						break;
-					default:
-						return;
-					}
-				}
-				else
-				{
-					switch (TurnType)
-					{
-					case ETurnType::Left90:
-						CurrentTurnMontage = TurnLeft90Montage;
-						break;
-					case ETurnType::Right90:
-						CurrentTurnMontage = TurnRight90Montage;
-						break;
-					case ETurnType::Left180:
-						CurrentTurnMontage = TurnLeft180Montage;
-						break;
-					case ETurnType::Right180:
-						CurrentTurnMontage = TurnRight180Montage;
-						break;
-					default:
-						return;
-					}
-				}
-				if (CurrentTurnMontage && MotionWarpingComp)
-				{
-					FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
-
-					FTransform TargetTransform(GoalRot, GetActorLocation());
-					Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
-				}
-			}
-		}
-		else
-		{
-			TurnDelayTimer = 0.f;
-		}
-	}*/
-}
-
-void ABACharacter::SetTurnStatus()
-{
-	bIsTurning = false;
-	TurnType = ETurnType::None;
-	CurrentTurnMontage = nullptr;
-	TurnDelayTimer = 0.f;
-	LastBodyYaw = GetActorRotation().Yaw;
-	RootYawOffset = 0.0f;
-}
-
-void ABACharacter::StopMontage()
-{
-	if (bIsTurning)
-	{
-		bIsTurning = false;
-		TurnDelayTimer = 0.f;
-
-		if (HasAuthority())
-		{
-			Multicast_StopTurnMontage();
-		}
-		else
-		{
-			ServerRPC_StopTurnMontage();
+			SetTurnStatus();
 		}
 	}
-}
+	void ABACharacter::IdleTurning(float DeltaTime)
+	{
+		/*if (!HasAuthority()) return;
+		if (!bIsTurning)
+		{
+			if (FMath::Abs(RootYawOffset) > 90.f)
+			{
+				TurnDelayTimer += DeltaTime;
+				if (TurnDelayTimer > 0.1f)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("90도 넘음"));
+					bIsTurning = true;
+
+					bool bRight = (RootYawOffset < 0);
+
+					if (FMath::Abs(RootYawOffset) > 135.f)
+					{
+						TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
+						CurrentTurnSpeed = 15.f;
+					}
+					else if (FMath::Abs(RootYawOffset) > 90.f)
+					{
+						TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
+						CurrentTurnSpeed = 10.f;
+					}
+					CurrentTurnMontage = nullptr;
+					if (bIsCrouched)
+					{
+						switch (TurnType)
+						{
+						case ETurnType::Left90:
+							CurrentTurnMontage = CrouchTurnLeft90Montage;
+							break;
+						case ETurnType::Right90:
+							CurrentTurnMontage = CrouchTurnRight90Montage;
+							break;
+						case ETurnType::Left180:
+							CurrentTurnMontage = CrouchTurnLeft180Montage;
+							break;
+						case ETurnType::Right180:
+							CurrentTurnMontage = CrouchTurnRight180Montage;
+							break;
+						default:
+							return;
+						}
+					}
+					else
+					{
+						switch (TurnType)
+						{
+						case ETurnType::Left90:
+							CurrentTurnMontage = TurnLeft90Montage;
+							break;
+						case ETurnType::Right90:
+							CurrentTurnMontage = TurnRight90Montage;
+							break;
+						case ETurnType::Left180:
+							CurrentTurnMontage = TurnLeft180Montage;
+							break;
+						case ETurnType::Right180:
+							CurrentTurnMontage = TurnRight180Montage;
+							break;
+						default:
+							return;
+						}
+					}
+					if (CurrentTurnMontage && MotionWarpingComp)
+					{
+						FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
+
+						FTransform TargetTransform(GoalRot, GetActorLocation());
+						Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
+					}
+				}
+			}
+			else
+			{
+				TurnDelayTimer = 0.f;
+			}
+		}*/
+	}
+
+	void ABACharacter::SetTurnStatus()
+	{
+		bIsTurning = false;
+		TurnType = ETurnType::None;
+		CurrentTurnMontage = nullptr;
+		TurnDelayTimer = 0.f;
+		LastBodyYaw = GetActorRotation().Yaw;
+		RootYawOffset = 0.0f;
+	}
+
+	void ABACharacter::StopMontage()
+	{
+		if (bIsTurning)
+		{
+			bIsTurning = false;
+			TurnDelayTimer = 0.f;
+
+			if (HasAuthority())
+			{
+				Multicast_StopTurnMontage();
+			}
+			else
+			{
+				ServerRPC_StopTurnMontage();
+			}
+		}
+	}
 

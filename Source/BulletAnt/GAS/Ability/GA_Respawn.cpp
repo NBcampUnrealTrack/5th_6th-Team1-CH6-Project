@@ -6,6 +6,9 @@
 #include "Player/BAPlayerController.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -16,6 +19,7 @@ UGA_Respawn::UGA_Respawn()
 	Trigger.TriggerTag = TAG_Event_Combat_Dead;
 
 	AbilityTriggers.Add(Trigger);
+	bIsBlockingOtherAbilities = true;
 }
 
 void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -32,15 +36,21 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	if (!Source) return;
 
 	PC = Cast<APlayerController>(Source->GetController());
-	if (!PC) return;
+	if (PC)
+	{
+		Source->DisableInput(PC);
+	}
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!ASC) return;
+
+	ActorInfo->AbilitySystemComponent->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
 
+	UKismetSystemLibrary::PrintString(GetWorld(), FString("Hello World"));
 
-	Source->DisableInput(PC);
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	Source->SetActorHiddenInGame(true);
+	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -52,13 +62,20 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 }
 
 void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
+{	
 	if (!Source) return;
-	if (!PC) return;
+	if (PC)
+	{
+		Source->EnableInput(PC);
+	}
 
-	Source->EnableInput(PC);
+	ActorInfo->AbilitySystemComponent->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
+	
+	Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
+
+	Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
+
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	Source->SetActorHiddenInGame(false);
 
 	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
 	ASC->RemoveLooseGameplayTag(TAG_State_Combat_Dead);

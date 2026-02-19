@@ -11,6 +11,7 @@
 #include "Net/UnrealNetwork.h"
 #include "BACharacter.generated.h"
 
+class UCapsuleComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UMotionWarpingComponent;
@@ -51,7 +52,7 @@ enum class EEquipmentType : uint8
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface, public IOnDeathInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
 {
 	GENERATED_BODY()
 
@@ -69,7 +70,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    virtual void OnRep_Controller() override;
+    virtual void OnRep_PlayerState() override;
 
 
     //TEST
@@ -80,6 +81,9 @@ protected:
     // --- 카메라 관련 컴포넌트 ---
     //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     //TObjectPtr<USpringArmComponent> CameraBoom;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DetectedCapsule")
+    UCapsuleComponent* DetectedCapsule;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spring Arm")
     USpringArmComponent* SpringArm;
@@ -342,8 +346,6 @@ public:
 #pragma endregion
 
 protected:
-    UFUNCTION(BlueprintCallable)
-    virtual void OnDeath() override;
 
     UFUNCTION()
     void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
@@ -351,8 +353,6 @@ protected:
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
     float RespawnTime = 5.f;
 
-   
-    
 protected:
     UPROPERTY(VisibleAnywhere)
     UBuildManagerComponent* BuildManager;
