@@ -37,7 +37,7 @@ void ABaseTurret::BeginPlay()
 
 	if (HasAuthority())
 	{
-		GiveDefaultAbilities();
+		ASC->GiveAbility(FGameplayAbilitySpec(UGA_Fire::StaticClass(), 1));
 
 		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseTurret::OnTargetBeginOverlap);
 		TargetSerchingSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseTurret::OnTargetEndOverlap);
@@ -157,14 +157,6 @@ void ABaseTurret::OnRep_Dead()
 	if (BarrelMesh)
 	{
 		BarrelMesh->SetHiddenInGame(true);
-	}
-}
-
-void ABaseTurret::GiveDefaultAbilities()
-{
-	if (HasAuthority())
-	{
-		ASC->GiveAbility(FGameplayAbilitySpec(UGA_Fire::StaticClass(), 1));
 	}
 }
 
