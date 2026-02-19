@@ -1045,7 +1045,7 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 		return;
 
 	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
-	SkyComp->SetRayleighScatteringScale(0.0f);
+	//SkyComp->SetRayleighScatteringScale(0.0f);
 }
 
 void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
