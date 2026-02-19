@@ -24,6 +24,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 //건축
 #include "Building/BuildManagerComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -77,6 +78,56 @@ ABACharacter::ABACharacter()
 	bIsRunning = false;
 
 	BuildManager = CreateDefaultSubobject<UBuildManagerComponent>(TEXT("BuildManager"));
+
+	SceneCaptureParent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SceneCaptureArm"));
+	SceneCaptureParent->SetupAttachment(RootComponent);
+	SceneCaptureParent->bUsePawnControlRotation = false;
+	SceneCaptureParent->bInheritPitch = false;
+	SceneCaptureParent->bInheritYaw = false;
+	SceneCaptureParent->bInheritRoll = false;
+	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
+	
+	SceneCapture2D = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture2D"));
+	SceneCapture2D->SetupAttachment(SceneCaptureParent);
+	SceneCapture2D->SetRelativeLocation(FVector(-ScannerDistance, 0.0f, 0.0f));
+	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
+	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	SceneCapture2D->MaxViewDistanceOverride = ScannerDistance * 2.0f;
+	SceneCapture2D->ShowFlags.SetLighting(false);
+	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
+	SceneCapture2D->ShowFlags.SetSkyLighting(false);
+	SceneCapture2D->ShowFlags.SetAtmosphere(false);
+	SceneCapture2D->ShowFlags.SetFog(false);
+	SceneCapture2D->ShowFlags.SetBloom(false);
+	SceneCapture2D->ShowFlags.SetEyeAdaptation(false);
+	SceneCapture2D->ShowFlags.SetMotionBlur(false);
+	SceneCapture2D->ShowFlags.SetAntiAliasing(false);
+	SceneCapture2D->ShowFlags.SetTemporalAA(false);
+	SceneCapture2D->ShowFlags.SetTonemapper(false);
+	SceneCapture2D->ShowFlags.SetTranslucency(false);
+	SceneCapture2D->ShowFlags.SetParticles(false);
+	SceneCapture2D->ShowFlags.SetSkeletalMeshes(false);
+	SceneCapture2D->ShowFlags.SetLandscape(false);
+	SceneCapture2D->ShowFlags.SetGameplayDebug(false);
+	SceneCapture2D->ShowFlags.SetCompositeDebugPrimitives(false);
+	SceneCapture2D->ShowFlags.SetDebugAI(false);
+	SceneCapture2D->ShowFlags.SetCollision(false);
+	SceneCapture2D->ShowFlags.SetBounds(false);
+	SceneCapture2D->ShowFlags.SetMaterials(true);
+	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
+	SceneCapture2D->ShowFlags.SetWireframe(true);
+	/*SceneCapture2D->ShowFlags.SetPostProcessing(true);
+	SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);*/
+
+	ArrowMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ArrowMesh"));
+	ArrowMesh->SetupAttachment(RootComponent);
+	ArrowMesh->SetVisibleInSceneCaptureOnly(true);
+	ArrowMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ArrowMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	ArrowMesh->SetGenerateOverlapEvents(false);
+	ArrowMesh->SetRenderCustomDepth(true);
+	ArrowMesh->CustomDepthStencilValue = 1;
+	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
 }
 
 // Called when the game starts or when spawned
@@ -84,6 +135,11 @@ void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	LastBodyYaw = GetMesh()->GetComponentRotation().Yaw;
+
+	if (IsLocallyControlled() == true)
+	{
+		SceneCapture2D->TextureTarget = RT_GroundScanner;
+	}
 }
 
 // Called every frame
@@ -196,6 +252,10 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (ToggleSnapModeAction)
 		{
 			EnhancedInputComponent->BindAction(ToggleSnapModeAction, ETriggerEvent::Started, this, &ABACharacter::ToggleSnapMode);
+		}
+		if (GroundScannerAction)
+		{
+			EnhancedInputComponent->BindAction(GroundScannerAction, ETriggerEvent::Started, this, &ABACharacter::SwitchGroundScanner);
 		}
 	}
 }
@@ -459,6 +519,29 @@ FVector ABACharacter::GetFireDirection() const
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
+}
+
+void ABACharacter::RotateScannerParent(const FVector2D& Input)
+{
+	if (IsValid(SceneCaptureParent) == false)
+		return;
+
+	FRotator CurrentRot = SceneCaptureParent->GetRelativeRotation();
+
+	float NewYaw = CurrentRot.Yaw + Input.X * 0.2f;
+	float NewPitch = CurrentRot.Pitch - Input.Y * 0.2f;
+	NewPitch = FMath::Clamp(NewPitch, -80.f, 80.f);
+	SceneCaptureParent->SetRelativeRotation(FRotator(NewPitch, NewYaw, CurrentRot.Roll));
+}
+
+void ABACharacter::SwitchGroundScanner()
+{
+	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+	if (PC)
+	{
+		PC->SwitchGroundScanner();
+	}
 }
 
 //조준 시작

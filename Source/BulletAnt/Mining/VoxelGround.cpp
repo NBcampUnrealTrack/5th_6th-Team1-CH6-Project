@@ -1,7 +1,7 @@
 ﻿#include "Mining/VoxelGround.h"
 #include "Mining/VoxelGroundChunk.h"
 #include "Kismet/GameplayStatics.h"
-#include "GameFramework/Character.h"
+#include "Player/BACharacter.h"
 #include "Mining/GroundSettingPreset.h"
 #include "Components/BoxComponent.h"
 #include "Framework/BAGameMode.h"
@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Mining/VoxelGroundSubsystem.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -1032,7 +1033,7 @@ void AVoxelGround::SetBoundBox()
 
 void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	ABACharacter* Character = Cast<ABACharacter>(OtherActor);
 	if (IsValid(Character) == false || Character->IsLocallyControlled() == false)
 		return;
 
@@ -1044,13 +1045,20 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 	if (IsValid(SkyComp) == false)
 		return;
 
+	USceneCaptureComponent2D* SceneCapture2D = Character->GetGroundScannerSceneCapture();
+	if (IsValid(SceneCapture2D) == true)
+	{
+		SceneCapture2D->ShowOnlyActors.AddUnique(this);
+		SceneCapture2D->HideComponent(BoundBox);
+	}
+
 	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
 	SkyComp->SetRayleighScatteringScale(0.0f);
 }
 
 void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	ABACharacter* Character = Cast<ABACharacter>(OtherActor);
 	if (IsValid(Character) == false || Character->IsLocallyControlled() == false)
 		return;
 

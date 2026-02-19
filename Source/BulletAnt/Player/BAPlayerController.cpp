@@ -3,6 +3,7 @@
 #include "Building/BuildManagerComponent.h"
 #include "Player/BACharacter.h"
 #include "UI/UW_PlayerHUDWidget.h"
+#include "UI/UISubsystem.h"
 
 void ABAPlayerController::BeginPlay()
 {
@@ -51,6 +52,39 @@ void ABAPlayerController::SwitchingMode()
 		{
 			Subsystem->RemoveMappingContext(BuildingMappingContext);
 			UE_LOG(LogTemp, Log, TEXT("건축 모드 OFF"));
+		}
+	}
+}
+
+
+void ABAPlayerController::SwitchGroundScanner()
+{
+	bActiveGroundScannerUI ^= 1;
+
+	if (bActiveGroundScannerUI == true)
+	{
+		FInputModeGameOnly InputUIMode;
+		SetInputMode(InputUIMode);
+		bShowMouseCursor = true;
+		if (auto* LP = GetLocalPlayer())
+		{
+			if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+			{
+				UIS->ShowUI<UUserWidget>(EUIType::GroundScanner);
+			}
+		}
+	}
+	else
+	{
+		FInputModeGameOnly InputGameMode;
+		SetInputMode(InputGameMode);
+		bShowMouseCursor = false;
+		if (auto* LP = GetLocalPlayer())
+		{
+			if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+			{
+				UIS->HideUI(EUIType::GroundScanner);
+			}
 		}
 	}
 }

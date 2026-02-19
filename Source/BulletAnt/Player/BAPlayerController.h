@@ -37,4 +37,14 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UUW_PlayerHUDWidget> HUD;
 	
+#pragma region GroundScanner
+
+public:
+	void SwitchGroundScanner();
+
+protected:
+	uint8 bActiveGroundScannerUI : 1 = false;
+
+#pragma endregion
+
 };
