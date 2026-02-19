@@ -4,6 +4,8 @@
 #include "Common/OnDeathInterface.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "AbilitySystemBlueprintLibrary.h"
+
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -36,24 +38,14 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 			{
 				AActor* TargetActor = Data.Target.GetAvatarActor();
 
-				if (IOnDeathInterface* Target = Cast<IOnDeathInterface>(TargetActor))
-				{
-					Target->OnDeath();
-				}
+				FGameplayEventData Payload;
+				Payload.EventMagnitude = 5.f;
 
-				UAbilitySystemComponent* ASC = &Data.Target;
-				if (!ASC) return;
-				if (!ASC->GetOwnerActor()) return;
-				if (!ASC->GetOwnerActor()->HasAuthority())
-				{
-					return;
-				}
-
-				if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead))
-				{
-					ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
-				}
-				
+				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+					TargetActor,
+					TAG_Event_Combat_Dead,
+					Payload
+				);
 			}
 		}
 
@@ -63,6 +55,17 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
+	}
+
+	if (Data.EvaluatedData.Attribute == GetIncomingHealAttribute())
+	{
+		const float LocalIncomingHeal = GetIncomingHeal();
+
+		if (LocalIncomingHeal > 0.f)
+		{
+			const float NewHealth = GetMaxHealth();
+			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
+		}
 	}
 }
 

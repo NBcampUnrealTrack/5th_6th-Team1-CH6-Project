@@ -40,4 +40,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Meta")
 	FGameplayAttributeData IncomingDamage;
 	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, IncomingDamage)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|Meta")
+	FGameplayAttributeData IncomingHeal;
+	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, IncomingHeal)
 };

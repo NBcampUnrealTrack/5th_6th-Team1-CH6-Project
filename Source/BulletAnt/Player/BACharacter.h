@@ -20,6 +20,7 @@ class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
+class UBAAbilitySystemComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
@@ -292,7 +293,7 @@ public:
 
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UAbilitySystemComponent* AbilitySystemComponent;
+    UBAAbilitySystemComponent* AbilitySystemComponent;
 
     UPROPERTY()
     UHealthAttributeSet* HealthAttributeSet;
@@ -344,8 +345,13 @@ protected:
     UFUNCTION(BlueprintCallable)
     virtual void OnDeath() override;
 
+    UFUNCTION()
+    void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
+
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
     float RespawnTime = 5.f;
+
+   
     
 protected:
     UPROPERTY(VisibleAnywhere)

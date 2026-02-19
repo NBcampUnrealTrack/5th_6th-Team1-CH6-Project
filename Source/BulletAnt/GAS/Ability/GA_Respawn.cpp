@@ -2,11 +2,10 @@
 #include "GAS/BAGameplayTags.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameFramework/Character.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "AbilitySystemComponent.h"
-#include "UI/UISubsystem.h"
-#include "UI/UW_RespawnBar.h"
+#include "Player/BAPlayerController.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -14,7 +13,7 @@ UGA_Respawn::UGA_Respawn()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
 
 	FAbilityTriggerData Trigger;
-	Trigger.TriggerTag = TAG_State_Combat_Dead;
+	Trigger.TriggerTag = TAG_Event_Combat_Dead;
 
 	AbilityTriggers.Add(Trigger);
 }
@@ -32,36 +31,23 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	Source = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
 	if (!Source) return;
 
-	Mesh = Source->GetMesh();
-	if (!Mesh) return;
-
 	PC = Cast<APlayerController>(Source->GetController());
 	if (!PC) return;
 
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
+
+
 	Source->DisableInput(PC);
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	Mesh->SetVisibility(false);
+	Source->SetActorHiddenInGame(true);
 
-	FTimerHandle DeathTimer;
-	TotalTime = TriggerEventData->EventMagnitude;
-	
-	CurrentTime = 0.f;
-
-	ULocalPlayer* LP = PC->GetLocalPlayer();
-	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-
-	if (IsValid(UISubsystem))
-	{
-		UI = UISubsystem->ShowUI<UUW_RespawnBar>(EUIType::RespawnBar);
-	}
-
-	FTimerHandle RespawnBarTimer;
 	GetWorld()->GetTimerManager().SetTimer(
-		RespawnBarTimer,
+		RespawnHandler,
 		this,
-		&UGA_Respawn::HandleRespawnBar,
-		0.1f,
-		true
+		&UGA_Respawn::HandleRespawn,
+		TriggerEventData->EventMagnitude,
+		false
 	);
 }
 
@@ -69,31 +55,33 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 {
 	if (!Source) return;
 	if (!PC) return;
-	if (!Mesh) return;
 
 	Source->EnableInput(PC);
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	Mesh->SetVisibility(true);
+	Source->SetActorHiddenInGame(false);
 
-	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
+	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
+	ASC->RemoveLooseGameplayTag(TAG_State_Combat_Dead);
+
+	const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
+
+	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(ASC->RespawnHealEffect, 1.f, ASC->MakeEffectContext());
+
+	if (!Spec.IsValid()) return;
+
+	Spec.Data->SetSetByCallerMagnitude(
+		TAG_Data_Combat_Heal,
+		HealthSet->GetMaxHealth()
+	);
+
+	ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_Respawn::HandleDeath()
+void UGA_Respawn::HandleRespawn()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
-void UGA_Respawn::HandleRespawnBar()
-{
-	if (CurrentTime >= TotalTime)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-	}
 
-	CurrentTime += 0.1f;
-
-	UI->
-}

@@ -13,8 +13,6 @@ class BULLETANT_API UUW_RespawnBar : public UUserWidget
 	GENERATED_BODY()
 	
 public:
-	virtual void NativeConstruct() override;
-
 	UFUNCTION()
 	void UpdateRespawnBar(float CurrentTime, float TotalTime);
 

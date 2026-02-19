@@ -2,11 +2,6 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 
-void UUW_RespawnBar::NativeConstruct()
-{
-
-}
-
 void UUW_RespawnBar::UpdateRespawnBar(float CurrentTime, float TotalTime)
 {
 	float LeftTime = TotalTime - CurrentTime;

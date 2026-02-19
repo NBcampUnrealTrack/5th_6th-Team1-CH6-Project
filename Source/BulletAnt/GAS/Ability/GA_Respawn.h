@@ -4,8 +4,8 @@
 #include "Abilities/GameplayAbility.h"
 #include "GA_Respawn.generated.h"
 
-class USkeletalMeshComponent;
 class UUW_RespawnBar;
+class ABAPlayerController;
 
 UCLASS()
 class BULLETANT_API UGA_Respawn : public UGameplayAbility
@@ -31,28 +31,17 @@ protected:
 		bool bReplicateEndAbility,
 		bool bWasCancelled) override;
 
-	UFUNCTION()
-	void HandleDeath();
-
-	UFUNCTION()
-	void HandleRespawnBar();
+	void HandleRespawn();
 
 	UPROPERTY()
 	ACharacter* Source;
 
 	UPROPERTY()
-	USkeletalMeshComponent* Mesh;
-
-	UPROPERTY()
 	APlayerController* PC;
 
 	UPROPERTY()
-	float TotalTime;
-
-	UPROPERTY()
-	float CurrentTime;
-
-	UPROPERTY()
 	UUW_RespawnBar* UI;
+
+	FTimerHandle RespawnHandler;
 
 };

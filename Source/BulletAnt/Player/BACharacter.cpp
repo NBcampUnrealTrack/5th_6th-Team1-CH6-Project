@@ -15,10 +15,10 @@
 #include "UI/UW_PlayerHUDWidget.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
+#include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
-#include "AbilitySystemComponent.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Weapon/BaseRangedWeapon.h"
 #include "Weapon/Data/WeaponDataAsset.h"
@@ -39,11 +39,11 @@ ABACharacter::ABACharacter()
 	bUseControllerRotationRoll = false;
 
 
-    // 이동 컴포넌트 설정
-    GetCharacterMovement()->bOrientRotationToMovement = false;
-    //GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
-    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-    GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+	// 이동 컴포넌트 설정
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	//GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
@@ -63,7 +63,7 @@ ABACharacter::ABACharacter()
 	ParkourComponent = CreateDefaultSubobject<UBAParkourComponent>(TEXT("ParkourComponent"));
 
 	//GAS
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent = CreateDefaultSubobject<UBAAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
@@ -93,16 +93,16 @@ void ABACharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 
-    float Speed = GetVelocity().Size2D();
+	float Speed = GetVelocity().Size2D();
 
-    /*if (Speed > 1.f)
-        bUseControllerRotationYaw = true;
-    else
-        bUseControllerRotationYaw = false;*/
+	/*if (Speed > 1.f)
+		bUseControllerRotationYaw = true;
+	else
+		bUseControllerRotationYaw = false;*/
 
 	if (HasAuthority())
 	{
-		if(Controller)
+		if (Controller)
 		{
 			ControlRot = Controller->GetControlRotation();
 			SyncAimPitch = ControlRot.Pitch;
@@ -156,7 +156,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &ABACharacter::StopAttack);
 		}
 
-		if (ReloadAction) 
+		if (ReloadAction)
 		{
 			EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ABACharacter::Reload);
 		}
@@ -203,7 +203,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 void ABACharacter::OnRep_Controller()
 {
-	Super::OnRep_PlayerState();
+	Super::OnRep_Controller();
 	if (IsLocallyControlled())
 	{
 		if (AbilitySystemComponent)
@@ -215,6 +215,11 @@ void ABACharacter::OnRep_Controller()
 
 			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+
+			AbilitySystemComponent->RegisterGameplayTagEvent(
+				TAG_State_Combat_Dead,
+				EGameplayTagEventType::NewOrRemoved
+			).AddUObject(this, &ABACharacter::HandleRespawnUI);
 		}
 	}
 }
@@ -227,37 +232,37 @@ void ABACharacter::SpringArmRot(bool check)
 //상태에 따른 이동속도
 float ABACharacter::UpdateMovementSpeed()
 {
-    float NewSpeed = WalkSpeed;
+	float NewSpeed = WalkSpeed;
 
-    if (bIsAiming)
-        NewSpeed = AimSpeed;
-    else if (bIsRunning)
-        NewSpeed = RunningSpeed;
+	if (bIsAiming)
+		NewSpeed = AimSpeed;
+	else if (bIsRunning)
+		NewSpeed = RunningSpeed;
 
-    return NewSpeed;
+	return NewSpeed;
 }
 
 // 이동 함수 구현
 void ABACharacter::Move(const FInputActionValue& Value)
 {
-    if (!Controller) return;
+	if (!Controller) return;
 
 	StopMontage();
 
-    FVector2D MovementVector = Value.Get<FVector2D>();
-    // 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
-    const FRotator Rotation = Controller->GetControlRotation();
-    const FRotator YawRotation(0, Rotation.Yaw, 0);
+	FVector2D MovementVector = Value.Get<FVector2D>();
+	// 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
+	const FRotator Rotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-    // 전방 방향 (W/S) 계산
-    const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	// 전방 방향 (W/S) 계산
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-    // 우측 방향 (A/D) 계산
-    const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	// 우측 방향 (A/D) 계산
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-    // 이동 적용
-    AddMovementInput(ForwardDirection, MovementVector.Y);
-    AddMovementInput(RightDirection, MovementVector.X);
+	// 이동 적용
+	AddMovementInput(ForwardDirection, MovementVector.Y);
+	AddMovementInput(RightDirection, MovementVector.X);
 }
 
 UDataAsset* ABACharacter::GetDataAsset() const
@@ -267,15 +272,15 @@ UDataAsset* ABACharacter::GetDataAsset() const
 
 void ABACharacter::StartRunning(const FInputActionValue& Value)
 {
-    bIsRunning = true;
-    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	bIsRunning = true;
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	Server_SetRunning(true);
 }
 
 void ABACharacter::StopRunning(const FInputActionValue& Value)
 {
-    bIsRunning = false;
-    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	bIsRunning = false;
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	Server_SetRunning(false);
 }
 
@@ -287,22 +292,22 @@ void ABACharacter::Server_SetRunning_Implementation(bool bNewIsRunning)
 
 void ABACharacter::CrouchInput(const FInputActionValue& Value)
 {
-    if(!bIsCrouched)
-    {
-        Crouch(false);
-        if(bIsRunning)
-            bIsRunning = false;
+	if (!bIsCrouched)
+	{
+		Crouch(false);
+		if (bIsRunning)
+			bIsRunning = false;
 		SpringArmZ = -30.f;
 
 		StopMontage();
-    }
-    else
-    {
-        UnCrouch(false);
+	}
+	else
+	{
+		UnCrouch(false);
 		SpringArmZ = 0.f;
 
 		StopMontage();
-    }
+	}
 }
 
 // 시선 처리 함수 구현
@@ -334,10 +339,8 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 void ABACharacter::Reload(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
-	FGameplayTag ReloadTag = FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Reload"));
-
 	FGameplayTagContainer Tag;
-	Tag.AddTag(ReloadTag);
+	Tag.AddTag(TAG_Ability_Active_Reload);
 
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
 }
@@ -382,6 +385,14 @@ void ABACharacter::PossessedBy(AController* NewController)
 			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+
+		if (IsLocallyControlled())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(
+				TAG_State_Combat_Dead,
+				EGameplayTagEventType::NewOrRemoved
+			).AddUObject(this, &ABACharacter::HandleRespawnUI);
+		}
 	}
 
 	if (DefaultWeaponClass)
@@ -471,13 +482,26 @@ void ABACharacter::OnDeath()
 	AbilitySystemComponent->HandleGameplayEvent(Payload.EventTag, &Payload);
 }
 
+void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
+{
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+	if (NewCount >= 1)
+	{
+		PC->StartRespawnBar(RespawnTime);
+	}
+	else if (NewCount == 0)
+	{
+		PC->StopRespawnBar();
+	}
+}
+
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
 	bIsAiming = true;
 
-    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	Server_SetAiming(true);
 }
 
@@ -487,7 +511,7 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 	if (!bIsAiming) return;
 	bIsAiming = false;
 
-    GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	Server_SetAiming(false);
 }
 
@@ -500,36 +524,36 @@ void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
-    FVector Start = CameraComponent->GetComponentLocation();
-    FVector Forward = CameraComponent->GetForwardVector();
-    FVector End = Start + (Forward * LineTraceRange);
+	FVector Start = CameraComponent->GetComponentLocation();
+	FVector Forward = CameraComponent->GetForwardVector();
+	FVector End = Start + (Forward * LineTraceRange);
 
-    FHitResult HitResult;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
 
-    bool bHit = GetWorld()->LineTraceSingleByChannel(
-        HitResult,
-        Start,
-        End,
-        ECC_Visibility,
-        Params
-    );
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		ECC_Visibility,
+		Params
+	);
 
-    if (bHit)
-    {
-        AActor* HitActor = HitResult.GetActor();
+	if (bHit)
+	{
+		AActor* HitActor = HitResult.GetActor();
 
-        if (HitActor)
-        {
+		if (HitActor)
+		{
 			bool bHasInterface = HitActor->GetClass()->ImplementsInterface(UBAItemInterface::StaticClass());
-			if(bHasInterface)
+			if (bHasInterface)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("라인트레이스 상호작용: %s"), *HitActor->GetName());
 				IBAItemInterface::Execute_Use(HitActor, this);
 			}
-        }
-    }
+		}
+	}
 }
 
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
@@ -624,9 +648,9 @@ void ABACharacter::ServerRPC_StopTurnMontage_Implementation()
 void ABACharacter::Multicast_StopTurnMontage_Implementation()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance&& CurrentTurnMontage)
+	if (AnimInstance && CurrentTurnMontage)
 	{
-			AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
+		AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
 	}
 	SetTurnStatus();
 }
