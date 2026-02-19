@@ -4,7 +4,8 @@
 #include "Blueprint/UserWidget.h"
 #include "UW_RespawnBar.generated.h"
 
-class UProgressBar
+class UProgressBar;
+class UTextBlock;
 
 UCLASS()
 class BULLETANT_API UUW_RespawnBar : public UUserWidget
@@ -14,6 +15,12 @@ class BULLETANT_API UUW_RespawnBar : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
+	UFUNCTION()
+	void UpdateRespawnBar(float CurrentTime, float TotalTime);
+
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* RespawnBar;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* LeftRespawnTime;
 };

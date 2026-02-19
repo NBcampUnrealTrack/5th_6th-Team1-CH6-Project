@@ -327,7 +327,7 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
 	if (!WeaponData) return;
 	Tag.AddTag(WeaponData->WeaponTag);
-	
+
 	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
 }
 

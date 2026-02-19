@@ -5,6 +5,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_RespawnBar.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -41,13 +43,25 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	Mesh->SetVisibility(false);
 
 	FTimerHandle DeathTimer;
+	TotalTime = TriggerEventData->EventMagnitude;
+	
+	CurrentTime = 0.f;
 
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+
+	if (IsValid(UISubsystem))
+	{
+		UI = UISubsystem->ShowUI<UUW_RespawnBar>(EUIType::RespawnBar);
+	}
+
+	FTimerHandle RespawnBarTimer;
 	GetWorld()->GetTimerManager().SetTimer(
-		DeathTimer,
+		RespawnBarTimer,
 		this,
-		&UGA_Respawn::HandleDeath,
-		TriggerEventData->EventMagnitude,
-		false
+		&UGA_Respawn::HandleRespawnBar,
+		0.1f,
+		true
 	);
 }
 
@@ -70,4 +84,16 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 void UGA_Respawn::HandleDeath()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_Respawn::HandleRespawnBar()
+{
+	if (CurrentTime >= TotalTime)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	}
+
+	CurrentTime += 0.1f;
+
+	UI->
 }
