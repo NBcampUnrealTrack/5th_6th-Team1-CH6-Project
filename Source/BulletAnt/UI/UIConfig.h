@@ -14,6 +14,7 @@ enum class EUIType : uint8
     BuildMenu,
     RespawnBar,
     GroundScanner,
+    OreCount,
 };
 
 USTRUCT()

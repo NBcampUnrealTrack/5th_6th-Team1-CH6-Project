@@ -7,6 +7,8 @@
 #include "UI/UISubsystem.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "UI/UW_OreCount.h"
+#include "Framework/BAGameState.h"
 
 void ABAPlayerController::BeginPlay()
 {
@@ -36,6 +38,25 @@ void ABAPlayerController::BeginPlay()
 
 			HUD->OwnerCharacter = PlayerCharacter;
 			HUD->AddToViewport();
+		}
+	}
+
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP) return;
+
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem) == true)
+	{
+		UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
+		if (IsValid(OreCountUI) == true)
+		{
+			ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+			if (IsValid(GS) == true)
+			{
+				FOnOreChanged::FDelegate Delegate;
+				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
+				GS->BindOnOreChanged(Delegate);
+			}
 		}
 	}
 }
