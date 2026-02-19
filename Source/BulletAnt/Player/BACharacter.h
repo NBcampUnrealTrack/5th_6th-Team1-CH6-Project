@@ -11,6 +11,7 @@
 #include "Net/UnrealNetwork.h"
 #include "BACharacter.generated.h"
 
+class UCapsuleComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UMotionWarpingComponent;
@@ -80,6 +81,9 @@ protected:
     // --- 카메라 관련 컴포넌트 ---
     //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     //TObjectPtr<USpringArmComponent> CameraBoom;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DetectedCapsule")
+    UCapsuleComponent* DetectedCapsule;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spring Arm")
     USpringArmComponent* SpringArm;

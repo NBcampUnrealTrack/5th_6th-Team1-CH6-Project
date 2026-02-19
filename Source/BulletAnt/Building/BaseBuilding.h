@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "AbilitySystemInterface.h"
-#include "Common/OnDeathInterface.h"
 #include "BaseBuilding.generated.h"
 
 class UBoxComponent;
@@ -41,7 +40,6 @@ struct FBuildingEdge
 UCLASS()
 class BULLETANT_API ABaseBuilding : public AActor
 								  , public IAbilitySystemInterface
-								  , public IOnDeathInterface
 {
 	GENERATED_BODY()
 	
@@ -55,10 +53,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// IOnDeathInterface
-	virtual void OnDeath() override;
-
 public:
+	virtual void OnDeath();
+
 	void ApplyBuildingBounds(const FVector& InBoxExtent);
 	FVector GetBuildingBoxExtent() const { return BuildingBoxExtent; }
 	void SetBuildingBoxExtent(const FVector& InBoxExtent);

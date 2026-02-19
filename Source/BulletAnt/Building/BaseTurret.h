@@ -40,8 +40,6 @@ protected:
 	virtual void OnDeath() override;
 	virtual void OnRep_Dead() override;
 
-	void GiveDefaultAbilities();
-
 private:
 	UFUNCTION()
 	void OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

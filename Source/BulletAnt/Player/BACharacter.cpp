@@ -1,5 +1,6 @@
 ﻿#include "Player/BACharacter.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -44,6 +45,11 @@ ABACharacter::ABACharacter()
 	//GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+
+	DetectedCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectedCapsule"));
+	DetectedCapsule->SetupAttachment(RootComponent);
+	DetectedCapsule->SetCollisionProfileName(TEXT("Pawn"));
+	DetectedCapsule->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel3);
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
