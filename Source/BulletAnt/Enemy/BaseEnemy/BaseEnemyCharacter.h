@@ -12,6 +12,7 @@
 class UStateTreeComponent;
 class UBaseEnemyDataAsset;
 class UHealthAttributeSet;
+class USphereComponent;
 
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IOnDeathInterface
@@ -77,7 +78,10 @@ protected:
 	bool IsInFieldOfView(AActor* Target, float FOVAngle);
 
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
-	class USphereComponent* DetectionSphere;
+	TObjectPtr<USphereComponent> DetectionSphere;
+
+	UPROPERTY(VisibleAnywhere, Category = "Perception")
+	TObjectPtr<USphereComponent> DetectedSphere;
 
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TArray<TObjectPtr<AActor>> NearbyActors;
