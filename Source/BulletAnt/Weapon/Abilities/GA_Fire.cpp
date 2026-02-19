@@ -14,7 +14,7 @@
 UGA_Fire::UGA_Fire()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
 
 	AbilityTags.AddTag(TAG_Ability_Active_Fire);
 
