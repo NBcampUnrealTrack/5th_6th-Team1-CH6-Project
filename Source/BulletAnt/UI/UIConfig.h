@@ -12,7 +12,8 @@ enum class EUIType : uint8
     Root,
     Title,
     BuildMenu,
-    RespawnBar
+    RespawnBar,
+    GroundScanner,
 };
 
 USTRUCT()
