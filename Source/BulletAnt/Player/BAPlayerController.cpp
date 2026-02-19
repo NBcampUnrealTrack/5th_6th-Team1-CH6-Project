@@ -101,3 +101,35 @@ void ABAPlayerController::StopRespawnBar()
 	GetWorld()->GetTimerManager().ClearTimer(RespawnBarTimer);
 	UISubsystem->HideUI(EUIType::RespawnBar);
 }
+
+void ABAPlayerController::SwitchGroundScanner()
+{
+	bActiveGroundScannerUI ^= 1;
+
+	if (bActiveGroundScannerUI == true)
+	{
+		FInputModeGameOnly InputUIMode;
+		SetInputMode(InputUIMode);
+		bShowMouseCursor = true;
+		if (auto* LP = GetLocalPlayer())
+		{
+			if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+			{
+				UIS->ShowUI<UUserWidget>(EUIType::GroundScanner);
+			}
+		}
+	}
+	else
+	{
+		FInputModeGameOnly InputGameMode;
+		SetInputMode(InputGameMode);
+		bShowMouseCursor = false;
+		if (auto* LP = GetLocalPlayer())
+		{
+			if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+			{
+				UIS->HideUI(EUIType::GroundScanner);
+			}
+		}
+	}
+}

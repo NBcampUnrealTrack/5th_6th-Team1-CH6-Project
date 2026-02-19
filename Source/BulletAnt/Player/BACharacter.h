@@ -22,6 +22,7 @@ class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
 class UBAAbilitySystemComponent;
+class USceneCaptureComponent2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
@@ -143,6 +144,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* ToggleSnapModeAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
+    UInputAction* GroundScannerAction;
 
 #pragma endregion
 
@@ -356,5 +360,31 @@ protected:
 protected:
     UPROPERTY(VisibleAnywhere)
     UBuildManagerComponent* BuildManager;
-   
+
+#pragma region GroundScanner
+
+public:
+    FORCEINLINE USceneCaptureComponent2D* GetGroundScannerSceneCapture() { return SceneCapture2D; }
+    void RotateScannerParent(const FVector2D& Input);
+    void SwitchGroundScanner();
+        
+protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<USpringArmComponent> SceneCaptureParent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<USceneCaptureComponent2D> SceneCapture2D;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<UMaterialInterface> M_PostProcessGroundScanner;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<UTextureRenderTarget2D> RT_GroundScanner;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float ScannerDistance = 600.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    FRotator ScannerDefaultRotation = FRotator(-40.0f, 0.0f, 0.0f);
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<UStaticMeshComponent> ArrowMesh;
+
+#pragma endregion
+
 };

@@ -64,4 +64,15 @@ protected:
 	float CurrentTime;
 
 	FTimerHandle RespawnBarTimer;
+	
+#pragma region GroundScanner
+
+public:
+	void SwitchGroundScanner();
+
+protected:
+	uint8 bActiveGroundScannerUI : 1 = false;
+
+#pragma endregion
+
 };
