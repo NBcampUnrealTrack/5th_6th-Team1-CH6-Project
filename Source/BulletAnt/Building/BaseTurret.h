@@ -9,6 +9,7 @@
 
 class URangedWeaponDataAsset;
 class USphereComponent;
+class ABaseEnemyCharacter;
 
 UCLASS()
 class BULLETANT_API ABaseTurret : public ABaseBuilding
@@ -73,7 +74,7 @@ protected:
 	float SerchingSphereRadius = 1000.f;
 
 	UPROPERTY()
-	TArray<TWeakObjectPtr<AActor>> TargetCandidates;
+	TArray<TWeakObjectPtr<ABaseEnemyCharacter>> TargetCandidates;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<AActor> CurrentTarget;

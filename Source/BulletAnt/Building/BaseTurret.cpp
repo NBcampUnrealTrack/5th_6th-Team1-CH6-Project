@@ -8,6 +8,7 @@
 #include "Weapon/Abilities/GA_Fire.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Components/SphereComponent.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 
 ABaseTurret::ABaseTurret()
 {
@@ -36,7 +37,6 @@ void ABaseTurret::BeginPlay()
 
 	if (HasAuthority())
 	{
-		ASC->InitAbilityActorInfo(this, this);
 		GiveDefaultAbilities();
 
 		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseTurret::OnTargetBeginOverlap);
@@ -104,7 +104,6 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABaseTurret, bDead);
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 
@@ -144,8 +143,21 @@ void ABaseTurret::OnDeath()
 		FireTags.AddTag(TurretData->WeaponTag);
 		ASC->CancelAbilities(&FireTags, nullptr, nullptr);
 	}
+}
 
-	Multicast_PlayDestruction(GetActorLocation());
+void ABaseTurret::OnRep_Dead()
+{
+	Super::OnRep_Dead();
+
+	if (BodyMesh)
+	{
+		BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		BodyMesh->SetHiddenInGame(true);
+	}
+	if (BarrelMesh)
+	{
+		BarrelMesh->SetHiddenInGame(true);
+	}
 }
 
 void ABaseTurret::GiveDefaultAbilities()
@@ -163,12 +175,18 @@ void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AAct
 		return;
 	}
 
-	TargetCandidates.AddUnique(OtherActor);
+	ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(OtherActor);
+	if (!Enemy)
+	{
+		return;
+	}
+	TargetCandidates.AddUnique(Enemy);
 }
 
 void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	TargetCandidates.Remove(OtherActor);
+	ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(OtherActor);
+	TargetCandidates.Remove(Enemy);
 
 	if (CurrentTarget == OtherActor)
 	{
@@ -222,20 +240,5 @@ void ABaseTurret::UpdateCurrentTarget()
 	else if (!IsValid(CurrentTarget))
 	{
 		ASC->CancelAbilities(&FireTags);
-	}
-}
-
-void ABaseTurret::OnRep_Dead()
-{
-	Super::OnRep_Dead();
-
-	if (BodyMesh)
-	{
-		BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		BodyMesh->SetHiddenInGame(true);
-	}
-	if (BarrelMesh)
-	{
-		BarrelMesh->SetHiddenInGame(true);
 	}
 }

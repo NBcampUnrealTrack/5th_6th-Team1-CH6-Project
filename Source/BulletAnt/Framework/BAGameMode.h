@@ -20,6 +20,8 @@ public:
 
 	void MineOre(EVoxelType OreType, int32 PointCount);
 
+	bool TrySpendOre(const TMap<EVoxelType, int32>& Cost);
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 OreMultiplierMin = 15;

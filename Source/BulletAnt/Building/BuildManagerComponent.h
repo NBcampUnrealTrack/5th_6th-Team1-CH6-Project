@@ -32,6 +32,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ExitBuildMode();
 
+	UFUNCTION()
+	void OnBuildMenuSelected(FName NewRow);
+
 	UFUNCTION(BlueprintCallable)
 	void TryPlace();
 

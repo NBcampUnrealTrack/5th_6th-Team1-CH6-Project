@@ -3,7 +3,10 @@
 #include "Building/BuildPreview.h"
 #include "Building/BaseBuilding.h"
 #include "Engine/OverlapResult.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_BuildMenu.h"
 #include <InputActionValue.h>
+#include "Framework/BAGameMode.h" 
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
@@ -86,11 +89,41 @@ void UBuildManagerComponent::EnterBuildMode()
     CurrentYaw = 0.f;
 
     SetComponentTickEnabled(true);
+
+    if (auto* PC = CachedPC.Get())
+    {
+        if (auto* LP = PC->GetLocalPlayer())
+        {
+            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+            {
+                UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+                if (IsValid(BuildMenuWidget))
+                {
+                    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+                    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+                    PC->SetShowMouseCursor(true);
+                }
+            }
+        }
+    }
+    
 }
 
 void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
+
+    if (auto* PC = CachedPC.Get())
+    {
+        if (auto* LP = PC->GetLocalPlayer())
+        {
+            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+            {
+               UIS->HideUI(EUIType::BuildMenu);
+               PC->SetShowMouseCursor(false);
+            }
+        }
+    }
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;
@@ -103,6 +136,11 @@ void UBuildManagerComponent::ExitBuildMode()
         PreviewActor->Destroy();
         PreviewActor = nullptr;
     }
+}
+
+void UBuildManagerComponent::OnBuildMenuSelected(FName NewRow)
+{
+    SetCurrentBuildingRow(NewRow);
 }
 
 void UBuildManagerComponent::TryPlace()
@@ -208,16 +246,12 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation, FRotator& In
     FCollisionQueryParams Params(SCENE_QUERY_STAT(SnapSearch), false);
     Params.AddIgnoredActor(PreviewActor);
 
-    FCollisionObjectQueryParams ObjParams;
-    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
-
     TArray<FOverlapResult> Overlaps;
     const bool bAnyOverlap = World->OverlapMultiByObjectType(
         Overlaps,
         InOutLocation,
         FQuat::Identity,
-        ObjParams,
+        ECC_GameTraceChannel1,
         FCollisionShape::MakeSphere(SnapSearchRadius),
         Params
     );
@@ -419,6 +453,18 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
         return;
     }
 
+    if (ABAGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ABAGameMode>() : nullptr)
+    {
+        if (!GM->TrySpendOre(Row->BuildCost))
+        {
+            return;
+        }
+    }
+    else
+    {
+        return;
+    }
+
     UWorld* World = GetWorld();
     if (!World)
     {
@@ -458,8 +504,7 @@ bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRot
     }
 
     FCollisionObjectQueryParams ObjParams;
-    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
-    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+    ObjParams.AddObjectTypesToQuery(ECC_GameTraceChannel1);
     ObjParams.AddObjectTypesToQuery(ECC_Pawn);
 
     TArray<FOverlapResult> Overlaps;
