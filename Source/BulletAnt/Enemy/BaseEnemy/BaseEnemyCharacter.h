@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
-#include "Common/OnDeathInterface.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
@@ -15,7 +15,7 @@ class UHealthAttributeSet;
 class USphereComponent;
 
 UCLASS()
-class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IOnDeathInterface
+class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface
 {
 	GENERATED_BODY()
 
@@ -31,9 +31,6 @@ protected:
 #pragma endregion
 
 public:
-	UFUNCTION()
-	virtual void OnDeath() override;
-
 	AActor* GetTargetActor() const;
 
 	virtual UDataAsset* GetDataAsset() const override;
@@ -102,12 +99,17 @@ protected:
 	UPROPERTY()
 	UHealthAttributeSet* HealthAttributeSet;
 
+	FDelegateHandle DeadEventHandle;
+
 #pragma endregion
 
 #pragma region StateTree
 
 public:
 	UStateTreeComponent* GetStateTreeComponent() const;
+
+protected:
+	void OnDeadEventReceived(const FGameplayEventData* Payload);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
