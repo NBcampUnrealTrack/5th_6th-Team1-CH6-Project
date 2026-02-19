@@ -122,7 +122,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			LocalHit,
 			Start,
 			End,
-			ECC_GameTraceChannel1,
+			ECC_GameTraceChannel2,
 			Params
 		);
 

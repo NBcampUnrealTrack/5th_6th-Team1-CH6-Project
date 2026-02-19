@@ -94,6 +94,7 @@ void ABAPlayerController::StartRespawnBar(float InTotalTime)
 
 void ABAPlayerController::StopRespawnBar()
 {
+	if (!GetWorld()) return;
 	GetWorld()->GetTimerManager().ClearTimer(RespawnBarTimer);
 	UISubsystem->HideUI(EUIType::RespawnBar);
 }

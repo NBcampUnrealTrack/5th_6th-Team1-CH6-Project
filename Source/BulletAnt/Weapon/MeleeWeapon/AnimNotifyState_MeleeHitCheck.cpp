@@ -67,7 +67,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 		Overlaps,
 		Origin,
 		FQuat::Identity,
-		ECC_GameTraceChannel1,
+		ECC_GameTraceChannel2,
 		FCollisionShape::MakeSphere(Data->AttackRadius),
 		Params
 	);
