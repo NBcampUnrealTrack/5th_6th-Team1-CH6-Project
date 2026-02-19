@@ -473,15 +473,6 @@ void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) con
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
 }
 
-void ABACharacter::OnDeath()
-{
-	FGameplayEventData Payload;
-	Payload.EventTag = TAG_State_Combat_Dead;
-	Payload.EventMagnitude = RespawnTime;
-
-	AbilitySystemComponent->HandleGameplayEvent(Payload.EventTag, &Payload);
-}
-
 void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 {
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());

@@ -61,6 +61,10 @@ void ABAPlayerController::SwitchingMode()
 
 void ABAPlayerController::HandleRespawnBar()
 {
+	if (!IsValid(this)) return;
+
+	if (!IsValid(RespawnBarUI)) return;
+
 	CurrentTime += 0.1f;
 
 	RespawnBarUI->UpdateRespawnBar(CurrentTime, TotalTime);
@@ -94,6 +98,8 @@ void ABAPlayerController::StartRespawnBar(float InTotalTime)
 
 void ABAPlayerController::StopRespawnBar()
 {
+	if (!IsValid(this)) return;
+	if (!IsValid(RespawnBarUI)) return;
 	if (!GetWorld()) return;
 	GetWorld()->GetTimerManager().ClearTimer(RespawnBarTimer);
 	UISubsystem->HideUI(EUIType::RespawnBar);

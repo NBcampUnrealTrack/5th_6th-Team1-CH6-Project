@@ -51,7 +51,7 @@ enum class EEquipmentType : uint8
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface, public IOnDeathInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
 {
 	GENERATED_BODY()
 
@@ -342,8 +342,6 @@ public:
 #pragma endregion
 
 protected:
-    UFUNCTION(BlueprintCallable)
-    virtual void OnDeath() override;
 
     UFUNCTION()
     void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);

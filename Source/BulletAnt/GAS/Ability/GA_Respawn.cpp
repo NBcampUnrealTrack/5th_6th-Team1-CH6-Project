@@ -6,6 +6,8 @@
 #include "Player/BAPlayerController.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -16,6 +18,7 @@ UGA_Respawn::UGA_Respawn()
 	Trigger.TriggerTag = TAG_Event_Combat_Dead;
 
 	AbilityTriggers.Add(Trigger);
+	bIsBlockingOtherAbilities = true;
 }
 
 void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -35,12 +38,15 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	if (!PC) return;
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
 
+	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
 
 	Source->DisableInput(PC);
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	Source->SetActorHiddenInGame(true);
+	Source->GetMesh()->SetSimulatePhysics(true);
+
+	Source->GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -58,7 +64,15 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 
 	Source->EnableInput(PC);
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	Source->SetActorHiddenInGame(false);
+	Source->GetMesh()->SetSimulatePhysics(false);
+	Source->GetMesh()->SetCollisionProfileName(TEXT("Pawn"));
+	Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Source->GetCapsuleComponent()->SetWorldRotation(FRotator::ZeroRotator);
+
+	PC->SetControlRotation(FRotator::ZeroRotator);
+	Source->SetActorRotation(FRotator::ZeroRotator);
+	
+	Source->TeleportTo(FVector(0.f,0.f,0.f), FRotator::ZeroRotator, false, true);
 
 	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
 	ASC->RemoveLooseGameplayTag(TAG_State_Combat_Dead);
