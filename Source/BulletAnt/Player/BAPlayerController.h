@@ -63,8 +63,5 @@ protected:
 	UPROPERTY()
 	float CurrentTime;
 
-	UPROPERTY()
-	TObjectPtr<ABACharacter> PlayerCharacter;
-
 	FTimerHandle RespawnBarTimer;
 };

@@ -28,7 +28,7 @@ void ABAPlayerController::BeginPlay()
 		}
 	}
 
-	if (PlayerCharacter = Cast<ABACharacter>(GetPawn()))
+	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
 	{
 		if (HUDClass) 
 		{
@@ -62,7 +62,6 @@ void ABAPlayerController::SwitchingMode()
 void ABAPlayerController::HandleRespawnBar()
 {
 	if (!IsValid(this)) return;
-
 	if (!IsValid(RespawnBarUI)) return;
 
 	CurrentTime += 0.1f;
@@ -72,8 +71,6 @@ void ABAPlayerController::HandleRespawnBar()
 
 void ABAPlayerController::StartRespawnBar(float InTotalTime)
 {
-	if (!PlayerCharacter) return;
-
 	ULocalPlayer* LP = GetLocalPlayer();
 	if (!LP) return;
 
