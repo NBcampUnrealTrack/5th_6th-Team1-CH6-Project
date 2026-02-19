@@ -20,6 +20,8 @@ UGA_Respawn::UGA_Respawn()
 
 	AbilityTriggers.Add(Trigger);
 	bIsBlockingOtherAbilities = true;
+
+	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active);
 }
 
 void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -46,8 +48,6 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 
 	ActorInfo->AbilitySystemComponent->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
-
-	UKismetSystemLibrary::PrintString(GetWorld(), FString("Hello World"));
 
 	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();

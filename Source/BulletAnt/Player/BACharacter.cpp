@@ -367,7 +367,7 @@ void ABACharacter::OnRep_PlayerState()
 		if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 		FGameplayTagContainer CancelTags;
-		CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
+		CancelTags.AddTag(TAG_Ability_Active);
 
 		AbilitySystemComponent->CancelAbilities(&CancelTags);
 	}
@@ -505,7 +505,7 @@ void ABACharacter::OnRep_PlayerState()
 	//조준 시작
 	void ABACharacter::AimStart(const FInputActionValue & Value)
 	{
-		if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
+		if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 		bIsAiming = true;
 
 		GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
@@ -601,6 +601,7 @@ void ABACharacter::OnRep_PlayerState()
 
 	void ABACharacter::StartSwitchWeapon(const FInputActionValue & Value)
 	{
+		if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)) return;
 		Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
 	}
 

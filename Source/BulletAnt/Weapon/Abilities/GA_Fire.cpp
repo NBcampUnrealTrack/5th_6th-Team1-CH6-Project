@@ -16,7 +16,9 @@ UGA_Fire::UGA_Fire()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
 
-	AbilityTags.AddTag(TAG_Ability_Active_Fire);
+	FGameplayTagContainer DefaultTag;
+	DefaultTag.AddTag(TAG_Ability_Active_Fire);
+	SetAssetTags(DefaultTag);
 }
 
 void UGA_Fire::ActivateAbility(
@@ -42,9 +44,12 @@ void UGA_Fire::ActivateAbility(
 	CachedASC = ActorInfo->AbilitySystemComponent.Get();
 	if (!CachedASC) return;
 
-	const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
+	if (RangedData->UseStateEffect)
+	{
+		const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
 
-	AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+		AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+	}
 
 	ContinuousBullet = 0;
 	

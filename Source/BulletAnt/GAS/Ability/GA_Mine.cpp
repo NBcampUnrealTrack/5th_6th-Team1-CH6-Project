@@ -12,9 +12,12 @@
 UGA_Mine::UGA_Mine()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(TAG_Ability_Active_Mining);
+	FGameplayTagContainer DefaultTag;
+	DefaultTag.AddTag(TAG_Ability_Active_Mining);
+
+	SetAssetTags(DefaultTag);
 }
 
 void UGA_Mine::StartAutoDigLoop()
@@ -45,9 +48,12 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	float BaseMontageLength = CachedMiningAM->GetPlayLength();
 	Playrate = FMath::Clamp(BaseMontageLength / TargetDuration,0.8f,1.8f);
 
-	const UGameplayEffect* EffectCDO = MiningData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
+	if (MiningData->UseStateEffect) 
+	{
+		const UGameplayEffect* EffectCDO = MiningData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
 
-	MiningStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+		MiningStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+	}
 
 	if (MiningData->bAutoActive)
 	{

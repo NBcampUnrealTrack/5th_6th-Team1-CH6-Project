@@ -9,8 +9,6 @@ UGA_SwitchWeapon::UGA_SwitchWeapon()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
 
-	AbilityTags.AddTag(TAG_Event_Weapon_Switch);
-
 	FAbilityTriggerData TriggerData;
 	TriggerData.TriggerTag = TAG_Event_Weapon_Switch;
 	TriggerData.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent;

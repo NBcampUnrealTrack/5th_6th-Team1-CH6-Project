@@ -17,12 +17,20 @@ public:
 	
 
 public:
+
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData
 	) override;
+
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
 
 	UFUNCTION()
 	void OnMontageFinished();
@@ -38,6 +46,6 @@ public:
 
 	FTimerHandle ReloadHandler;
 
-	FGameplayTag TAG_Data_Ammo_Reload;
+	FActiveGameplayEffectHandle ReloadStateHandle;
 	
 };
