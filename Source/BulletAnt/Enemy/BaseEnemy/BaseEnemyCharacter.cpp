@@ -31,7 +31,7 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 		CharacterMovementComponent->bOrientRotationToMovement = false;
 		CharacterMovementComponent->bUseControllerDesiredRotation = true;
 	}
-	
+
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
@@ -45,9 +45,16 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
 	DetectionSphere->SetupAttachment(RootComponent);
-	DetectionSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	DetectionSphere->SetCollisionProfileName(TEXT("EnemyDetect"));
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereEndOverlap);
+
+	DetectedSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectedSphere"));
+	DetectedSphere->SetupAttachment(RootComponent);
+	DetectedSphere->SetCollisionProfileName(TEXT("NoCollision"));
+	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_EngineTraceChannel6);
+	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Overlap);
+	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -60,13 +67,8 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	{
 		return;
 	}
-
-	ABACharacter* BACharacter = Cast<ABACharacter>(OtherActor);
-	ABaseBuilding* BaseBuilding = Cast<ABaseBuilding>(OtherActor);
-	if (IsValid(BACharacter) || IsValid(BaseBuilding))
-	{
-		NearbyActors.Add(OtherActor);
-	}
+	
+	NearbyActors.Add(OtherActor);
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -76,12 +78,7 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 		return;
 	}
 
-	ABACharacter* BACharacter = Cast<ABACharacter>(OtherActor);
-	ABaseBuilding* BaseBuilding = Cast<ABaseBuilding>(OtherActor);
-	if (IsValid(OtherActor) || IsValid(OtherActor))
-	{
-		NearbyActors.Remove(OtherActor);
-	}
+	NearbyActors.Remove(OtherActor);
 }
 
 void ABaseEnemyCharacter::SenseNearbyActors()
