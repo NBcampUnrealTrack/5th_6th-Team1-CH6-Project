@@ -17,6 +17,7 @@
 #include "Player/BACharacter.h"
 #include "Building/BaseBuilding.h"
 
+
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -51,10 +52,8 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 
 	DetectedSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectedSphere"));
 	DetectedSphere->SetupAttachment(RootComponent);
-	DetectedSphere->SetCollisionProfileName(TEXT("NoCollision"));
+	DetectedSphere->SetCollisionProfileName(TEXT("Pawn"));
 	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_EngineTraceChannel6);
-	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Overlap);
-	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
