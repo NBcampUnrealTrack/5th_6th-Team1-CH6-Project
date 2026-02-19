@@ -24,7 +24,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 #pragma endregion
 
 public:
@@ -51,6 +53,39 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	uint8 bIsTurningLeft : 1;
 
+#pragma region Perception
+
+protected:
+	UFUNCTION()
+	virtual void OnDetectionSphereBeginOverlap(
+		UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	UFUNCTION()
+	virtual void OnDetectionSphereEndOverlap(
+		UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
+
+	void SenseNearbyActors();
+
+	bool IsInFieldOfView(AActor* Target, float FOVAngle);
+
+	UPROPERTY(VisibleAnywhere, Category = "Perception")
+	class USphereComponent* DetectionSphere;
+
+	UPROPERTY(VisibleAnywhere, Category = "Perception")
+	TArray<TObjectPtr<AActor>> NearbyActors;
+
+	FTimerHandle SensingTimerHandle;
+
+#pragma endregion
+	
 #pragma region GAS
 
 public:
