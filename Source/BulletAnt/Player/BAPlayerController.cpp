@@ -3,6 +3,10 @@
 #include "Building/BuildManagerComponent.h"
 #include "Player/BACharacter.h"
 #include "UI/UW_PlayerHUDWidget.h"
+#include "UI/UW_RespawnBar.h"
+#include "UI/UISubsystem.h"
+#include "AbilitySystemComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 void ABAPlayerController::BeginPlay()
 {
@@ -24,7 +28,7 @@ void ABAPlayerController::BeginPlay()
 		}
 	}
 
-	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
+	if (PlayerCharacter = Cast<ABACharacter>(GetPawn()))
 	{
 		if (HUDClass) 
 		{
@@ -53,4 +57,44 @@ void ABAPlayerController::SwitchingMode()
 			UE_LOG(LogTemp, Log, TEXT("건축 모드 OFF"));
 		}
 	}
+}
+
+void ABAPlayerController::HandleRespawnBar()
+{
+	CurrentTime += 0.1f;
+
+	RespawnBarUI->UpdateRespawnBar(CurrentTime, TotalTime);
+}
+
+void ABAPlayerController::StartRespawnBar(float InTotalTime)
+{
+	if (!PlayerCharacter) return;
+
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP) return;
+
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+
+	CurrentTime = 0.f;
+	TotalTime = InTotalTime;
+
+	if (IsValid(UISubsystem))
+	{
+		RespawnBarUI = UISubsystem->ShowUI<UUW_RespawnBar>(EUIType::RespawnBar);
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		RespawnBarTimer,
+		this,
+		&ABAPlayerController::HandleRespawnBar,
+		0.1f,
+		true
+	);	
+}
+
+void ABAPlayerController::StopRespawnBar()
+{
+	if (!GetWorld()) return;
+	GetWorld()->GetTimerManager().ClearTimer(RespawnBarTimer);
+	UISubsystem->HideUI(EUIType::RespawnBar);
 }

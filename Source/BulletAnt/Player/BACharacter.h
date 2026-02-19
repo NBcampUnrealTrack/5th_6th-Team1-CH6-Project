@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h"
+#include "Common/OnDeathInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
 #include "BACharacter.generated.h"
@@ -19,6 +20,7 @@ class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
+class UBAAbilitySystemComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
@@ -49,7 +51,7 @@ enum class EEquipmentType : uint8
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface, public IOnDeathInterface
 {
 	GENERATED_BODY()
 
@@ -291,7 +293,7 @@ public:
 
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UAbilitySystemComponent* AbilitySystemComponent;
+    UBAAbilitySystemComponent* AbilitySystemComponent;
 
     UPROPERTY()
     UHealthAttributeSet* HealthAttributeSet;
@@ -338,6 +340,18 @@ public:
     float CurrentRecoilYaw = 0.f;
 
 #pragma endregion
+
+protected:
+    UFUNCTION(BlueprintCallable)
+    virtual void OnDeath() override;
+
+    UFUNCTION()
+    void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
+
+    UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
+    float RespawnTime = 5.f;
+
+   
     
 protected:
     UPROPERTY(VisibleAnywhere)

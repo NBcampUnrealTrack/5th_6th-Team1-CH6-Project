@@ -4,6 +4,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "GAS/BAGameplayTags.h"
 
 ABaseWeapon::ABaseWeapon()
 {

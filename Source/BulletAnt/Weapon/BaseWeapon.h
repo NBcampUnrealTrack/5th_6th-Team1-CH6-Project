@@ -22,7 +22,7 @@ public:
 
 public:
 	FORCEINLINE UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
-	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const{ return WeaponMesh; }
 	FORCEINLINE TArray<TSubclassOf<UGameplayAbility>> GetGrantedAbilities() const { return GrantedAbilities; }
 	FORCEINLINE TArray<FGameplayAbilitySpecHandle> GetGrantedAbilityHandles() const { return GrantedAbilityHandles; }
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetSwitchEffectClass() const { return SwitchEffectClass; }
@@ -52,8 +52,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|GAS")
 	TSubclassOf<UGameplayEffect> SwitchEffectClass;
-
-	const FGameplayTag TAG_Event_Weapon_Switch = FGameplayTag::RequestGameplayTag(TEXT("Event.Weapon.Switch"));
 
 	
 	

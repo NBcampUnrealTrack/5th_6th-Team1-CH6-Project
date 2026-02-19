@@ -1,0 +1,28 @@
+﻿#pragma once
+
+#include "NativeGameplayTags.h"
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Active_Fire);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Active_MeleeAttack);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Active_Mining);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Active_Jetpack);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Active_Reload);
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Combat_Damage);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Combat_Heal);
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Attacking);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Dead);
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Weapon_Equipped_Melee);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Weapon_Equipped_Mining);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Weapon_Equipped_Ranged);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Weapon_Equipped_Jetpack);
+
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Weapon_Switch);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Combat_Dead);
+
+
+
+
+
