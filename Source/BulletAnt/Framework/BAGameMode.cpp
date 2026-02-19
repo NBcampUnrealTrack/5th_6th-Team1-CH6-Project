@@ -58,3 +58,57 @@ void ABAGameMode::MineOre(EVoxelType OreType, int32 PointCount)
 	int32 TotalOreCount = CurrOreCount + GainedCount;
 	GS->SetOreCount(OreType, TotalOreCount);
 }
+
+bool ABAGameMode::TrySpendOre(const TMap<EVoxelType, int32>& Cost)
+{
+    if (!HasAuthority())
+    {
+        return false;
+    }
+
+    ABAGameState* GS = GetGameState<ABAGameState>();
+    if (!IsValid(GS))
+    {
+        return false;
+    }
+
+    if (Cost.Num() == 0)
+    {
+        return true;
+    }
+
+    // 보유 광물 체크
+    for (const TPair<EVoxelType, int32>& Pair : Cost)
+    {
+        const EVoxelType Type = Pair.Key;
+        const int32 Need = Pair.Value;
+
+        if (Need <= 0)
+        {
+            continue;
+        }
+
+        const int32 CurrOreCount = GS->GetOreCount(Type);
+        if (CurrOreCount < Need)
+        {
+            return false;
+        }
+    }
+
+    // 광물 소모
+    for (const TPair<EVoxelType, int32>& Pair : Cost)
+    {
+        const EVoxelType Type = Pair.Key;
+        const int32 Need = Pair.Value;
+
+        if (Need <= 0)
+        {
+            continue;
+        }
+
+        const int32 CurrOreCount = GS->GetOreCount(Type);
+        GS->SetOreCount(Type, CurrOreCount - Need);
+    }
+
+    return true;
+}

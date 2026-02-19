@@ -27,7 +27,9 @@ ABaseBuilding::ABaseBuilding()
 	BuildingBounds->SetupAttachment(RootComponent);
 
 	BuildingBounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BuildingBounds->SetCollisionObjectType(ECC_GameTraceChannel1); // Building Object Type
 	BuildingBounds->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BuildingBounds->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Overlap);
 
 	BuildingBounds->SetHiddenInGame(false);
 	BuildingBounds->SetGenerateOverlapEvents(true);
@@ -76,6 +78,7 @@ void ABaseBuilding::OnDeath()
 		return;
 	}
 
+	Multicast_PlayDestruction(GetActorLocation());
 	bDead = true;
 	OnRep_Dead();
 }

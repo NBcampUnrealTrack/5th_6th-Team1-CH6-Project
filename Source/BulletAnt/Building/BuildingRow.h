@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "Mining/VoxelData.h" 
 #include "BuildingRow.generated.h"
 
 class ABaseBuilding;
@@ -22,4 +23,7 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FVector BuildingBoxExtent = FVector(10.f, 10.f, 10.f);
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TMap<EVoxelType, int32> BuildCost;
 };
