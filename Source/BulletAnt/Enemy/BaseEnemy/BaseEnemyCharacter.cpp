@@ -13,6 +13,9 @@
 #include "Building/BaseCore.h"
 #include "Framework/BAGameState.h"
 #include "Player/BAPlayerController.h"
+#include "Components/SphereComponent.h"
+#include "Player/BACharacter.h"
+#include "Building/BaseBuilding.h"
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
 {
@@ -39,6 +42,97 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	StateTreeComponent->SetStartLogicAutomatically(false);
 	
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
+	DetectionSphere->SetupAttachment(RootComponent);
+	DetectionSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereBeginOverlap);
+	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereEndOverlap);
+}
+
+void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	if (OtherActor == this)
+	{
+		return;
+	}
+
+	ABACharacter* BACharacter = Cast<ABACharacter>(OtherActor);
+	ABaseBuilding* BaseBuilding = Cast<ABaseBuilding>(OtherActor);
+	if (IsValid(BACharacter) || IsValid(BaseBuilding))
+	{
+		NearbyActors.Add(OtherActor);
+	}
+}
+
+void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ABACharacter* BACharacter = Cast<ABACharacter>(OtherActor);
+	ABaseBuilding* BaseBuilding = Cast<ABaseBuilding>(OtherActor);
+	if (IsValid(OtherActor) || IsValid(OtherActor))
+	{
+		NearbyActors.Remove(OtherActor);
+	}
+}
+
+void ABaseEnemyCharacter::SenseNearbyActors()
+{
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter SenseNearbyActors : DataAsset Missing")))
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(DetectionSphere), TEXT("BaseEnemyCharacter SenseNearbyActors : DetectionSphere Missing")))
+	{
+		return;
+	}
+
+	if (NearbyActors.Num() == 0 || IsValid(TargetActor))
+	{
+		return;
+	}
+
+	TargetActor = nullptr;
+	float MinDistSquared = DetectionSphere->GetScaledSphereRadius();
+	MinDistSquared *= MinDistSquared;
+
+	float SenseAngle = BaseEnemyDataAsset->SenseAngle;
+	for (AActor* NearbyActor : NearbyActors)
+	{
+		if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle))
+		{
+			double DistSquared = FVector::DistSquared2D(GetActorLocation(), NearbyActor->GetActorLocation());
+			if (MinDistSquared > DistSquared)
+			{
+				TargetActor = NearbyActor;
+				MinDistSquared = DistSquared;
+			}
+		}
+	}
+
+	if (TargetActor)
+	{
+		FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+		StateTreeComponent->SendStateTreeEvent(ToRotate);
+	}
+}
+
+bool ABaseEnemyCharacter::IsInFieldOfView(AActor* Target, float FOVAngle)
+{
+	FVector DirectionToTarget = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	FVector Forward = GetActorForwardVector();
+
+	float DotProduct = FVector::DotProduct(Forward, DirectionToTarget);
+
+	return DotProduct >= FMath::Cos(FMath::DegreesToRadians(FOVAngle / 2));
 }
 
 UAbilitySystemComponent* ABaseEnemyCharacter::GetAbilitySystemComponent() const
@@ -62,41 +156,6 @@ void ABaseEnemyCharacter::BeginPlay()
 	
 	if (HasAuthority())
 	{		
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-			if (IsValid(BAGameState))
-			{
-				const TArray<ABAPlayerController*>& AllPlayerControllers = BAGameState->GetAllPlayerControllers();
-				const int32 TargetNum = AllPlayerControllers.Num();
-				const int32 RandomIndex = FMath::RandRange(0, TargetNum);
-
-				if (RandomIndex == TargetNum)
-				{
-					TargetActor = BAGameState->GetTargetCore();
-				}
-				else
-				{
-					APawn* Pawn = AllPlayerControllers[RandomIndex]->GetPawn();
-					if (IsValid(Pawn))
-					{
-						TargetActor = Pawn;
-					}
-					else
-					{
-						TargetActor = BAGameState->GetTargetCore();
-					}
-				}
-			}
-		}
-
-		if (!TargetActor)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("BaseEnemyCharacter BeginPlay : TargetActor Missing"));
-			Destroy();
-		}
-
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
 		{
 			return;
@@ -104,6 +163,7 @@ void ABaseEnemyCharacter::BeginPlay()
 		AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
 		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
+		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
 
 		if (AbilitySystemComponent)
 		{
@@ -134,9 +194,26 @@ void ABaseEnemyCharacter::BeginPlay()
 					}
 				}
 			}
+		}		
+
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
 		}
-		
-		StateTreeComponent->StartLogic();
+	}
+}
+
+void ABaseEnemyCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (HasAuthority())
+	{
+		if (IsValid(StateTreeComponent))
+		{
+			StateTreeComponent->StartLogic();
+		}
 	}
 }
 
@@ -146,6 +223,16 @@ void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
+}
+
+void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsValid(GetWorld()))
+	{
+		GetWorldTimerManager().ClearAllTimersForObject(this);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const

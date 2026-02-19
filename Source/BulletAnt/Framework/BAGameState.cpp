@@ -1,8 +1,53 @@
 ﻿#include "Framework/BAGameState.h"
-#include "Mining/VoxelData.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Building/BaseCore.h"
 #include "Player/BAPlayerController.h"
+#include "Mining/VoxelGroundSubsystem.h"
+#include "Net/UnrealNetwork.h"
+
+ABAGameState::ABAGameState()
+{
+    bReplicates = true;
+}
+
+void ABAGameState::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (HasAuthority() == true)
+    {
+        GroundInitParams.Seed = 1337;
+        GroundInitParams.GroundType = EGroundType::Default;
+
+        OnRep_SetInitParams();
+    }
+}
+
+void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ThisClass, GroundInitParams);
+}
+
+void ABAGameState::OnRep_SetInitParams()
+{
+    UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
+    ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
+
+    GroundSubsystem->CreateVoxelGround(GroundInitParams);
+}
+
+void ABAGameState::Multicast_EditGround_Implementation(const FVoxelChunkEditPacket& Packet)
+{
+    if (HasAuthority() == true)
+        return;
+
+    UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
+    ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
+
+    GroundSubsystem->ApplyEditPacket(Packet);
+}
 
 void ABAGameState::SetOreCount(EVoxelType OreType, int32 Count)
 {
