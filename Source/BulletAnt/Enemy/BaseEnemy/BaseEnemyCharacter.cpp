@@ -16,6 +16,7 @@
 #include "Components/SphereComponent.h"
 #include "Player/BACharacter.h"
 #include "Building/BaseBuilding.h"
+#include "GAS/BAGameplayTags.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -141,6 +142,29 @@ UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
 	return StateTreeComponent;
 }
 
+void ABaseEnemyCharacter::OnDeadEventReceived(const FGameplayEventData* Payload)
+{
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->CancelAllAbilities();
+		}
+	}
+
+	Destroy();
+
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			SpawnManagerSubsystem->OnEnemyDie();
+		}
+	}
+}
+
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
 	return TargetActor;
@@ -190,6 +214,9 @@ void ABaseEnemyCharacter::BeginPlay()
 					}
 				}
 			}
+
+			DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
+				.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
 		}		
 
 		UWorld* World = GetWorld();
@@ -228,33 +255,15 @@ void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GetWorldTimerManager().ClearAllTimersForObject(this);
 	}
 
+	if (IsValid(AbilitySystemComponent) && DeadEventHandle.IsValid())
+	{
+		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead).Remove(DeadEventHandle);
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
 	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
-}
-
-void ABaseEnemyCharacter::OnDeath()
-{
-	if (HasAuthority())
-	{
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->CancelAllAbilities();
-		}
-	}
-
-	Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
-	}
 }
