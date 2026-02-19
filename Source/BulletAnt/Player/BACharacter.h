@@ -69,7 +69,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    virtual void OnRep_Controller() override;
+    virtual void OnRep_PlayerState() override;
 
 
     //TEST
@@ -349,8 +349,6 @@ protected:
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
     float RespawnTime = 5.f;
 
-   
-    
 protected:
     UPROPERTY(VisibleAnywhere)
     UBuildManagerComponent* BuildManager;

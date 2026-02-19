@@ -8,6 +8,7 @@
 #include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -35,18 +36,21 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	if (!Source) return;
 
 	PC = Cast<APlayerController>(Source->GetController());
-	if (!PC) return;
+	if (PC)
+	{
+		Source->DisableInput(PC);
+	}
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!ASC) return;
 
+	ActorInfo->AbilitySystemComponent->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
 
-	Source->DisableInput(PC);
-	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	Source->GetMesh()->SetSimulatePhysics(true);
+	UKismetSystemLibrary::PrintString(GetWorld(), FString("Hello World"));
 
-	Source->GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-	Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -58,21 +62,20 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 }
 
 void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
+{	
 	if (!Source) return;
-	if (!PC) return;
+	if (PC)
+	{
+		Source->EnableInput(PC);
+	}
 
-	Source->EnableInput(PC);
-	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	Source->GetMesh()->SetSimulatePhysics(false);
-	Source->GetMesh()->SetCollisionProfileName(TEXT("Pawn"));
-	Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	Source->GetCapsuleComponent()->SetWorldRotation(FRotator::ZeroRotator);
-
-	PC->SetControlRotation(FRotator::ZeroRotator);
-	Source->SetActorRotation(FRotator::ZeroRotator);
+	ActorInfo->AbilitySystemComponent->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
 	
-	Source->TeleportTo(FVector(0.f,0.f,0.f), FRotator::ZeroRotator, false, true);
+	Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
+
+	Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
+
+	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 
 	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
 	ASC->RemoveLooseGameplayTag(TAG_State_Combat_Dead);

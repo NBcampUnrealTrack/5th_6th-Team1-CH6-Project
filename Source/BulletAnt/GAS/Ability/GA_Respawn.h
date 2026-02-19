@@ -44,4 +44,6 @@ protected:
 
 	FTimerHandle RespawnHandler;
 
+	FTransform SavedMeshRelativeTransform;
+
 };
