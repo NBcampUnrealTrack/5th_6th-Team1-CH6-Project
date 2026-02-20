@@ -49,8 +49,9 @@ ABACharacter::ABACharacter()
 
 	DetectedCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectedCapsule"));
 	DetectedCapsule->SetupAttachment(RootComponent);
-	DetectedCapsule->SetCollisionProfileName(TEXT("Pawn"));
+	DetectedCapsule->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectedCapsule->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel3);
+	DetectedCapsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);

@@ -47,14 +47,18 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
 	DetectionSphere->SetupAttachment(RootComponent);
-	DetectionSphere->SetCollisionProfileName(TEXT("EnemyDetect"));
+	DetectionSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel7);	// EnemyVision ObjectType
+	DetectionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Overlap);	// Character
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereEndOverlap);
 
 	DetectedSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectedSphere"));
 	DetectedSphere->SetupAttachment(RootComponent);
-	DetectedSphere->SetCollisionProfileName(TEXT("Pawn"));
-	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_EngineTraceChannel6);
+	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
+	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
