@@ -31,6 +31,7 @@ ABaseBuilding::ABaseBuilding()
 	BuildingBounds->SetCollisionObjectType(ECC_GameTraceChannel1); // Building Object Type
 	BuildingBounds->SetCollisionResponseToAllChannels(ECR_Ignore);
 	BuildingBounds->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Overlap);
+	BuildingBounds->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	BuildingBounds->SetHiddenInGame(false);
 	BuildingBounds->SetGenerateOverlapEvents(true);
