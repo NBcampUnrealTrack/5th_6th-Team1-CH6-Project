@@ -1,4 +1,4 @@
-﻿#include "GAS/Ability/GA_Respawn.h"
+#include "GAS/Ability/GA_Respawn.h"
 #include "GAS/BAGameplayTags.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameFramework/Character.h"
@@ -6,8 +6,6 @@
 #include "Player/BAPlayerController.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/SkeletalMeshComponent.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -42,11 +40,6 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
 
 	Source->DisableInput(PC);
-	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	Source->GetMesh()->SetSimulatePhysics(true);
-
-	Source->GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-	Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -62,20 +55,13 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 	if (!Source) return;
 	if (!PC) return;
 
-	Source->EnableInput(PC);
-	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	Source->GetMesh()->SetSimulatePhysics(false);
-	Source->GetMesh()->SetCollisionProfileName(TEXT("Pawn"));
-	Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	Source->GetCapsuleComponent()->SetWorldRotation(FRotator::ZeroRotator);
-
-	PC->SetControlRotation(FRotator::ZeroRotator);
-	Source->SetActorRotation(FRotator::ZeroRotator);
-	
-	Source->TeleportTo(FVector(0.f,0.f,0.f), FRotator::ZeroRotator, false, true);
-
 	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
 	ASC->RemoveLooseGameplayTag(TAG_State_Combat_Dead);
+
+	Source->TeleportTo(FVector(0.f, 0.f, 0.f), FRotator::ZeroRotator, false, true);
+	PC->SetControlRotation(FRotator::ZeroRotator);
+
+	Source->EnableInput(PC);
 
 	const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
 

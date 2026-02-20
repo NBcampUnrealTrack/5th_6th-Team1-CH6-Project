@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
@@ -43,5 +43,5 @@ protected:
 	UUW_RespawnBar* UI;
 
 	FTimerHandle RespawnHandler;
-
+	
 };

@@ -1,4 +1,4 @@
-﻿#include "Player/BACharacter.h"
+#include "Player/BACharacter.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -85,6 +85,16 @@ void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	LastBodyYaw = GetMesh()->GetComponentRotation().Yaw;
+
+	SavedMeshRelativeTransform = GetMesh()->GetRelativeTransform();
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->RegisterGameplayTagEvent(
+			TAG_State_Combat_Dead,
+			EGameplayTagEventType::NewOrRemoved
+		).AddUObject(this, &ABACharacter::OnDeadTagChanged);
+	}
 }
 
 // Called every frame
@@ -471,6 +481,37 @@ FVector ABACharacter::GetFireDirection() const
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
+}
+
+void ABACharacter::OnDeadTagChanged(FGameplayTag Tag, int32 NewCount)
+{
+	SetRagdollEnabled(NewCount > 0);
+}
+
+void ABACharacter::SetRagdollEnabled(bool bEnable)
+{
+	USkeletalMeshComponent* Mesh = GetMesh();
+	if (!Mesh) return;
+
+	if (bEnable)
+	{
+		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+		Mesh->SetCollisionProfileName(TEXT("Ragdoll"));
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Mesh->SetSimulatePhysics(true);
+	}
+	else
+	{
+		Mesh->SetSimulatePhysics(false);
+		Mesh->AttachToComponent(
+			GetCapsuleComponent(),
+			FAttachmentTransformRules::KeepRelativeTransform
+		);
+		Mesh->SetRelativeTransform(SavedMeshRelativeTransform);
+		Mesh->SetCollisionProfileName(TEXT("CharacterMesh"));
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+	}
 }
 
 void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)

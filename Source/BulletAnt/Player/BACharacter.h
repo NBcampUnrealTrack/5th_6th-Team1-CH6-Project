@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -346,8 +346,13 @@ protected:
     UFUNCTION()
     void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
 
+    void OnDeadTagChanged(FGameplayTag Tag, int32 NewCount);
+    void SetRagdollEnabled(bool bEnable);
+
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
     float RespawnTime = 5.f;
+
+    FTransform SavedMeshRelativeTransform;
 
    
     
