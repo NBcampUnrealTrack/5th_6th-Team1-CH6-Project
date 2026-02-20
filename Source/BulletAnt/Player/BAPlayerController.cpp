@@ -129,7 +129,7 @@ void ABAPlayerController::SwitchGroundScanner()
 
 	if (bActiveGroundScannerUI == true)
 	{
-		FInputModeGameOnly InputUIMode;
+		FInputModeGameAndUI InputUIMode;
 		SetInputMode(InputUIMode);
 		bShowMouseCursor = true;
 		if (auto* LP = GetLocalPlayer())
