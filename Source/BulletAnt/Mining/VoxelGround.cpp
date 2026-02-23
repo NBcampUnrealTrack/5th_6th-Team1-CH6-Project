@@ -606,6 +606,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	NewChunk->SetCollisionResponseToAllChannels(ECR_Ignore);
 	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);
