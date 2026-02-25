@@ -541,7 +541,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	EquippedWeapon = NewWeapon;
 }
 
-FVector ABACharacter::GetFireStartLocation() const
+FVector ABACharacter::GetFireStartLocation_Implementation() const
 {
 	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 	{
@@ -555,7 +555,7 @@ FVector ABACharacter::GetFireStartLocation() const
 	return GetActorLocation();
 }
 
-FVector ABACharacter::GetFireDirection() const
+FVector ABACharacter::GetFireDirection_Implementation() const
 {
 	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 	{

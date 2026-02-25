@@ -81,12 +81,11 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
-	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
-	if (!FireStart) return;
-
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
+	
 
-	const FVector Start = FireStart->GetFireStartLocation();
+	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(ActorInfo->AvatarActor.Get());
+	FVector Dir = IFireStartInterface::Execute_GetFireDirection(ActorInfo->AvatarActor.Get());
 	
 	//총알 발사시 발생하는 이펙트 큐
 	if (RangedData->FireCueEffect)
@@ -112,7 +111,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 	for (int32 i = 0; i < RangedData->FirePerShot; ++i)
 	{
 		FVector FireDir = ApplySpread(
-			FireStart->GetFireDirection(),
+			Dir,
 			RangedData->SpreadDegree
 		);
 
