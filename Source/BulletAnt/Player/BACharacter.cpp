@@ -97,10 +97,10 @@ ABACharacter::ABACharacter()
 	
 	SceneCapture2D = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture2D"));
 	SceneCapture2D->SetupAttachment(SceneCaptureParent);
-	SceneCapture2D->SetRelativeLocation(FVector(-ScannerDistance, 0.0f, 0.0f));
-	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
+	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
 	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
-	SceneCapture2D->MaxViewDistanceOverride = ScannerDistance * 2.0f;
+	SceneCapture2D->MaxViewDistanceOverride = 4000.0f;
+	SceneCapture2D->SetRelativeLocation(FVector(-MaxScannerDistance, 0.0f, 0.0f));
 	SceneCapture2D->ShowFlags.SetLighting(false);
 	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
 	SceneCapture2D->ShowFlags.SetSkyLighting(false);
@@ -123,9 +123,7 @@ ABACharacter::ABACharacter()
 	SceneCapture2D->ShowFlags.SetBounds(false);
 	SceneCapture2D->ShowFlags.SetMaterials(true);
 	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
-	SceneCapture2D->ShowFlags.SetWireframe(true);
-	/*SceneCapture2D->ShowFlags.SetPostProcessing(true);
-	SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);*/
+	SceneCapture2D->ShowFlags.SetPostProcessing(true);
 
 	ArrowMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ArrowMesh"));
 	ArrowMesh->SetupAttachment(RootComponent);
@@ -146,6 +144,7 @@ void ABACharacter::BeginPlay()
 
 	if (IsLocallyControlled() == true)
 	{
+		SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
 		SceneCapture2D->TextureTarget = RT_GroundScanner;
 	}
 }
@@ -848,15 +847,25 @@ void ABACharacter::RotateScannerParent(const FVector2D& Input)
 
 	FRotator CurrentRot = SceneCaptureParent->GetRelativeRotation();
 
-	float NewYaw = CurrentRot.Yaw + Input.X * 0.2f;
-	float NewPitch = CurrentRot.Pitch - Input.Y * 0.2f;
+	float NewYaw = CurrentRot.Yaw + Input.X * ScannerRotateMultiplier;
+	float NewPitch = CurrentRot.Pitch - Input.Y * ScannerRotateMultiplier;
 	NewPitch = FMath::Clamp(NewPitch, -80.f, 80.f);
 	SceneCaptureParent->SetRelativeRotation(FRotator(NewPitch, NewYaw, CurrentRot.Roll));
 }
 
+void ABACharacter::ChangeScannerDistance(float Input)
+{
+	float ScannerDistance = FMath::Clamp(-SceneCapture2D->GetRelativeLocation().X + Input * ScannerZoomMultiplier, MinScannerDistance, MaxScannerDistance);
+
+	SceneCapture2D->SetRelativeLocation(FVector(-ScannerDistance, 0.0f, 0.0f));
+}
+
 void ABACharacter::SwitchGroundScanner()
 {
-	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
+	FRotator DefaultRotation = ScannerDefaultRotation + FRotator(0.0f, GetActorRotation().Yaw, 0.0f);
+	SceneCaptureParent->SetRelativeRotation(DefaultRotation);
+	SceneCapture2D->SetRelativeLocation(FVector(-MaxScannerDistance, 0.0f, 0.0f));
+
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{

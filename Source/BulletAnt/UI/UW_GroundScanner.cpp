@@ -23,7 +23,6 @@ FReply UUW_GroundScanner::NativeOnMouseMove(const FGeometry& InGeometry, const F
         FVector2D CurrentPos = InMouseEvent.GetScreenSpacePosition();
         FVector2D Delta = CurrentPos - LastMousePos;
 
-        // 캐릭터 참조
         if (APlayerController* PC = GetOwningPlayer())
         {
             if (ABACharacter* Character = Cast<ABACharacter>(PC->GetPawn()))
@@ -46,4 +45,18 @@ FReply UUW_GroundScanner::NativeOnMouseButtonUp(const FGeometry& InGeometry, con
         return FReply::Handled().ReleaseMouseCapture();
     }
     return FReply::Unhandled();
+}
+
+FReply UUW_GroundScanner::NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+    float WheelDelta = InMouseEvent.GetWheelDelta();
+    if (APlayerController* PC = GetOwningPlayer())
+    {
+        if (ABACharacter* Character = Cast<ABACharacter>(PC->GetPawn()))
+        {
+            Character->ChangeScannerDistance(-WheelDelta);
+        }
+    }
+
+    return FReply::Handled();
 }
