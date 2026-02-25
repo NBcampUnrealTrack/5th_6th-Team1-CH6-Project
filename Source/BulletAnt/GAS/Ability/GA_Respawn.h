@@ -6,6 +6,8 @@
 
 class UUW_RespawnBar;
 class ABAPlayerController;
+class UBAAbilitySystemComponent;
+class ABaseCore;
 
 UCLASS()
 class BULLETANT_API UGA_Respawn : public UGameplayAbility
@@ -45,5 +47,10 @@ protected:
 	FTimerHandle RespawnHandler;
 
 	FTransform SavedMeshRelativeTransform;
+	FGameplayEffectSpecHandle DeadStateHandle;
+	UPROPERTY()
+	UBAAbilitySystemComponent* ASC;
+
+	FGameplayTagContainer DeadTag;
 
 };

@@ -343,10 +343,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
-    float InterpSpeed = 10.f;
+#pragma endregion
+
+#pragma region Recoil
+public:
+    void SetRecoil(float InPitch, float InYaw);
+
+protected:
     float CurrentRecoilPitch = 0.f;
     float CurrentRecoilYaw = 0.f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, category = "Recoil")
+    float RecoilInterpSpeed = 10.f;
 #pragma endregion
 
 protected:

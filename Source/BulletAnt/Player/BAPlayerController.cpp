@@ -10,6 +10,7 @@
 #include "UI/UW_OreCount.h"
 #include "Framework/BAGameState.h"
 
+
 void ABAPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -122,6 +123,8 @@ void ABAPlayerController::StopRespawnBar()
 	GetWorld()->GetTimerManager().ClearTimer(RespawnBarTimer);
 	UISubsystem->HideUI(EUIType::RespawnBar);
 }
+
+
 
 void ABAPlayerController::SwitchGroundScanner()
 {

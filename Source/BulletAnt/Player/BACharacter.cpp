@@ -93,7 +93,7 @@ ABACharacter::ABACharacter()
 	SceneCaptureParent->bInheritYaw = false;
 	SceneCaptureParent->bInheritRoll = false;
 	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
-	
+
 	SceneCapture2D = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture2D"));
 	SceneCapture2D->SetupAttachment(SceneCaptureParent);
 	SceneCapture2D->SetRelativeLocation(FVector(-ScannerDistance, 0.0f, 0.0f));
@@ -174,6 +174,31 @@ void ABACharacter::Tick(float DeltaTime)
 	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetControlRotation().Yaw - LastBodyYaw);
 
 	IdleTurning(DeltaTime);
+
+	if (IsLocallyControlled())
+	{
+		if (!FMath::IsNearlyZero(CurrentRecoilPitch))
+		{
+			float ApplyAmountPitnch = FMath::FInterpTo(0.f, CurrentRecoilPitch, DeltaTime, RecoilInterpSpeed);
+			AddControllerPitchInput(-ApplyAmountPitnch);
+			CurrentRecoilPitch -= ApplyAmountPitnch;
+			if (FMath::IsNearlyZero(CurrentRecoilPitch))
+			{
+				CurrentRecoilPitch = 0.f;
+			}
+		}
+		if (!FMath::IsNearlyZero(CurrentRecoilYaw))
+		{
+			float ApplyAmountYaw = FMath::FInterpTo(0.f, CurrentRecoilYaw, DeltaTime, RecoilInterpSpeed);
+			AddControllerYawInput(ApplyAmountYaw);
+
+			CurrentRecoilYaw -= ApplyAmountYaw;
+			if (FMath::IsNearlyZero(CurrentRecoilYaw))
+			{
+				CurrentRecoilYaw = 0.f;
+			}
+		}
+	}
 }
 
 // 입력 바인딩
@@ -427,7 +452,7 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
-	CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
+	CancelTags.AddTag(TAG_Ability_Active);
 
 	AbilitySystemComponent->CancelAbilities(&CancelTags);
 }
@@ -537,7 +562,14 @@ FVector ABACharacter::GetFireDirection() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+			FVector ViewLoc;
+			FRotator ViewRot;
+			GetActorEyesViewPoint(ViewLoc, ViewRot);
+
+			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
+			
+			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 		}
 	}
 
@@ -547,6 +579,13 @@ FVector ABACharacter::GetFireDirection() const
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
+}
+
+void ABACharacter::SetRecoil(float InPitch, float InYaw)
+{
+	if (!IsValid(this)) return;
+	CurrentRecoilPitch = InPitch;
+	CurrentRecoilYaw = InYaw;
 }
 
 void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
@@ -565,7 +604,7 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
