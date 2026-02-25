@@ -380,9 +380,11 @@ protected:
     TObjectPtr<UTextureRenderTarget2D> RT_GroundScanner;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float DefaultScannerDistance = 600.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
     float MinScannerDistance = 300.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    float MaxScannerDistance = 600.0f;
+    float MaxScannerDistance = 900.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
     float ScannerZoomMultiplier = 60.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
