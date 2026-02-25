@@ -21,11 +21,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
 	uint8 IsoLevel = 100;				// 지표면 임계값
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	float CaveScale = 0.0005f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
-	float CaveThreshold = 0.2f;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
 	EVoxelType VeinVoxelType;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")

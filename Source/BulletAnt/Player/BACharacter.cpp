@@ -99,8 +99,7 @@ ABACharacter::ABACharacter()
 	SceneCapture2D->SetupAttachment(SceneCaptureParent);
 	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
 	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
-	SceneCapture2D->MaxViewDistanceOverride = 4000.0f;
-	SceneCapture2D->SetRelativeLocation(FVector(-MaxScannerDistance, 0.0f, 0.0f));
+	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
 	SceneCapture2D->ShowFlags.SetLighting(false);
 	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
 	SceneCapture2D->ShowFlags.SetSkyLighting(false);
@@ -903,7 +902,7 @@ void ABACharacter::SwitchGroundScanner()
 {
 	FRotator DefaultRotation = ScannerDefaultRotation + FRotator(0.0f, GetActorRotation().Yaw, 0.0f);
 	SceneCaptureParent->SetRelativeRotation(DefaultRotation);
-	SceneCapture2D->SetRelativeLocation(FVector(-MaxScannerDistance, 0.0f, 0.0f));
+	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
 
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
