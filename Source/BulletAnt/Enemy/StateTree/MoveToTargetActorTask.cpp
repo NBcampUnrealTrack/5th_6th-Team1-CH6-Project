@@ -6,7 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AIController.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
-#include "Enemy/BaseEnemy/BaseEnemyDataAsset.h"
+#include "Enemy/DataAsset/BaseEnemyDataAsset.h"
 #include "Framework/BAGameState.h"
 #include "Building/BaseCore.h"
 

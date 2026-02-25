@@ -17,6 +17,7 @@ class BULLETANT_API UBaseEnemyDataAsset : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 

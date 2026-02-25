@@ -5,7 +5,7 @@
 #include "Components/StateTreeComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
-#include "BaseEnemyDataAsset.h"
+#include "Enemy/DataAsset/BaseEnemyDataAsset.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
