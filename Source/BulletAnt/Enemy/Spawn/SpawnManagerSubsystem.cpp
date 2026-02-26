@@ -174,7 +174,7 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		{
 			AliveEnemyCount++;
 			Enemy->SetTribeType(TribeDataAsset);
-			Enemy->ApplyTribeMaterial();
+			Enemy->ApplyTribe();
 		}
 	}
 	

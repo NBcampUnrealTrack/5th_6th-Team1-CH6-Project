@@ -74,6 +74,11 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 		return;
 	}
 	
+	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	{
+		return;
+	}
+
 	NearbyActors.Add(OtherActor);
 }
 
@@ -182,6 +187,12 @@ void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
 	TribeType = InTribeType;
 }
 
+void ABaseEnemyCharacter::ApplyTribe()
+{
+	ApplyTribeMaterial();
+	ApplyTribePriority();
+}
+
 void ABaseEnemyCharacter::ApplyTribeMaterial()
 {
 	if (HasAuthority())
@@ -215,6 +226,30 @@ void ABaseEnemyCharacter::ApplyTribeMaterial()
 				GetMesh()->SetMaterial(0, SharedMID);
 			}
 		}
+	}
+}
+
+void ABaseEnemyCharacter::ApplyTribePriority()
+{
+	if (HasAuthority())
+	{
+		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeDataAsset Missing")))
+		{
+			return;
+		}
+		if (!ensureMsgf(IsValid(DetectionSphere), TEXT("BaseEnemyCharacter ApplyTribePriority : DetectionSphere Missing")))
+		{
+			return;
+		}
+		
+		if (TribeType->Building == ETargetPriorityType::Ignore)
+		{
+			DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);	// Building
+		}
+		if (TribeType->Player == ETargetPriorityType::Ignore)
+		{
+			DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Ignore);	// Character
+		}		
 	}
 }
 

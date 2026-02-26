@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Enemy/DataAsset/TargetPriority.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
@@ -124,8 +125,14 @@ protected:
 
 public:
 	UTribeDataAsset* GetTribeType() const;
+
 	void SetTribeType(UTribeDataAsset* InTribeType);
+
+	void ApplyTribe();
+
 	void ApplyTribeMaterial();
+
+	void ApplyTribePriority();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
