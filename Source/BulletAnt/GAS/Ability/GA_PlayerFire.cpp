@@ -3,6 +3,7 @@
 #include "Player/BAPlayerController.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "GAS/BAGameplayTags.h"
+#include "Player/BAAnimInstance.h"
 
 UGA_PlayerFire::UGA_PlayerFire()
 {
@@ -35,6 +36,12 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 
 	RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
 	if (!RangedData) return;
+
+	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
+	if (Anim)
+	{
+		Anim->SetIsFiring(true);
+	}
 	
 	if (IsLocallyControlled()) 
 	{
@@ -46,9 +53,15 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 	}
 
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
-	
+}
 
-	
-	
+void UGA_PlayerFire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
+	if (Anim)
+	{
+		Anim->SetIsFiring(false);
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

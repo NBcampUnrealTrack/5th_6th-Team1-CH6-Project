@@ -22,6 +22,13 @@ class BULLETANT_API UGA_PlayerFire : public UGA_Fire
 		const FGameplayEventData* TriggerEventData
 	) override;
 
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
+
 	UPROPERTY()
 	TObjectPtr<ABACharacter> PlayerCharacter;
 
