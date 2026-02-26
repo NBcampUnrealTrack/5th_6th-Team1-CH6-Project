@@ -29,6 +29,8 @@ public:
 	// 매 프레임 실행 함수
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
+	void SetIsFiring(bool InFiring);
+
 
 protected:
 	FRotator CameraTargetOffset();
@@ -66,6 +68,9 @@ protected:
 	// 조준 상태
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsAiming;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	bool bIsFiring = false;
 
 	// 공중 상태
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")

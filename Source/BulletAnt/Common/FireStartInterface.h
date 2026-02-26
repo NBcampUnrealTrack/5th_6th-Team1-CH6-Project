@@ -15,6 +15,9 @@ class BULLETANT_API IFireStartInterface
 	GENERATED_BODY()
 
 public:
-	virtual FVector GetFireStartLocation() const = 0;
-	virtual FVector GetFireDirection() const = 0;
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	FVector GetFireDirection() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	FVector GetFireStartLocation() const;
 };
