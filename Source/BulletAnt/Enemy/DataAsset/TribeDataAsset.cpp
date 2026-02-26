@@ -1,4 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Enemy/Tribe/TribeEntry.h"
+#include "Enemy/DataAsset/TribeDataAsset.h"
+

@@ -4,7 +4,7 @@
 
 #include "Engine/DataTable.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
-#include "Enemy/Tribe/TribeEntry.h"
+#include "Enemy/DataAsset/TribeDataAsset.h"
 #include "EnemySpawnerEntry.generated.h"
 
 class ABaseEnemyCharacter;
@@ -17,8 +17,8 @@ struct BULLETANT_API FSpawnEnemyData
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ABaseEnemyCharacter> EnemyClass;
 
-	UPROPERTY(EditDefaultsOnly, meta = (RowType = "TribeEntry"))
-	FDataTableRowHandle TribeType;
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UTribeDataAsset> TribeType;
 
 	UPROPERTY(EditDefaultsOnly)
 	int32 Count = 10;

@@ -2,17 +2,20 @@
 
 #pragma once
 
-#include "Engine/DataTable.h"
-#include "Enemy/Tribe/TargetPriority.h"
-#include "TribeEntry.generated.h"
+#include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
+#include "Enemy/DataAsset/TargetPriority.h"
+#include "TribeDataAsset.generated.h"
 
 /**
  * 
  */
-USTRUCT(BlueprintType)
-struct BULLETANT_API FTribeEntry : public FTableRowBase
+UCLASS()
+class BULLETANT_API UTribeDataAsset : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
+
+public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Tribe Color")
 	FLinearColor TribeColor = FLinearColor(0, 0, 0, 0);

@@ -171,6 +171,7 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		if (IsValid(Enemy))
 		{
 			AliveEnemyCount++;
+			Enemy->SetTribeType(Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].TribeType);
 		}
 	}
 	

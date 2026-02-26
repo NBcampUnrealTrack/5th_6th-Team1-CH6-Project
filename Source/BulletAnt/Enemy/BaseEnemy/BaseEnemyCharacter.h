@@ -13,6 +13,7 @@ class UStateTreeComponent;
 class UBaseEnemyDataAsset;
 class UHealthAttributeSet;
 class USphereComponent;
+class UTribeDataAsset;
 
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface
@@ -120,8 +121,16 @@ protected:
 #pragma region BaseEnemyDataAsset
 
 public:
+	UTribeDataAsset* GetTribeType() const;
+	void SetTribeType(UTribeDataAsset* InTribeType);
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
+
+	protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	TObjectPtr<UTribeDataAsset> TribeType;
 
 #pragma endregion
 

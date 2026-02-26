@@ -17,6 +17,7 @@
 #include "Player/BACharacter.h"
 #include "Building/BaseBuilding.h"
 #include "GAS/BAGameplayTags.h"
+#include "Enemy/DataAsset/TribeDataAsset.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -167,6 +168,17 @@ void ABaseEnemyCharacter::OnDeadEventReceived(const FGameplayEventData* Payload)
 			SpawnManagerSubsystem->OnEnemyDie();
 		}
 	}
+}
+
+UTribeDataAsset* ABaseEnemyCharacter::GetTribeType() const
+{
+	return TribeType;
+}
+
+void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
+{
+	ensureMsgf(IsValid(InTribeType), TEXT("BaseEnemyCharacter SetTribeType : DataAsset NULL"));
+	TribeType = InTribeType;
 }
 
 AActor* ABaseEnemyCharacter::GetTargetActor() const
