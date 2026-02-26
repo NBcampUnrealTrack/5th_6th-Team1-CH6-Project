@@ -94,6 +94,8 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
+	void InitGAS();
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
@@ -118,17 +120,19 @@ protected:
 
 #pragma endregion
 
-#pragma region BaseEnemyDataAsset
+#pragma region DataAsset
 
 public:
 	UTribeDataAsset* GetTribeType() const;
 	void SetTribeType(UTribeDataAsset* InTribeType);
+	void ApplyTribeMaterial();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
 
-	protected:
+protected:
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UTribeDataAsset> TribeType;
 

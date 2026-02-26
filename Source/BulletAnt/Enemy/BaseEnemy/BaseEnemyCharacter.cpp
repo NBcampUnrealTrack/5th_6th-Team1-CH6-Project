@@ -18,6 +18,7 @@
 #include "Building/BaseBuilding.h"
 #include "GAS/BAGameplayTags.h"
 #include "Enemy/DataAsset/TribeDataAsset.h"
+#include "Enemy/Spawn/TribeMaterialManagerSubsystem.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -181,6 +182,42 @@ void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
 	TribeType = InTribeType;
 }
 
+void ABaseEnemyCharacter::ApplyTribeMaterial()
+{
+	if (HasAuthority())
+	{
+		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeDataAsset Missing")))
+		{
+			return;
+		}
+		if (!ensureMsgf(IsValid(GetMesh()), TEXT("BaseEnemyCharacter ApplyTribeMaterial : Mesh Missing")))
+		{
+			return;
+		}
+
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			UTribeMaterialManagerSubsystem* TribeMaterialManagerSubsystem = GameInstance->GetSubsystem<UTribeMaterialManagerSubsystem>();
+			if (!ensureMsgf(IsValid(TribeMaterialManagerSubsystem), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeMaterialManagerSubsystem Error")))
+			{
+				return;
+			}
+
+			UMaterialInterface* BaseMat = GetMesh()->GetMaterial(0);
+			if (!IsValid(BaseMat))
+			{
+				return;
+			}
+			
+			UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
+			if (SharedMID)
+			{
+				GetMesh()->SetMaterial(0, SharedMID);
+			}
+		}
+	}
+}
+
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
 	return TargetActor;
@@ -201,39 +238,7 @@ void ABaseEnemyCharacter::BeginPlay()
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
 
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->InitAbilityActorInfo(this, this);
-        
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : BaseEnemyDataAsset->DefaultAbilities)
-			{
-				if (AbilityClass)
-				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1);
-					AbilitySystemComponent->GiveAbility(Spec);
-				}
-			}
-			
-			for (const TSubclassOf<UGameplayEffect>& EffectClass : BaseEnemyDataAsset->DefaultEffects)
-			{
-				if (EffectClass)
-				{
-					FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-					EffectContext.AddSourceObject(this);
-
-					// GE의 Spec(인스턴스 같은 것)을 생성
-					FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
-
-					if (SpecHandle.IsValid())
-					{
-						AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-					}
-				}
-			}
-
-			DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
-				.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
-		}		
+		InitGAS();
 
 		UWorld* World = GetWorld();
 		if (IsValid(World))
@@ -241,6 +246,44 @@ void ABaseEnemyCharacter::BeginPlay()
 			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
 		}
 	}
+}
+
+void ABaseEnemyCharacter::InitGAS()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		for (const TSubclassOf<UGameplayAbility>& AbilityClass : BaseEnemyDataAsset->DefaultAbilities)
+		{
+			if (AbilityClass)
+			{
+				FGameplayAbilitySpec Spec(AbilityClass, 1);
+				AbilitySystemComponent->GiveAbility(Spec);
+			}
+		}
+
+		for (const TSubclassOf<UGameplayEffect>& EffectClass : BaseEnemyDataAsset->DefaultEffects)
+		{
+			if (EffectClass)
+			{
+				FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+				EffectContext.AddSourceObject(this);
+
+				// GE의 Spec(인스턴스 같은 것)을 생성
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
+
+				if (SpecHandle.IsValid())
+				{
+					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+		}
+
+		DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
+			.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
+	}
+
 }
 
 void ABaseEnemyCharacter::PossessedBy(AController* NewController)

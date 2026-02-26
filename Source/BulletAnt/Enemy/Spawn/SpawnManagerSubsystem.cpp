@@ -26,7 +26,7 @@ void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 180.f, false);
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
 }
 
 void USpawnManagerSubsystem::Deinitialize()
@@ -149,6 +149,8 @@ void USpawnManagerSubsystem::SpawnEnemies()
 	const int32 Count = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].Count;
 	const int32 MinDistance = Row->SpawnMinDistance;
 	const int32 MaxDistance = Row->SpawnMaxDistance;
+	UTribeDataAsset* TribeDataAsset = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].TribeType;
+	ensureMsgf(TribeDataAsset, TEXT("SpawnTable Tribe Missing"));
 		
 	for (int32 j = 0; j < Count; j++)
 	{
@@ -171,7 +173,8 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		if (IsValid(Enemy))
 		{
 			AliveEnemyCount++;
-			Enemy->SetTribeType(Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].TribeType);
+			Enemy->SetTribeType(TribeDataAsset);
+			Enemy->ApplyTribeMaterial();
 		}
 	}
 	
