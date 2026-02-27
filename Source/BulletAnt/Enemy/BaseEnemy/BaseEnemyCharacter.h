@@ -37,6 +37,10 @@ public:
 
 	virtual UDataAsset* GetDataAsset() const override;
 
+	virtual bool ShouldCallAfterAttack();
+
+	virtual void AfterAttack();
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;

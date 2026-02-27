@@ -361,3 +361,12 @@ UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
 	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
 }
+
+bool ABaseEnemyCharacter::ShouldCallAfterAttack()
+{
+	return false;
+}
+
+void ABaseEnemyCharacter::AfterAttack()
+{
+}

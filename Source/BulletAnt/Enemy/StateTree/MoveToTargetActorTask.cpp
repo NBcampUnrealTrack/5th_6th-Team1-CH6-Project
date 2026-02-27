@@ -96,12 +96,7 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 	{
 		// 바인딩한거 제거
 		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
-
-		// 이 Task에 의해 요청받아 움직이고 있다면 멈춤
-		if (MoveRequestResult == EMoveRequestResult::AlreadyArrived)
-		{
-			CachedAIController->StopMovement();
-		}
+		CachedAIController->StopMovement();
 	}
 
 	MoveRequestResult = EMoveRequestResult::Failed;
