@@ -7,7 +7,7 @@
 #include "Building/BuildingRow.h"
 #include "BuildManagerComponent.generated.h"
 
-class ABuildPreview;
+class ABaseBuilding;
 struct FInputActionValue;
 struct FBuildingEdge;
 
@@ -47,14 +47,14 @@ public:
 	bool IsBuildMode() const { return bBuildMode; }
 
 private:
+	void SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass);
 	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);
-
 	bool TrySnapPreview(FVector& InOutLocation, FRotator& InOutRotation);
 
 	UFUNCTION(Server, Reliable)
 	void Server_TryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
 
-	bool CheckCanPlaceAt(const FVector& Location, const FRotator& Rotation, const FVector& InBoxExtent) const;
+	bool CheckCanPlaceAt() const;
 
 	void RefreshCachedRef();
 
@@ -64,14 +64,9 @@ private:
 
 	FVector2D ClosestPointOnExtendedLine2D(const FVector2D& Point2D, const FBuildingEdge& TargetEdgeWorld, const FVector2D& TargetDir2D, float HalfRange) const;
 
-	float GetPerpFullSizeForEdge(const ABaseBuilding* Building, const FBuildingEdge& EdgeWorld) const;
-
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	TObjectPtr<UDataTable> BuildingTable;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
-	TSubclassOf<ABuildPreview> PreviewActorClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
 	FName DefaultBuildingRow = TEXT("TestTurret");
@@ -80,9 +75,10 @@ private:
 	FName CurrentBuildingRow;
 
 	UPROPERTY()
-	TObjectPtr<ABuildPreview> PreviewActor;
+	TObjectPtr<ABaseBuilding> PreviewActor;
 
 	bool bBuildMode = false;
+	bool bCanPlace = false;
 
 	UPROPERTY()
 	TWeakObjectPtr<AActor> CachedOwner;
@@ -113,7 +109,7 @@ private:
 	float KeyPointSnapMaxDistance = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
-	float MaxBuildDistance = 5000.f;
+	float MaxBuildDistance = 2000.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	float AllowedPenetrationDistance = 1.f;

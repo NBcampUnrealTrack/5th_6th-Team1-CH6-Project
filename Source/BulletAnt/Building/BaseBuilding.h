@@ -7,7 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "BaseBuilding.generated.h"
 
-class UBoxComponent;
+class UPrimitiveComponent;
 class UAbilitySystemComponent;
 class UHealthAttributeSet;
 class UGeometryCollection;
@@ -56,13 +56,16 @@ protected:
 public:
 	virtual void OnDeath();
 
-	void ApplyBuildingBounds(const FVector& InBoxExtent);
-	FVector GetBuildingBoxExtent() const { return BuildingBoxExtent; }
-	void SetBuildingBoxExtent(const FVector& InBoxExtent);
-
 	void GetEdgesWorld(TArray<FBuildingEdge>& OutEdges) const;
 	void GetEdgesWorldWithTransform(const FTransform& T, TArray<FBuildingEdge>& OutEdges) const;
 	void DrawEdgesDebug(bool bPersistentLines, float LifeTime) const;
+
+	void RebuildCachedLocalEdges();
+	void GetPlacementPrimitives(TArray<UPrimitiveComponent*>& OutPrims) const;
+
+	virtual void SetPreviewMode(bool bInPreview);
+	virtual void SetCanPlace(bool bInCanPlace);
+	bool IsPreviewMode() const { return bPreviewMode; }
 
 protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
@@ -73,23 +76,22 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayDestruction(const FVector& ImpulseOrigin);
 
-private:
-	UFUNCTION()
-	void OnRep_BuildingBoxExtent();
-
 public:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USceneComponent> SceneRoot;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> EdgesRoot;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> PlacementRoot;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStaticMeshComponent> StaticMeshComp;
 
-	UPROPERTY(VisibleAnywhere, Category = "Build")
-	TObjectPtr<UBoxComponent> BuildingBounds;
-
 protected:
-	UPROPERTY(ReplicatedUsing = OnRep_BuildingBoxExtent, VisibleAnywhere, Category = "Build")
-	FVector BuildingBoxExtent;
+	UPROPERTY(VisibleAnywhere, Category = "Build|Snap")
+	TArray<FBuildingEdge> CachedLocalEdges;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -105,4 +107,13 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Build|Destruction")
 	TObjectPtr<UGeometryCollectionComponent> DestructionComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Build|Preview")
+	bool bPreviewMode = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Preview")
+	TObjectPtr<UMaterialInterface> PreviewBaseMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> PreviewMID;
 };

@@ -19,11 +19,5 @@ public:
     TSubclassOf<ABaseBuilding> BuildingClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    UStaticMesh* PreviewMesh;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    FVector BuildingBoxExtent = FVector(10.f, 10.f, 10.f);
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TMap<EVoxelType, int32> BuildCost;
 };

@@ -107,6 +107,26 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 
+void ABaseTurret::SetPreviewMode(bool bInPreview)
+{
+	Super::SetPreviewMode(bInPreview);
+
+	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	const int32 BodyMaterials = BodyMesh->GetNumMaterials();
+	for (int32 i = 0; i < BodyMaterials; ++i)
+	{
+		BodyMesh->SetMaterial(i, PreviewMID);
+	}
+
+	const int32 BarrelMaterials = BarrelMesh->GetNumMaterials();
+	for (int32 i = 0; i < BarrelMaterials; ++i)
+	{
+		BarrelMesh->SetMaterial(i, PreviewMID);
+	}
+}
+
 FVector ABaseTurret::GetFireStartLocation_Implementation() const
 {
 	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
