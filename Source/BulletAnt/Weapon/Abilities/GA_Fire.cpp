@@ -207,7 +207,7 @@ void UGA_Fire::ApplyDamageEffect(
 		TAG_Data_Combat_Damage,
 		RangedData->BaseDamage
 	);
-
+	
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
 }
 

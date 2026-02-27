@@ -35,16 +35,17 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
 
 			FGameplayEventData Payload;
-			const FHitResult* InHitResult = Data.EffectSpec.GetContext().GetHitResult();
-			if (InHitResult)
-			{
-				
-			}
+			Payload.ContextHandle = Data.EffectSpec.GetContext();
+			AActor* TargetActor = Data.Target.GetAvatarActor();
+
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+				TargetActor,
+				TAG_Event_Combat_Hit,
+				Payload
+			);
 
 			if (GetHealth() == 0.f)
-			{
-				AActor* TargetActor = Data.Target.GetAvatarActor();
-		
+			{				
 				Payload.EventMagnitude = 5.f;
 				
 				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
