@@ -19,6 +19,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "Enemy/DataAsset/TribeDataAsset.h"
 #include "Enemy/Spawn/TribeMaterialManagerSubsystem.h"
+#include "Components/CapsuleComponent.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -61,6 +62,16 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
 	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
+}
+
+USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
+{
+	return DetectionSphere;
+}
+
+USphereComponent* ABaseEnemyCharacter::GetDetectedSphere() const
+{
+	return DetectedSphere;
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -155,24 +166,9 @@ UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
 
 void ABaseEnemyCharacter::OnDeadEventReceived(const FGameplayEventData* Payload)
 {
-	if (HasAuthority())
+	if (IsValid(BaseEnemyDataAsset))
 	{
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->CancelAllAbilities();
-		}
-	}
-
-	Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
+		StateTreeComponent->SendStateTreeEvent(BaseEnemyDataAsset->DeathStateTag);
 	}
 }
 
@@ -253,6 +249,48 @@ void ABaseEnemyCharacter::ApplyTribePriority()
 	}
 }
 
+UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
+{
+	if (HasAuthority())
+	{
+		if (IsValid(BaseEnemyDataAsset))
+		{
+			return BaseEnemyDataAsset->DieAnimMontage;
+		}
+	}
+
+	return nullptr;
+}
+
+//void ABaseEnemyCharacter::Die()
+//{
+//	if (HasAuthority())
+//	{
+//		if (AbilitySystemComponent)
+//		{
+//			if (DeathGEHandle.IsValid())
+//			{
+//				AbilitySystemComponent->RemoveActiveGameplayEffect(DeathGEHandle);
+//				DeathGEHandle.Invalidate();
+//			}
+//
+//			AbilitySystemComponent->CancelAllAbilities();
+//		}
+//
+//		Destroy();
+//
+//		UWorld* World = GetWorld();
+//		if (IsValid(World))
+//		{
+//			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+//			if (IsValid(SpawnManagerSubsystem))
+//			{
+//				SpawnManagerSubsystem->OnEnemyDie();
+//			}
+//		}
+//	}
+//}
+
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
 	return TargetActor;
@@ -261,7 +299,9 @@ AActor* ABaseEnemyCharacter::GetTargetActor() const
 void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	InitGAS();
+
 	if (HasAuthority())
 	{		
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
@@ -272,8 +312,6 @@ void ABaseEnemyCharacter::BeginPlay()
 		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
-
-		InitGAS();
 
 		UWorld* World = GetWorld();
 		if (IsValid(World))
@@ -369,4 +407,37 @@ bool ABaseEnemyCharacter::ShouldCallAfterAttack()
 
 void ABaseEnemyCharacter::AfterAttack()
 {
+}
+
+void ABaseEnemyCharacter::Multicast_SetNoCollision_Implementation()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	if (UCapsuleComponent* Capsule =  GetCapsuleComponent())
+	{
+		Capsule->SetSimulatePhysics(false);
+		Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (USkeletalMeshComponent* EnemyMesh = GetMesh())
+	{
+		EnemyMesh->SetSimulatePhysics(false);
+		EnemyMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (DetectionSphere)
+	{
+		DetectionSphere->SetSimulatePhysics(false);
+		DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (DetectedSphere)
+	{
+		DetectedSphere->SetSimulatePhysics(false);
+		DetectedSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
 }

@@ -8,6 +8,7 @@
 #include "Common/DataAssetInterface.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Enemy/DataAsset/TargetPriority.h"
+#include "Net/UnrealNetwork.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
@@ -41,6 +42,9 @@ public:
 
 	virtual void AfterAttack();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetNoCollision();
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
@@ -58,6 +62,11 @@ public:
 	uint8 bIsTurningLeft : 1;
 
 #pragma region Perception
+
+public:
+	USphereComponent* GetDetectionSphere() const;
+
+	USphereComponent* GetDetectedSphere() const;
 
 protected:
 	UFUNCTION()
@@ -109,6 +118,9 @@ protected:
 
 	FDelegateHandle DeadEventHandle;
 
+	//FActiveGameplayEffectHandle DeathGEHandle;
+
+
 #pragma endregion
 
 #pragma region StateTree
@@ -137,6 +149,10 @@ public:
 	void ApplyTribeMaterial();
 
 	void ApplyTribePriority();
+
+	UAnimMontage* GetDieAnimMontage() const;
+
+	//void Die();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")

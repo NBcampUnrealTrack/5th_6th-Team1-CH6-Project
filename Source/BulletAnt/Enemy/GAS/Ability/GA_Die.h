@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "GA_Die.generated.h"
 
 /**
@@ -23,4 +24,10 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData
 	) override;	
+
+	UFUNCTION()
+	void OnDieAnimationFinished();
+
+private:
+	TWeakObjectPtr<ABaseEnemyCharacter> Enemy;
 };

@@ -3,6 +3,8 @@
 
 #include "Enemy/Egg/EggCharacter.h"
 #include "GAS/BAGameplayTags.h"
+#include "AbilitySystemComponent.h"
+#include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
 bool AEggCharacter::ShouldCallAfterAttack()
 {
@@ -11,12 +13,15 @@ bool AEggCharacter::ShouldCallAfterAttack()
 
 void AEggCharacter::AfterAttack()
 {
-	FGameplayEventData Payload;
-	Payload.EventMagnitude = 5.f;
+	Destroy();
 
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
-		this,
-		TAG_Event_Combat_Dead,
-		Payload
-	);
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			SpawnManagerSubsystem->OnEnemyDie();
+		}
+	}
 }

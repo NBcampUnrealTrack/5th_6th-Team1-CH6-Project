@@ -73,4 +73,16 @@ public:
 
 #pragma endregion
 
+#pragma region Death
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death")
+	TSubclassOf<UGameplayEffect> DeathEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	FGameplayTag DeathStateTag;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	TObjectPtr<UAnimMontage> DieAnimMontage;
+
+#pragma endregion
 };
