@@ -9,6 +9,7 @@
 #include "Common/OnDeathInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/DataTable.h"
 #include "BACharacter.generated.h"
 
 class UCapsuleComponent;
@@ -50,6 +51,20 @@ enum class EEquipmentType : uint8
     Ranged       UMETA(DisplayName = "Ranged"),
     Mining      UMETA(DisplayName = "Mining"),
     Melee       UMETA(DisplayName = "Melee")
+};
+USTRUCT(BlueprintType)
+struct FAnimChoice : public FTableRowBase
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    UAnimSequence* AnimAsset;
+
+    UPROPERTY(EditAnywhere)
+    float TargetAngle;
+    
+    UPROPERTY(EditAnywhere)
+    float TargetSpeed;
 };
 
 UCLASS()
@@ -216,6 +231,8 @@ protected:
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
 public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
+    TArray<FAnimChoice> AnimDataBase;
 
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
@@ -249,7 +266,7 @@ public:
     //최대 좌우 시선 회전 각도
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
     float IdleTurn = 90.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float LineTraceRange = 500.f;
     UPROPERTY(Replicated)
     float SyncAimYaw;
