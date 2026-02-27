@@ -12,4 +12,7 @@ class BULLETANT_API UBAAbilitySystemComponent : public UAbilitySystemComponent
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect")
 	TSubclassOf<UGameplayEffect> RespawnHealEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect")
+	TSubclassOf<UGameplayEffect> DeadStateEffect;
 };

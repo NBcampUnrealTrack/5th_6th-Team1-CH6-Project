@@ -23,6 +23,7 @@ class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
 class UBAAbilitySystemComponent;
+class USceneCaptureComponent2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
@@ -67,7 +68,7 @@ struct FAnimChoice : public FTableRowBase
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface, public IOnDeathInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
 {
 	GENERATED_BODY()
 
@@ -85,7 +86,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    virtual void OnRep_Controller() override;
+    virtual void OnRep_PlayerState() override;
 
 
     //TEST
@@ -158,6 +159,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* ToggleSnapModeAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
+    UInputAction* GroundScannerAction;
 
 #pragma endregion
 
@@ -333,8 +337,8 @@ protected:
 public:
     virtual UDataAsset* GetDataAsset() const override;
 
-    virtual FVector GetFireStartLocation() const override;
-    virtual FVector GetFireDirection() const override;
+    virtual FVector GetFireStartLocation_Implementation() const override;
+    virtual FVector GetFireDirection_Implementation() const override;
 
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
@@ -356,15 +360,21 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
-    float InterpSpeed = 10.f;
+#pragma endregion
+
+#pragma region Recoil
+public:
+    void SetRecoil(float InPitch, float InYaw);
+
+protected:
     float CurrentRecoilPitch = 0.f;
     float CurrentRecoilYaw = 0.f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, category = "Recoil")
+    float RecoilInterpSpeed = 10.f;
 #pragma endregion
 
 protected:
-    UFUNCTION(BlueprintCallable)
-    virtual void OnDeath() override;
 
     UFUNCTION()
     void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
@@ -372,10 +382,44 @@ protected:
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
     float RespawnTime = 5.f;
 
-   
-    
 protected:
     UPROPERTY(VisibleAnywhere)
     UBuildManagerComponent* BuildManager;
-   
+
+#pragma region GroundScanner
+
+public:
+    FORCEINLINE USceneCaptureComponent2D* GetGroundScannerSceneCapture() { return SceneCapture2D; }
+    void RotateScannerParent(const FVector2D& Input);
+    void ChangeScannerDistance(float Input);
+    void SwitchGroundScanner();
+        
+protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<USpringArmComponent> SceneCaptureParent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<USceneCaptureComponent2D> SceneCapture2D;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<UMaterialInterface> M_PostProcessGroundScanner;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<UTextureRenderTarget2D> RT_GroundScanner;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float DefaultScannerDistance = 600.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float MinScannerDistance = 300.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float MaxScannerDistance = 900.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float ScannerZoomMultiplier = 60.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    FRotator ScannerDefaultRotation = FRotator(-40.0f, 0.0f, 0.0f);
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    float ScannerRotateMultiplier = 0.2f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
+    TObjectPtr<UStaticMeshComponent> ArrowMesh;
+
+#pragma endregion
+
 };

@@ -8,6 +8,7 @@
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 
 UGA_MeleeAttack::UGA_MeleeAttack()
@@ -15,8 +16,13 @@ UGA_MeleeAttack::UGA_MeleeAttack()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(TAG_Ability_Active_MeleeAttack);
-	
+	FGameplayTagContainer DefaultTag;
+	DefaultTag.AddTag(TAG_Ability_Active_MeleeAttack);
+
+	SetAssetTags(DefaultTag);
+
+	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active);
+
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Attacking);
 }
 
@@ -41,15 +47,31 @@ void UGA_MeleeAttack::ActivateAbility(
 
 	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 
+	if (Data->UseStateEffect)
+	{
+		const UGameplayEffect* EffectCDO = Data->UseStateEffect->GetDefaultObject<UGameplayEffect>();
+
+		AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+	}
+
 	UAbilityTask_WaitGameplayEvent* WaitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, Data->HitEventTag);
 	WaitTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnHitEventReceived);
 	WaitTask->ReadyForActivation();
-
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->AttackMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
 	MontageTask->ReadyForActivation();
+}
+
+void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (AttackingStateHandle.IsValid())
+	{
+		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(AttackingStateHandle);
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
@@ -77,7 +99,7 @@ void UGA_MeleeAttack::OnMontageFinished()
 			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToRotate);
 		}
 	}
-	
+
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 

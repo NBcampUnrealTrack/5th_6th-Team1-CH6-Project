@@ -37,7 +37,7 @@ void ABaseTurret::BeginPlay()
 
 	if (HasAuthority())
 	{
-		GiveDefaultAbilities();
+		ASC->GiveAbility(FGameplayAbilitySpec(UGA_Fire::StaticClass(), 1));
 
 		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseTurret::OnTargetBeginOverlap);
 		TargetSerchingSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseTurret::OnTargetEndOverlap);
@@ -107,7 +107,7 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 
-FVector ABaseTurret::GetFireStartLocation() const
+FVector ABaseTurret::GetFireStartLocation_Implementation() const
 {
 	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
 	{
@@ -117,7 +117,7 @@ FVector ABaseTurret::GetFireStartLocation() const
 	return GetActorLocation();
 }
 
-FVector ABaseTurret::GetFireDirection() const
+FVector ABaseTurret::GetFireDirection_Implementation() const
 {
 	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
 	{
@@ -157,14 +157,6 @@ void ABaseTurret::OnRep_Dead()
 	if (BarrelMesh)
 	{
 		BarrelMesh->SetHiddenInGame(true);
-	}
-}
-
-void ABaseTurret::GiveDefaultAbilities()
-{
-	if (HasAuthority())
-	{
-		ASC->GiveAbility(FGameplayAbilitySpec(UGA_Fire::StaticClass(), 1));
 	}
 }
 

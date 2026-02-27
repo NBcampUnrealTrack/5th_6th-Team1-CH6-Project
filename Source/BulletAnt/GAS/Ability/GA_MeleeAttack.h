@@ -23,6 +23,13 @@ public:
 		const FGameplayEventData* TriggerEventData
 	) override;
 
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
+
 protected:
 	void ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target);
 
@@ -35,9 +42,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	FGameplayTag AttackTag;
-	
-	FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
+	FActiveGameplayEffectHandle AttackingStateHandle;
 
 };

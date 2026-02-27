@@ -7,6 +7,9 @@
 #include "UI/UISubsystem.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "UI/UW_OreCount.h"
+#include "Framework/BAGameState.h"
+
 
 void ABAPlayerController::BeginPlay()
 {
@@ -28,7 +31,7 @@ void ABAPlayerController::BeginPlay()
 		}
 	}
 
-	if (PlayerCharacter = Cast<ABACharacter>(GetPawn()))
+	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
 	{
 		if (HUDClass) 
 		{
@@ -36,6 +39,25 @@ void ABAPlayerController::BeginPlay()
 
 			HUD->OwnerCharacter = PlayerCharacter;
 			HUD->AddToViewport();
+		}
+	}
+
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP) return;
+
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem) == true)
+	{
+		UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
+		if (IsValid(OreCountUI) == true)
+		{
+			ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+			if (IsValid(GS) == true)
+			{
+				FOnOreChanged::FDelegate Delegate;
+				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
+				GS->BindOnOreChanged(Delegate);
+			}
 		}
 	}
 }
@@ -61,6 +83,9 @@ void ABAPlayerController::SwitchingMode()
 
 void ABAPlayerController::HandleRespawnBar()
 {
+	if (!IsValid(this)) return;
+	if (!IsValid(RespawnBarUI)) return;
+
 	CurrentTime += 0.1f;
 
 	RespawnBarUI->UpdateRespawnBar(CurrentTime, TotalTime);
@@ -68,8 +93,6 @@ void ABAPlayerController::HandleRespawnBar()
 
 void ABAPlayerController::StartRespawnBar(float InTotalTime)
 {
-	if (!PlayerCharacter) return;
-
 	ULocalPlayer* LP = GetLocalPlayer();
 	if (!LP) return;
 
@@ -94,7 +117,43 @@ void ABAPlayerController::StartRespawnBar(float InTotalTime)
 
 void ABAPlayerController::StopRespawnBar()
 {
+	if (!IsValid(this)) return;
+	if (!IsValid(RespawnBarUI)) return;
 	if (!GetWorld()) return;
 	GetWorld()->GetTimerManager().ClearTimer(RespawnBarTimer);
 	UISubsystem->HideUI(EUIType::RespawnBar);
+}
+
+
+
+void ABAPlayerController::SwitchGroundScanner()
+{
+	bActiveGroundScannerUI ^= 1;
+
+	if (bActiveGroundScannerUI == true)
+	{
+		FInputModeGameAndUI InputUIMode;
+		SetInputMode(InputUIMode);
+		bShowMouseCursor = true;
+		if (auto* LP = GetLocalPlayer())
+		{
+			if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+			{
+				UIS->ShowUI<UUserWidget>(EUIType::GroundScanner);
+			}
+		}
+	}
+	else
+	{
+		FInputModeGameOnly InputGameMode;
+		SetInputMode(InputGameMode);
+		bShowMouseCursor = false;
+		if (auto* LP = GetLocalPlayer())
+		{
+			if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+			{
+				UIS->HideUI(EUIType::GroundScanner);
+			}
+		}
+	}
 }

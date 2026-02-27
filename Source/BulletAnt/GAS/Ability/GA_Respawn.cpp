@@ -6,6 +6,11 @@
 #include "Player/BAPlayerController.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Framework/BAGameState.h"
+#include "Building/BaseCore.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -16,6 +21,9 @@ UGA_Respawn::UGA_Respawn()
 	Trigger.TriggerTag = TAG_Event_Combat_Dead;
 
 	AbilityTriggers.Add(Trigger);
+
+	DeadTag.AddTag(TAG_Event_Combat_Dead);
+	bIsBlockingOtherAbilities = true;
 }
 
 void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -32,15 +40,25 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	if (!Source) return;
 
 	PC = Cast<APlayerController>(Source->GetController());
-	if (!PC) return;
+	if (PC)
+	{
+		Source->DisableInput(PC);
+	}
 
-	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	ASC->AddLooseGameplayTag(TAG_State_Combat_Dead);
+	ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
+	if (!ASC) return;
 
+	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 
-	Source->DisableInput(PC);
-	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	Source->SetActorHiddenInGame(true);
+	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(ASC->DeadStateEffect, 1.f, ASC->MakeEffectContext());
+	Spec.Data->SetSetByCallerMagnitude(
+		TAG_Data_Combat_RespawnTime,
+		TriggerEventData->EventMagnitude
+	);
+
+	ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data);
+
+	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -52,17 +70,18 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 }
 
 void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
+{	
 	if (!Source) return;
-	if (!PC) return;
+	if (PC)
+	{
+		Source->EnableInput(PC);
+	}
 
-	Source->EnableInput(PC);
-	Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-	Source->SetActorHiddenInGame(false);
-
-	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
-	ASC->RemoveLooseGameplayTag(TAG_State_Combat_Dead);
-
+	ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
+	Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
+	Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
+	Source->ForceNetUpdate();
+	
 	const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
 
 	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(ASC->RespawnHealEffect, 1.f, ASC->MakeEffectContext());

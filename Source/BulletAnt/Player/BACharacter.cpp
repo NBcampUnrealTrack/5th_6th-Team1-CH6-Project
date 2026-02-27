@@ -26,6 +26,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 //건축
 #include "Building/BuildManagerComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -48,8 +49,9 @@ ABACharacter::ABACharacter()
 
 	DetectedCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectedCapsule"));
 	DetectedCapsule->SetupAttachment(RootComponent);
-	DetectedCapsule->SetCollisionProfileName(TEXT("Pawn"));
+	DetectedCapsule->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectedCapsule->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel3);
+	DetectedCapsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
@@ -84,6 +86,53 @@ ABACharacter::ABACharacter()
 	bIsRunning = false;
 
 	BuildManager = CreateDefaultSubobject<UBuildManagerComponent>(TEXT("BuildManager"));
+
+	SceneCaptureParent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SceneCaptureArm"));
+	SceneCaptureParent->SetupAttachment(RootComponent);
+	SceneCaptureParent->bUsePawnControlRotation = false;
+	SceneCaptureParent->bInheritPitch = false;
+	SceneCaptureParent->bInheritYaw = false;
+	SceneCaptureParent->bInheritRoll = false;
+	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
+
+	SceneCapture2D = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture2D"));
+	SceneCapture2D->SetupAttachment(SceneCaptureParent);
+	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
+	SceneCapture2D->ShowFlags.SetLighting(false);
+	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
+	SceneCapture2D->ShowFlags.SetSkyLighting(false);
+	SceneCapture2D->ShowFlags.SetAtmosphere(false);
+	SceneCapture2D->ShowFlags.SetFog(false);
+	SceneCapture2D->ShowFlags.SetBloom(false);
+	SceneCapture2D->ShowFlags.SetEyeAdaptation(false);
+	SceneCapture2D->ShowFlags.SetMotionBlur(false);
+	SceneCapture2D->ShowFlags.SetAntiAliasing(false);
+	SceneCapture2D->ShowFlags.SetTemporalAA(false);
+	SceneCapture2D->ShowFlags.SetTonemapper(false);
+	SceneCapture2D->ShowFlags.SetTranslucency(false);
+	SceneCapture2D->ShowFlags.SetParticles(false);
+	SceneCapture2D->ShowFlags.SetSkeletalMeshes(false);
+	SceneCapture2D->ShowFlags.SetLandscape(false);
+	SceneCapture2D->ShowFlags.SetGameplayDebug(false);
+	SceneCapture2D->ShowFlags.SetCompositeDebugPrimitives(false);
+	SceneCapture2D->ShowFlags.SetDebugAI(false);
+	SceneCapture2D->ShowFlags.SetCollision(false);
+	SceneCapture2D->ShowFlags.SetBounds(false);
+	SceneCapture2D->ShowFlags.SetMaterials(true);
+	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
+	SceneCapture2D->ShowFlags.SetPostProcessing(true);
+
+	ArrowMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ArrowMesh"));
+	ArrowMesh->SetupAttachment(RootComponent);
+	ArrowMesh->SetVisibleInSceneCaptureOnly(true);
+	ArrowMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ArrowMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	ArrowMesh->SetGenerateOverlapEvents(false);
+	ArrowMesh->SetRenderCustomDepth(true);
+	ArrowMesh->CustomDepthStencilValue = 1;
+	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
 }
 
 // Called when the game starts or when spawned
@@ -91,6 +140,12 @@ void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	LastBodyYaw = GetMesh()->GetComponentRotation().Yaw;
+
+	if (IsLocallyControlled() == true)
+	{
+		SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
+		SceneCapture2D->TextureTarget = RT_GroundScanner;
+	}
 }
 
 // Called every frame
@@ -118,6 +173,31 @@ void ABACharacter::Tick(float DeltaTime)
 	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetControlRotation().Yaw - LastBodyYaw);
 
 	IdleTurning(DeltaTime);
+
+	if (IsLocallyControlled())
+	{
+		if (!FMath::IsNearlyZero(CurrentRecoilPitch))
+		{
+			float ApplyAmountPitnch = FMath::FInterpTo(0.f, CurrentRecoilPitch, DeltaTime, RecoilInterpSpeed);
+			AddControllerPitchInput(-ApplyAmountPitnch);
+			CurrentRecoilPitch -= ApplyAmountPitnch;
+			if (FMath::IsNearlyZero(CurrentRecoilPitch))
+			{
+				CurrentRecoilPitch = 0.f;
+			}
+		}
+		if (!FMath::IsNearlyZero(CurrentRecoilYaw))
+		{
+			float ApplyAmountYaw = FMath::FInterpTo(0.f, CurrentRecoilYaw, DeltaTime, RecoilInterpSpeed);
+			AddControllerYawInput(ApplyAmountYaw);
+
+			CurrentRecoilYaw -= ApplyAmountYaw;
+			if (FMath::IsNearlyZero(CurrentRecoilYaw))
+			{
+				CurrentRecoilYaw = 0.f;
+			}
+		}
+	}
 }
 
 // 입력 바인딩
@@ -204,32 +284,46 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(ToggleSnapModeAction, ETriggerEvent::Started, this, &ABACharacter::ToggleSnapMode);
 		}
-	}
-}
-
-void ABACharacter::OnRep_Controller()
-{
-	Super::OnRep_Controller();
-	if (IsLocallyControlled())
-	{
-		if (AbilitySystemComponent)
+		if (GroundScannerAction)
 		{
-			AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-
-			AbilitySystemComponent->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			EnhancedInputComponent->BindAction(GroundScannerAction, ETriggerEvent::Started, this, &ABACharacter::SwitchGroundScanner);
 		}
 	}
 }
 
+void ABACharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	if (AbilitySystemComponent)
+	{
+		{
+			if (IsLocallyControlled())
+			{
+				AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+				for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+				{
+					if (AbilityClass)
+					{
+						FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+						AbilitySystemComponent->GiveAbility(Spec);
+					}
+				}
+
+				AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+					.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+
+				AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+					.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+
+				AbilitySystemComponent->RegisterGameplayTagEvent(
+					TAG_State_Combat_Dead,
+					EGameplayTagEventType::NewOrRemoved
+				).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			}
+		}
+	}
+}
 void ABACharacter::SpringArmRot(bool check)
 {
 	SpringArm->bUsePawnControlRotation = check;
@@ -357,7 +451,7 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
-	CancelTags.AddTag(FGameplayTag::RequestGameplayTag("Ability.Active"));
+	CancelTags.AddTag(TAG_Ability_Active);
 
 	AbilitySystemComponent->CancelAbilities(&CancelTags);
 }
@@ -446,7 +540,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	EquippedWeapon = NewWeapon;
 }
 
-FVector ABACharacter::GetFireStartLocation() const
+FVector ABACharacter::GetFireStartLocation_Implementation() const
 {
 	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 	{
@@ -460,14 +554,21 @@ FVector ABACharacter::GetFireStartLocation() const
 	return GetActorLocation();
 }
 
-FVector ABACharacter::GetFireDirection() const
+FVector ABACharacter::GetFireDirection_Implementation() const
 {
 	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 	{
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+			FVector ViewLoc;
+			FRotator ViewRot;
+			GetActorEyesViewPoint(ViewLoc, ViewRot);
+
+			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
+			
+			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 		}
 	}
 
@@ -479,13 +580,11 @@ void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) con
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
 }
 
-void ABACharacter::OnDeath()
+void ABACharacter::SetRecoil(float InPitch, float InYaw)
 {
-	FGameplayEventData Payload;
-	Payload.EventTag = TAG_State_Combat_Dead;
-	Payload.EventMagnitude = RespawnTime;
-
-	AbilitySystemComponent->HandleGameplayEvent(Payload.EventTag, &Payload);
+	if (!IsValid(this)) return;
+	CurrentRecoilPitch = InPitch;
+	CurrentRecoilYaw = InYaw;
 }
 
 void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
@@ -504,7 +603,7 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(TEXT("Weapon.Equipped.Ranged")))) return;
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
@@ -602,6 +701,7 @@ void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)) return;
 	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
 }
 
@@ -780,3 +880,35 @@ void ABACharacter::StopMontage()
 	}
 }
 
+void ABACharacter::RotateScannerParent(const FVector2D& Input)
+{
+	if (IsValid(SceneCaptureParent) == false)
+		return;
+
+	FRotator CurrentRot = SceneCaptureParent->GetRelativeRotation();
+
+	float NewYaw = CurrentRot.Yaw + Input.X * ScannerRotateMultiplier;
+	float NewPitch = CurrentRot.Pitch - Input.Y * ScannerRotateMultiplier;
+	NewPitch = FMath::Clamp(NewPitch, -80.f, 80.f);
+	SceneCaptureParent->SetRelativeRotation(FRotator(NewPitch, NewYaw, CurrentRot.Roll));
+}
+
+void ABACharacter::ChangeScannerDistance(float Input)
+{
+	float ScannerDistance = FMath::Clamp(-SceneCapture2D->GetRelativeLocation().X + Input * ScannerZoomMultiplier, MinScannerDistance, MaxScannerDistance);
+
+	SceneCapture2D->SetRelativeLocation(FVector(-ScannerDistance, 0.0f, 0.0f));
+}
+
+void ABACharacter::SwitchGroundScanner()
+{
+	FRotator DefaultRotation = ScannerDefaultRotation + FRotator(0.0f, GetActorRotation().Yaw, 0.0f);
+	SceneCaptureParent->SetRelativeRotation(DefaultRotation);
+	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
+
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+	if (PC)
+	{
+		PC->SwitchGroundScanner();
+	}
+}

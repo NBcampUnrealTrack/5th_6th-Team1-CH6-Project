@@ -44,4 +44,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UGameplayEffect> ReloadEffect;
+
+	UPROPERTY(EditDefaultsOnly)
+	uint8 bPlayer : 1 = false;
+
+	UPROPERTY(EditDefaultsOnly, meta = (EditCondition = "bPlayer == true", EditConditionHides))
+	float RecoilPitch;
+
+	UPROPERTY(EditDefaultsOnly, meta = (EditCondition = "bPlayer == true", EditConditionHides))
+	float RecoilYaw;
 };

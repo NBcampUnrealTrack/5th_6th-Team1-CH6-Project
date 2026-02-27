@@ -1,7 +1,7 @@
 ﻿#include "Mining/VoxelGround.h"
 #include "Mining/VoxelGroundChunk.h"
 #include "Kismet/GameplayStatics.h"
-#include "GameFramework/Character.h"
+#include "Player/BACharacter.h"
 #include "Mining/GroundSettingPreset.h"
 #include "Components/BoxComponent.h"
 #include "Framework/BAGameMode.h"
@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Mining/VoxelGroundSubsystem.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -367,11 +368,10 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 	const FVector HalfSize = (BoundMaxRange - BoundMinRange) * 0.5f;
 
 	const float ChunkVoxelSize = Setting->ChunkVoxelSize;
-	const float CaveScale = Setting->CaveScale;
-	const float CaveThreshold = Setting->CaveThreshold;
 	const uint8 IsoLevel = Setting->IsoLevel;
 	const EVoxelType VeinVoxelType = Setting->VeinVoxelType;
 	const EVoxelType PillarVoxelType = Setting->PillarVoxelType;
+	const int32 LocalSeed = Seed;
 
 	ParallelFor(ChunkPoints, [&](int32 Z)
 		{
@@ -389,9 +389,6 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 					int32 PointIdx = Z * ChunkPoints * ChunkPoints + Y * ChunkPoints + X;
 
-					// 임시 시드
-					const int32 Seed = 1337;
-
 					// 전체 지형 Bound - Bound 외부는 반드시 공기
 					bool bInBound =
 						WorldPos.X >= BoundMinRange.X && WorldPos.X <= BoundMaxRange.X &&
@@ -402,13 +399,28 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 					auto CalculateCave =
 						[&](const FVector& WorldPos) -> uint8
 						{
+							const static float CaveFrequency = 0.0002f;
+							const static float CaveThreshold = 0.2f;
+
 							float Density = 200.0f;
 
-							float CaveValue = FMath::PerlinNoise3D(WorldPos * CaveScale);
-							float CaveDensity = 100.0f + (CaveThreshold - CaveValue) * 200.0f;
+							FRandomStream Stream(LocalSeed);
+							FVector SeedOffset = Stream.GetUnitVector() * 20000.0f;
+							FVector SamplePos = WorldPos + SeedOffset;
+							FVector CavePos = SamplePos * CaveFrequency;
+							CavePos.Z *= 1.6f;
+							float CaveNoise0 = FMath::Abs(FMath::PerlinNoise3D(CavePos));
+							float CaveNoise1 = FMath::Abs(FMath::PerlinNoise3D(CavePos + FVector::OneVector * 100.0f));
+							float CaveNoise2 = FMath::Abs(FMath::PerlinNoise3D(CavePos + FVector::OneVector * 200.0f));
+							float CaveValue = FMath::Sqrt(CaveNoise0 * CaveNoise0 + CaveNoise1 * CaveNoise1 + CaveNoise2 * CaveNoise2);
 
-							Density = FMath::Min(Density, CaveDensity);
-							return (uint8)FMath::Clamp(FMath::RoundToInt(Density), 0, 200);
+							if (CaveValue > CaveThreshold)
+							{
+								float Alpha = FMath::Clamp((CaveValue - CaveThreshold) / (1.0f - CaveThreshold), 0.0f, 1.0f);
+								Density -= Alpha * 200.0f;
+							}
+
+							return (uint8)FMath::Clamp(Density, 0, 200);
 						};
 
 					auto CalculateVein =
@@ -419,7 +431,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							int32 CellY = FMath::FloorToInt(WorldPos.Y / CellSize);
 							int32 CellZ = FMath::FloorToInt(WorldPos.Z / CellSize);
 
-							int32 Hash = HashCombine(HashCombine(CellX, CellY), HashCombine(CellZ, Seed));
+							int32 Hash = HashCombine(HashCombine(CellX, CellY), HashCombine(CellZ, LocalSeed));
 							FRandomStream Stream(Hash);
 
 							if (Stream.FRand() < 0.7f)
@@ -457,7 +469,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							int32 CellY = FMath::FloorToInt(WorldPos.Y / CellSize);
 							int32 CellZ = FMath::FloorToInt(WorldPos.Z / CellSize);
 
-							int32 Hash = HashCombine(HashCombine(CellX, CellY), HashCombine(CellZ, Seed));
+							int32 Hash = HashCombine(HashCombine(CellX, CellY), HashCombine(CellZ, LocalSeed));
 							FRandomStream Stream(Hash);
 
 							if (Stream.FRand() > 0.5f)
@@ -511,8 +523,9 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 						const static float BedRockNoiseWeight = 0.058f;
 						const static float BedRockThickness = 0.06f;
 						// MaxAxisRatio가 기반암이 생성 가능한 수치 이내라면, 위쪽 중앙 입구 지역이 아니라면
-						if (MaxAxisRatio >= (1 - BedRockNoiseWeight - BedRockThickness) &&
-							(WorldPos.Z <= Center.Z || AbsLocalPos.X > 400.0f || AbsLocalPos.Y > 400.0f))
+						bool bIsBedRockRange = MaxAxisRatio >= (1 - BedRockNoiseWeight - BedRockThickness);
+						bool bEntrance = bIsBedRockRange == true && (WorldPos.Z > Center.Z && AbsLocalPos.X <= 400.0f && AbsLocalPos.Y <= 400.0f);
+						if (bIsBedRockRange == true && bEntrance == false)
 						{
 							float BedRockNoiseValue = FMath::PerlinNoise3D(WorldPos * 0.0008f);
 							float DistortedRatio = MaxAxisRatio + BedRockNoiseValue * BedRockNoiseWeight;
@@ -529,21 +542,29 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 						if (bBedRock == false)
 						{
-							// 기반암이 아니라면, Cave 계산
-							FinalDensity = CalculateCave(WorldPos);
-
-							bool bGround = FinalDensity > IsoLevel;
-							if (bGround == true)
+							if (bEntrance == true)
 							{
+								FinalDensity = 200;
 								VoxelType = EVoxelType::NormalRock;
-
-								// 땅이라면, Vein 계산
-								CalculateVein(WorldPos, ChunkVoxelSize);
 							}
 							else
 							{
-								// 공기라면, Pillar 계산
-								CalculatePillar(WorldPos, PointIdx);
+								// 기반암이 아니라면, Cave 계산
+								FinalDensity = CalculateCave(WorldPos);
+
+								bool bGround = FinalDensity > IsoLevel;
+								if (bGround == true)
+								{
+									VoxelType = EVoxelType::NormalRock;
+
+									// 땅이라면, Vein 계산
+									CalculateVein(WorldPos, ChunkVoxelSize);
+								}
+								else
+								{
+									// 공기라면, Pillar 계산
+									CalculatePillar(WorldPos, PointIdx);
+								}
 							}
 						}
 					}
@@ -605,6 +626,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	NewChunk->SetCollisionResponseToAllChannels(ECR_Ignore);
 	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
 	NewChunk->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);
@@ -1032,7 +1054,7 @@ void AVoxelGround::SetBoundBox()
 
 void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	ABACharacter* Character = Cast<ABACharacter>(OtherActor);
 	if (IsValid(Character) == false || Character->IsLocallyControlled() == false)
 		return;
 
@@ -1044,13 +1066,20 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 	if (IsValid(SkyComp) == false)
 		return;
 
+	USceneCaptureComponent2D* SceneCapture2D = Character->GetGroundScannerSceneCapture();
+	if (IsValid(SceneCapture2D) == true)
+	{
+		SceneCapture2D->ShowOnlyActors.AddUnique(this);
+		SceneCapture2D->HideComponent(BoundBox);
+	}
+
 	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
 	//SkyComp->SetRayleighScatteringScale(0.0f);
 }
 
 void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	ACharacter* Character = Cast<ACharacter>(OtherActor);
+	ABACharacter* Character = Cast<ABACharacter>(OtherActor);
 	if (IsValid(Character) == false || Character->IsLocallyControlled() == false)
 		return;
 

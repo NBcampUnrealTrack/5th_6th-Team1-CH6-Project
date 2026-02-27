@@ -7,6 +7,7 @@
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GAS/Ability/GA_DestroyBuilding.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "GeometryCollection/GeometryCollection.h"
 
@@ -30,6 +31,7 @@ ABaseBuilding::ABaseBuilding()
 	BuildingBounds->SetCollisionObjectType(ECC_GameTraceChannel1); // Building Object Type
 	BuildingBounds->SetCollisionResponseToAllChannels(ECR_Ignore);
 	BuildingBounds->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Overlap);
+	BuildingBounds->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	BuildingBounds->SetHiddenInGame(false);
 	BuildingBounds->SetGenerateOverlapEvents(true);
@@ -64,6 +66,13 @@ UAbilitySystemComponent* ABaseBuilding::GetAbilitySystemComponent() const
 void ABaseBuilding::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (HasAuthority())
+	{
+		ASC->GiveAbility(FGameplayAbilitySpec(UGA_DestroyBuilding::StaticClass(), 1));
+		HealthSet->SetMaxHealth(5000.f);
+		HealthSet->SetHealth(5000.f);
+	}
 
 	if (DestructionCollection)
 	{

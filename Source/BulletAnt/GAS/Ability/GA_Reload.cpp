@@ -4,15 +4,17 @@
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Common/DataAssetInterface.h"
 #include "AbilitySystemComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 UGA_Reload::UGA_Reload()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Reload")));
+	FGameplayTagContainer DefaultTag;
+	DefaultTag.AddTag(TAG_Ability_Active_Reload);
 
-	TAG_Data_Ammo_Reload = FGameplayTag::RequestGameplayTag(TEXT("Data.Ammo.Reload"));
+	SetAssetTags(DefaultTag);
 }
 
 void UGA_Reload::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -35,6 +37,13 @@ void UGA_Reload::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 	Data = Cast<URangedWeaponDataAsset>(Interface->GetDataAsset());
 
+	if (Data->UseStateEffect)
+	{
+		const UGameplayEffect* EffectCDO = Data->UseStateEffect->GetDefaultObject<UGameplayEffect>();
+
+		ReloadStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+	}
+
 	if (Data->ReloadMontage)
 	{
 		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->ReloadMontage);
@@ -51,6 +60,16 @@ void UGA_Reload::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 			false
 		);
 	}
+}
+
+void UGA_Reload::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (ReloadStateHandle.IsValid())
+	{
+		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(ReloadStateHandle);
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_Reload::OnMontageFinished()
@@ -77,4 +96,6 @@ void UGA_Reload::ReloadAmmo()
 	);
 
 	SourceASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }

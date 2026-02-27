@@ -16,6 +16,7 @@
 #include "Components/SphereComponent.h"
 #include "Player/BACharacter.h"
 #include "Building/BaseBuilding.h"
+#include "GAS/BAGameplayTags.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -46,14 +47,18 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
 	DetectionSphere->SetupAttachment(RootComponent);
-	DetectionSphere->SetCollisionProfileName(TEXT("EnemyDetect"));
+	DetectionSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel7);	// EnemyVision ObjectType
+	DetectionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Overlap);	// Character
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereEndOverlap);
 
 	DetectedSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectedSphere"));
 	DetectedSphere->SetupAttachment(RootComponent);
-	DetectedSphere->SetCollisionProfileName(TEXT("Pawn"));
-	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_EngineTraceChannel6);
+	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
+	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -141,6 +146,29 @@ UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
 	return StateTreeComponent;
 }
 
+void ABaseEnemyCharacter::OnDeadEventReceived(const FGameplayEventData* Payload)
+{
+	if (HasAuthority())
+	{
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->CancelAllAbilities();
+		}
+	}
+
+	Destroy();
+
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			SpawnManagerSubsystem->OnEnemyDie();
+		}
+	}
+}
+
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
 	return TargetActor;
@@ -190,6 +218,9 @@ void ABaseEnemyCharacter::BeginPlay()
 					}
 				}
 			}
+
+			DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
+				.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
 		}		
 
 		UWorld* World = GetWorld();
@@ -228,33 +259,15 @@ void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GetWorldTimerManager().ClearAllTimersForObject(this);
 	}
 
+	if (IsValid(AbilitySystemComponent) && DeadEventHandle.IsValid())
+	{
+		AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead).Remove(DeadEventHandle);
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
 	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
-}
-
-void ABaseEnemyCharacter::OnDeath()
-{
-	if (HasAuthority())
-	{
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->CancelAllAbilities();
-		}
-	}
-
-	Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
-	}
 }

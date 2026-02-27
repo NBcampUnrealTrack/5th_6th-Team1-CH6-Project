@@ -63,8 +63,16 @@ protected:
 	UPROPERTY()
 	float CurrentTime;
 
-	UPROPERTY()
-	TObjectPtr<ABACharacter> PlayerCharacter;
-
 	FTimerHandle RespawnBarTimer;
+	
+#pragma region GroundScanner
+
+public:
+	void SwitchGroundScanner();
+
+protected:
+	uint8 bActiveGroundScannerUI : 1 = false;
+
+#pragma endregion
+
 };
