@@ -94,7 +94,7 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	}
 
 	ETargetPriorityType Priority;
-	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel1)	// Building
 	{
 		Priority = TribeType->Building;
 	}
