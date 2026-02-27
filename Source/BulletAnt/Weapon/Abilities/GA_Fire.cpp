@@ -81,12 +81,11 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
-	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
-	if (!FireStart) return;
-
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
+	
 
-	const FVector Start = FireStart->GetFireStartLocation();
+	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(ActorInfo->AvatarActor.Get());
+	FVector Dir = IFireStartInterface::Execute_GetFireDirection(ActorInfo->AvatarActor.Get());
 	
 	//총알 발사시 발생하는 이펙트 큐
 	if (RangedData->FireCueEffect)
@@ -94,6 +93,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
 		Context.AddSourceObject(RangedData);
 		Context.AddOrigin(Start);
+		
 
 		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(RangedData->FireCueEffect, 1.0f, Context);
 		if (SpecHandle.IsValid())
@@ -102,7 +102,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		}
 	}
 	
-	FHitResult Hit;
+	FHitResult LocalHit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(SourceActor);
 
@@ -110,10 +110,8 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 
 	for (int32 i = 0; i < RangedData->FirePerShot; ++i)
 	{
-		FHitResult LocalHit;
-
 		FVector FireDir = ApplySpread(
-			FireStart->GetFireDirection(),
+			Dir,
 			RangedData->SpreadDegree
 		);
 
@@ -146,7 +144,8 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		ApplyDamageEffect(
 			ActorInfo,
 			LocalHit.GetActor(),
-			RangedData
+			RangedData,
+			LocalHit
 		);
 	}
 }
@@ -184,7 +183,8 @@ void UGA_Fire::StartAutoFireLoop()
 void UGA_Fire::ApplyDamageEffect(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	AActor* Target,
-	const URangedWeaponDataAsset* WeaponData)
+	const URangedWeaponDataAsset* WeaponData,
+	FHitResult& InHitResult)
 {
 	if (!Target) return;
 
@@ -195,9 +195,12 @@ void UGA_Fire::ApplyDamageEffect(
 		Target->FindComponentByClass<UAbilitySystemComponent>();
 	if (!TargetASC) return;
 
-	FGameplayEffectSpecHandle Spec =
-		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, SourceASC->MakeEffectContext());
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddHitResult(InHitResult);
 
+	FGameplayEffectSpecHandle Spec =
+		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, Context);
+	
 	if (!Spec.IsValid()) return;
 
 	Spec.Data->SetSetByCallerMagnitude(

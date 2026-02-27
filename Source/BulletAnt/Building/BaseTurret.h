@@ -30,8 +30,8 @@ public:
 
 protected:
 	// IFireStartInterface
-	virtual FVector GetFireStartLocation() const override;
-	virtual FVector GetFireDirection() const override;
+	virtual FVector GetFireStartLocation_Implementation() const override;
+	virtual FVector GetFireDirection_Implementation() const override;
 
 	// IDataAssetInterface
 	virtual UDataAsset* GetDataAsset() const override;

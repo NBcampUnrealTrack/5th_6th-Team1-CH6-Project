@@ -31,13 +31,14 @@ protected:
 		bool bReplicateEndAbility, 
 		bool bWasCancelled) override;
 
-	void FireOnce(const FGameplayAbilityActorInfo* ActorInfo);
+	virtual void FireOnce(const FGameplayAbilityActorInfo* ActorInfo);
 
 	void StartAutoFireLoop();
 
 	void ApplyDamageEffect(const FGameplayAbilityActorInfo* ActorInfo,
 		AActor* Target,
-		const URangedWeaponDataAsset* WeaponData);
+		const URangedWeaponDataAsset* WeaponData,
+		FHitResult& InHitResult);
 
 	UFUNCTION()
 	FVector ApplySpread(const FVector& Dir, float Degree);

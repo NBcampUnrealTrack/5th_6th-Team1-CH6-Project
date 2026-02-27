@@ -1,10 +1,9 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Player/BAAnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Player/BAParkourComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 void UBAAnimInstance::NativeInitializeAnimation()
 {
@@ -17,11 +16,12 @@ void UBAAnimInstance::NativeInitializeAnimation()
 		Character = Cast<ABACharacter>(Owner);
 
 		if (Character)
+		{
 			Movement = Character->GetCharacterMovement();
+			ParkourComp = Character->FindComponentByClass<UBAParkourComponent>();
+		}
 	}
-	Tag_Ranged = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Ranged"));
-	Tag_Mining = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Mining"));
-	Tag_Melee = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Melee"));
+
 }
 
 void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -37,11 +37,11 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (ASC)
 	{
-		if (ASC->HasMatchingGameplayTag(Tag_Ranged))
+		if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged))
 			CurrentEquipmentType = EEquipmentType::Ranged;
-		if (ASC->HasMatchingGameplayTag(Tag_Mining))
+		if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Mining))
 			CurrentEquipmentType = EEquipmentType::Mining;
-		if (ASC->HasMatchingGameplayTag(Tag_Melee))
+		if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Melee))
 			CurrentEquipmentType = EEquipmentType::Melee;
 	}
 
@@ -70,7 +70,13 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 15.0f);
     AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 15.0f);
+	//if(ParkourComp&&!ParkourComp->bisParkour
+	HandIKAlpha = GetCurveValue(FName("HandIK_Alpha"));
+	FVector RightDir = OwningActor->GetActorRightVector();
 
+	float ShoulderWidth = 30.f;
+	LeftTargetLocation = ParkourComp->WarpTargetLocation - (RightDir * ShoulderWidth);
+	RightTargetLocation = ParkourComp->WarpTargetLocation + (RightDir * ShoulderWidth);
 	bIsAiming = Character->bIsAiming;
 	bIsTurning = Character->bIsTurning;
 	
@@ -81,6 +87,14 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	RootYawOffset = Character->RootYawOffset * -1;
 
+	//Test
+	
+
+}
+
+void UBAAnimInstance::SetIsFiring(bool InFiring)
+{
+	bIsFiring = InFiring;
 }
 
 FRotator UBAAnimInstance::CameraTargetOffset()

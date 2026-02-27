@@ -9,6 +9,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active, "Ability.Active");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Combat_Damage, "Data.Combat.Damage");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Combat_Heal, "Data.Combat.Heal");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Combat_RespawnTime, "Data.Combat.RespawnTime");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Dead, "State.Combat.Dead");

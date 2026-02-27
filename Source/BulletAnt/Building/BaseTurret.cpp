@@ -107,7 +107,7 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 
-FVector ABaseTurret::GetFireStartLocation() const
+FVector ABaseTurret::GetFireStartLocation_Implementation() const
 {
 	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
 	{
@@ -117,7 +117,7 @@ FVector ABaseTurret::GetFireStartLocation() const
 	return GetActorLocation();
 }
 
-FVector ABaseTurret::GetFireDirection() const
+FVector ABaseTurret::GetFireDirection_Implementation() const
 {
 	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
 	{

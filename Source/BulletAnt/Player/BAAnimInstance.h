@@ -16,6 +16,7 @@
  */
 
 class UCharacterMovementComponent;
+class UBAParkourComponent;
 
 UCLASS()
 class BULLETANT_API UBAAnimInstance : public UAnimInstance
@@ -29,6 +30,8 @@ public:
 	// 매 프레임 실행 함수
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
+	void SetIsFiring(bool InFiring);
+
 
 protected:
 	FRotator CameraTargetOffset();
@@ -38,9 +41,13 @@ public:
 	EEquipmentType CurrentEquipmentType;
 
 protected:
-	// 매번 Cast 안하기 위한 포인터
+
+
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	TObjectPtr<ABACharacter> Character;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	TObjectPtr<UBAParkourComponent> ParkourComp;
 
 	// 매번 Cast 안하기 위한 포인터
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
@@ -67,6 +74,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsAiming;
 
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	bool bIsFiring = false;
+
 	// 공중 상태
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsFalling;
@@ -84,9 +94,16 @@ protected:
 	//수직 이동 속도
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float VerticalVelocity;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	FVector LeftTargetLocation;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	FVector RightTargetLocation;
 
 	FRotator PreviousRotation;
 
 	UPROPERTY(BlueprintReadOnly, Category = "TurnInPlace")
 	float RootYawOffset;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Parkour|IK")
+	float HandIKAlpha;
 };
