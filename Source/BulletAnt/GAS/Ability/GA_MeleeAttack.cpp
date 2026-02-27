@@ -82,7 +82,6 @@ void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Log, TEXT("Melee Hit Success: %s"), *HitActor->GetName());
 
 	ApplyDamage(CurrentActorInfo, HitActor);
 }

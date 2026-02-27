@@ -9,6 +9,7 @@
 #include "Common/OnDeathInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
+#include "Engine/DataTable.h"
 #include "BACharacter.generated.h"
 
 class UCapsuleComponent;
@@ -50,6 +51,20 @@ enum class EEquipmentType : uint8
     Ranged       UMETA(DisplayName = "Ranged"),
     Mining      UMETA(DisplayName = "Mining"),
     Melee       UMETA(DisplayName = "Melee")
+};
+USTRUCT(BlueprintType)
+struct FAnimChoice : public FTableRowBase
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    UAnimSequence* AnimAsset;
+
+    UPROPERTY(EditAnywhere)
+    float TargetAngle;
+    
+    UPROPERTY(EditAnywhere)
+    float TargetSpeed;
 };
 
 UCLASS()
@@ -128,6 +143,9 @@ public:
     UInputAction* AimAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* ADSAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractionAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
@@ -164,6 +182,7 @@ protected:
     void CrouchInput(const FInputActionValue& Value);
     void AimStart(const FInputActionValue& Value);
     void AimStop(const FInputActionValue& Value);
+    void ADSStart(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void EnterBuildMode(const FInputActionValue& Value);
     void ExitBuildMode(const FInputActionValue& Value);
@@ -212,10 +231,15 @@ protected:
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
 public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
+    TArray<FAnimChoice> AnimDataBase;
 
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
+
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
+    bool bIsADS;
 
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
@@ -242,7 +266,7 @@ public:
     //최대 좌우 시선 회전 각도
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
     float IdleTurn = 90.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float LineTraceRange = 500.f;
     UPROPERTY(Replicated)
     float SyncAimYaw;
@@ -342,6 +366,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
+
+    FTransform SavedSpringArmTransform;
+    float SavedSpringArmLength();
 
 #pragma endregion
 
