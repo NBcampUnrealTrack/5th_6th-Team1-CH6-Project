@@ -126,6 +126,16 @@ void ABAPlayerController::StopRespawnBar()
 
 
 
+void ABAPlayerController::StartADSUI()
+{
+
+}
+
+void ABAPlayerController::StopADSUI()
+{
+
+}
+
 void ABAPlayerController::SwitchGroundScanner()
 {
 	bActiveGroundScannerUI ^= 1;

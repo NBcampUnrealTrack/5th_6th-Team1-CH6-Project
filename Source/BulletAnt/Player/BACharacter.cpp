@@ -253,6 +253,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 			EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ABACharacter::AimStop);
 		}
 
+		if (ADSAction)
+		{
+			EnhancedInputComponent->BindAction(ADSAction, ETriggerEvent::Completed, this, &ABACharacter::ADSStart);
+		}
+
 		//상호작용
 		if (InteractionAction)
 		{
@@ -439,6 +444,10 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 void ABACharacter::Reload(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
+	if (bIsADS)
+	{
+		ADSStart(0.f);
+	}
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Ability_Active_Reload);
 
@@ -561,14 +570,19 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
+			if (bIsADS)
+			{
+				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+			}
+
 			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
 			FVector ViewLoc;
 			FRotator ViewRot;
 			GetActorEyesViewPoint(ViewLoc, ViewRot);
 
 			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
-			
-			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
+
+			return (AimEnd - WeaponSocketLocation).GetSafeNormal();	
 		}
 	}
 
@@ -619,6 +633,41 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	Server_SetAiming(false);
 }
+
+void ABACharacter::ADSStart(const FInputActionValue& Value)
+{
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
+	bIsADS = !bIsADS;
+
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
+	if (PC)
+	{
+		if (bIsADS)
+		{
+			PC->StartADSUI();
+			bIsAiming = true;
+			GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+			AimStart(1.f);
+
+			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
+			
+			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
+			SpringArm->TargetArmLength = 0.f;
+		}
+		else
+		{
+			PC->StopADSUI();
+			bIsAiming = false;
+			GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+			AimStop(0.f);
+
+			SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+			SpringArm->SetRelativeTransform(SavedSpringArmTransform);
+			SpringArm->TargetArmLength = 223.f;
+		}
+	}
+}
+
 
 void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 {
@@ -700,6 +749,12 @@ void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)) return;
+
+	if (bIsADS)
+	{
+		ADSStart(0.f);
+	}
+
 	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
 }
 

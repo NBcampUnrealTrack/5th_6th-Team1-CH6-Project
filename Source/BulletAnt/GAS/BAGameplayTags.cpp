@@ -21,6 +21,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Ranged, "Weapon.Equipped.Ranged");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Weapon_Switch, "Event.Weapon.Switch");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Dead, "Event.Combat.Dead");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Hit, "Event.Combat.Hit");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Dead, "GameplayCue.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Weapon_Fire, "GameplayCue.Weapon.Fire");
