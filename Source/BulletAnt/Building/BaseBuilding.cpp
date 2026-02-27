@@ -3,13 +3,15 @@
 
 #include "Building/BaseBuilding.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/BoxComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/Ability/GA_DestroyBuilding.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "GeometryCollection/GeometryCollection.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/SplineComponent.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -18,23 +20,17 @@ ABaseBuilding::ABaseBuilding()
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
+	EdgesRoot = CreateDefaultSubobject<USceneComponent>(TEXT("EdgesRoot"));
+	EdgesRoot->SetupAttachment(RootComponent);
+
+	PlacementRoot = CreateDefaultSubobject<USceneComponent>(TEXT("PlacementRoot"));
+	PlacementRoot->SetupAttachment(RootComponent);
+
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComp"));
 	StaticMeshComp->SetupAttachment(RootComponent);
 
 	StaticMeshComp->SetSimulatePhysics(false);
 	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-	BuildingBounds = CreateDefaultSubobject<UBoxComponent>(TEXT("BuildingBounds"));
-	BuildingBounds->SetupAttachment(RootComponent);
-
-	BuildingBounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	BuildingBounds->SetCollisionObjectType(ECC_GameTraceChannel1); // Building Object Type
-	BuildingBounds->SetCollisionResponseToAllChannels(ECR_Ignore);
-	BuildingBounds->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Overlap);
-	BuildingBounds->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
-
-	BuildingBounds->SetHiddenInGame(false);
-	BuildingBounds->SetGenerateOverlapEvents(true);
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
 	ASC->SetIsReplicated(true);
@@ -48,13 +44,14 @@ ABaseBuilding::ABaseBuilding()
 	DestructionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	DestructionComp->SetSimulatePhysics(false);
 	DestructionComp->SetIsReplicated(false);
+
+	PreviewBaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/BulletAnt/Building/M_BuildingPreview.M_BuildingPreview"));
 }
 
 void ABaseBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABaseBuilding, BuildingBoxExtent);
 	DOREPLIFETIME(ABaseBuilding, bDead);
 }
 
@@ -70,14 +67,16 @@ void ABaseBuilding::BeginPlay()
 	if (HasAuthority())
 	{
 		ASC->GiveAbility(FGameplayAbilitySpec(UGA_DestroyBuilding::StaticClass(), 1));
-		HealthSet->SetMaxHealth(5000.f);
-		HealthSet->SetHealth(5000.f);
+		HealthSet->SetMaxHealth(500.f);
+		HealthSet->SetHealth(500.f);
 	}
 
 	if (DestructionCollection)
 	{
 		DestructionComp->SetRestCollection(DestructionCollection);
 	}
+
+	RebuildCachedLocalEdges();
 }
 
 void ABaseBuilding::OnDeath()
@@ -90,22 +89,6 @@ void ABaseBuilding::OnDeath()
 	Multicast_PlayDestruction(GetActorLocation());
 	bDead = true;
 	OnRep_Dead();
-}
-
-void ABaseBuilding::ApplyBuildingBounds(const FVector& InBoxExtent)
-{
-	BuildingBoxExtent = InBoxExtent;
-	BuildingBounds->SetBoxExtent(BuildingBoxExtent);
-	BuildingBounds->SetRelativeLocation(FVector(0.f, 0.f, BuildingBoxExtent.Z));
-}
-
-
-void ABaseBuilding::SetBuildingBoxExtent(const FVector& InBoxExtent)
-{
-	if (HasAuthority())
-	{
-		ApplyBuildingBounds(InBoxExtent);
-	}
 }
 
 void ABaseBuilding::GetEdgesWorld(TArray<FBuildingEdge>& OutEdges) const
@@ -155,22 +138,138 @@ void ABaseBuilding::DrawEdgesDebug(bool bPersistentLines, float LifeTime) const
 	}
 }
 
+void ABaseBuilding::RebuildCachedLocalEdges()
+{
+	CachedLocalEdges.Reset();
+
+	if (!EdgesRoot)
+	{
+		return;
+	}
+
+	TArray<USceneComponent*> EdgeComps;
+	EdgesRoot->GetChildrenComponents(true, EdgeComps);
+
+	const FTransform WorldToActor = GetActorTransform().Inverse();
+
+	for (USceneComponent* EdgeComp : EdgeComps)
+	{
+		if (USplineComponent* Edge = Cast<USplineComponent>(EdgeComp))
+		{
+			if (!Edge) 
+			{
+				continue;
+			}
+
+			if (Edge->GetNumberOfSplinePoints() < 2)
+			{
+				continue;
+			}
+
+			FVector WA = Edge->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
+			FVector WB = Edge->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
+
+			FBuildingEdge E;
+			E.A = WorldToActor.TransformPosition(WA);
+			E.B = WorldToActor.TransformPosition(WB);
+
+			CachedLocalEdges.Add(E);
+		}
+	}
+}
+
+void ABaseBuilding::GetPlacementPrimitives(TArray<UPrimitiveComponent*>& OutPrims) const
+{
+	OutPrims.Reset();
+	if (!PlacementRoot) 
+	{
+		return;
+	}
+
+	TArray<USceneComponent*> PrimComps;
+	PlacementRoot->GetChildrenComponents(true, PrimComps);
+
+	for (USceneComponent* PrimComp : PrimComps)
+	{
+		if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(PrimComp))
+		{
+			if (Prim->GetCollisionEnabled() != ECollisionEnabled::NoCollision &&
+				Prim->GetGenerateOverlapEvents())
+			{
+				OutPrims.Add(Prim);
+			}
+		}
+	}
+}
+
+void ABaseBuilding::SetPreviewMode(bool bInPreview)
+{
+	bPreviewMode = bInPreview;
+
+	if (StaticMeshComp)
+	{
+		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	TArray<UPrimitiveComponent*> Prims;
+	GetPlacementPrimitives(Prims);
+
+	for (UPrimitiveComponent* Prim : Prims)
+	{
+		if (!Prim) 
+		{
+			continue;
+		}
+
+		Prim->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		Prim->SetGenerateOverlapEvents(true);
+		Prim->SetCollisionObjectType(ECC_GameTraceChannel1);
+		Prim->SetCollisionResponseToAllChannels(ECR_Ignore);
+		Prim->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Overlap);
+		Prim->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+		Prim->UpdateOverlaps();
+	}
+
+	SetActorTickEnabled(!bPreviewMode);
+
+	if (bPreviewMode && PreviewBaseMaterial && StaticMeshComp)
+	{
+		PreviewMID = UMaterialInstanceDynamic::Create(PreviewBaseMaterial, this);
+		const int32 NumMaterials = StaticMeshComp->GetNumMaterials();
+		for (int32 i = 0; i < NumMaterials; ++i)
+		{
+			StaticMeshComp->SetMaterial(i, PreviewMID);
+		}
+	}
+
+	if (bPreviewMode)
+	{
+		SetCanPlace(false);
+	}
+}
+
+void ABaseBuilding::SetCanPlace(bool bInCanPlace)
+{
+	if (!bPreviewMode) 
+	{
+		return;
+	}
+
+	if (!PreviewMID)
+	{
+		return;
+	}
+
+	const float Opacity = 0.7f;
+	const FLinearColor CanColor(0.f, 1.f, 0.f, Opacity);
+	const FLinearColor BlockColor(1.f, 0.f, 0.f, Opacity);
+
+	PreviewMID->SetVectorParameterValue(TEXT("ActorColor"), bInCanPlace ? CanColor : BlockColor);
+}
+
 void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const
 {
-	OutEdges.Reset();
-
-	const float X = BuildingBoxExtent.X;
-	const float Y = BuildingBoxExtent.Y;
-
-	const FVector P0(+X, +Y, 0.f);
-	const FVector P1(+X, -Y, 0.f);
-	const FVector P2(-X, -Y, 0.f);
-	const FVector P3(-X, +Y, 0.f);
-
-	OutEdges.Add({ P0, P1 });
-	OutEdges.Add({ P1, P2 });
-	OutEdges.Add({ P2, P3 });
-	OutEdges.Add({ P3, P0 });
+	OutEdges = CachedLocalEdges;
 }
 
 void ABaseBuilding::OnRep_Dead()
@@ -209,10 +308,4 @@ void ABaseBuilding::Multicast_PlayDestruction_Implementation(const FVector& Impu
 	Dir = Dir.IsNearlyZero() ? FVector(1, 0, 1).GetSafeNormal() : Dir.GetSafeNormal();
 
 	DestructionComp->AddImpulse(Dir * Strength, NAME_None, true);
-}
-
-
-void ABaseBuilding::OnRep_BuildingBoxExtent()
-{
-	ApplyBuildingBounds(BuildingBoxExtent);
 }
