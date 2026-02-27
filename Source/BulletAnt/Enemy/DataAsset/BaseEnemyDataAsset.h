@@ -17,6 +17,7 @@ class BULLETANT_API UBaseEnemyDataAsset : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Abilities")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
@@ -72,4 +73,16 @@ public:
 
 #pragma endregion
 
+#pragma region Death
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death")
+	TSubclassOf<UGameplayEffect> DeathEffect;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	FGameplayTag DeathStateTag;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	TObjectPtr<UAnimMontage> DieAnimMontage;
+
+#pragma endregion
 };
