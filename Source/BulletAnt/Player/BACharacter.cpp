@@ -37,7 +37,7 @@ ABACharacter::ABACharacter()
 
 	// 캐릭터 회전 설정
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
+	bUseControllerRotationYaw = true;
 	bUseControllerRotationRoll = false;
 
 
@@ -621,7 +621,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	bUseControllerRotationYaw = true;
+	//bUseControllerRotationYaw = true;
 	Server_SetAiming(true);
 }
 
@@ -632,7 +632,7 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 	bIsAiming = false;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	bUseControllerRotationYaw = false;
+	//bUseControllerRotationYaw = false;
 	Server_SetAiming(false);
 }
 
