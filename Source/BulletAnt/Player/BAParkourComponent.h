@@ -39,7 +39,6 @@ protected:
 	void Multicast_ExecuteParkour(EParkourType ParkourType, FVector TargetLocation, FRotator TargetRotation);
 private:
 	bool DetectWall();
-	void ExecuteParkour(EParkourType ParkourType);
 	void OnParkourMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 public:
@@ -48,6 +47,8 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Parkour|Montages")
 	UAnimMontage* VaultMontage;
+	FVector WarpTargetLocation;
+	FRotator WarpTargetRotation;
 private:
 
 	UPROPERTY()
@@ -58,6 +59,14 @@ private:
 	float HighTraceHeight = 200.f;
 	UPROPERTY(EditAnywhere, Category = "Parkour")
 	bool bDrawDebug = true;
+	UPROPERTY(EditAnywhere, Category = "Parkour")
+	float SphereRadius = 15.f;
+	UPROPERTY(EditAnywhere, Category = "Parkour")
+	int32 MaxAttempts = 3;
+	UPROPERTY(EditAnywhere, Category = "Parkour")
+	float CurrentDepth = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Parkour")
+	float DepthStep = 15.f;
 
 	EParkourType CurrentParkourType;
 
@@ -65,8 +74,6 @@ private:
 
 	float WallHeight;
 	float WallThickness;
-	FVector WarpTargetLocation;
-	FRotator WarpTargetRotation;
 
 	bool bIsParkour;
 };

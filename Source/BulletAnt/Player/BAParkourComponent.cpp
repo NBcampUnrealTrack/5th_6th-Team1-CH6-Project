@@ -5,6 +5,7 @@
 #include "Player/BACharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "MotionWarpingComponent.h"
+#include "CollisionShape.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values for this component's properties
@@ -41,7 +42,7 @@ bool UBAParkourComponent::AttemptParkour()
 		{
 			EParkourType TypeToPlay = EParkourType::None;
 
-			if (WallHeight <= 100.0f) TypeToPlay = EParkourType::Vault;
+			if (WallHeight <= 150.0f) TypeToPlay = EParkourType::Vault;
 			else if (WallHeight <= 250.0f) TypeToPlay = EParkourType::Climb;
 
 			if (TypeToPlay != EParkourType::None)
@@ -111,7 +112,7 @@ void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType P
 			PC->SetControlRotation(NewRot);
 			PC->SetIgnoreLookInput(true);
 		}
-		
+
 		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
 			WarpTargetName,
 			TargetLocation,
@@ -150,19 +151,22 @@ bool UBAParkourComponent::DetectWall()
 	WallHitResult.Reset();
 
 	FVector Start = Owner->GetActorLocation();
+	Start.Z += 50.f;
 	FVector Forward = Owner->GetActorForwardVector();
-	Start.Z += 10.0f;
 
 	FVector End = Start + (Forward * TraceDistance);
+	FCollisionShape SphereShape = FCollisionShape::MakeSphere(SphereRadius);
 
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(Owner);
 
-	bool bHitCenter = GetWorld()->LineTraceSingleByChannel(
+	bool bHitCenter = GetWorld()->SweepSingleByChannel(
 		WallHitResult,
 		Start,
 		End,
+		FQuat::Identity,
 		ECC_GameTraceChannel5,
+		SphereShape,
 		Params
 	);
 
@@ -179,17 +183,21 @@ bool UBAParkourComponent::DetectWall()
 	FHitResult TopHitResult;
 	bool bFoundValidTop = false;
 
-	int32 MaxAttempts = 3;
-	float CurrentDepth = 30.f;
-	float DepthStep = 40.f;
-
 
 	for(int32 i = 0; i < MaxAttempts; ++i)
 	{
 		FVector HighStart = WallHitResult.ImpactPoint + FVector(0, 0, HighTraceHeight) + (WallInnerDir * CurrentDepth);
 		FVector HighEnd = HighStart - FVector(0, 0, HighTraceHeight + 50.f);
 
-		bool bHitTop = GetWorld()->LineTraceSingleByChannel(TopHitResult, HighStart, HighEnd, ECC_GameTraceChannel5, Params);
+		bool bHitTop = GetWorld()->SweepSingleByChannel(
+			TopHitResult,
+			HighStart,
+			HighEnd,
+			FQuat::Identity,
+			ECC_GameTraceChannel5,
+			SphereShape,
+			Params
+		);
 
 		if (bDrawDebug) DrawDebugLine(GetWorld(), HighStart, HighEnd, bHitTop ? FColor::Cyan : FColor::Red, false, 2.f, 0, 1.f);
 
@@ -213,7 +221,6 @@ bool UBAParkourComponent::DetectWall()
 
 	if (bFoundValidTop)
 	{
-		WallHeight = TopHitResult.ImpactPoint.Z - Owner->GetActorLocation().Z;
 		ABACharacter* Character = Cast<ABACharacter>(Owner);
 		if (Character)
 		{
@@ -237,19 +244,23 @@ bool UBAParkourComponent::DetectWall()
 		if (bDrawDebug) DrawDebugSphere(GetWorld(), WarpTargetLocation, 10.0f, 12, FColor::Yellow, false, 2.0f);
 
 		FVector LandStart = TopHitResult.ImpactPoint + (WallInnerDir * 100.0f);
-		FVector LandEnd = LandStart - FVector(0, 0, 250.0f);
+		FVector LandEnd = LandStart - FVector(0, 0, WallHeight + 50.f);
 
 		FHitResult LandHitResult;
 
 		bool bHitLand = GetWorld()->LineTraceSingleByChannel(
-			LandHitResult, LandStart, LandEnd, ECC_WorldStatic, Params
+			LandHitResult,
+			LandStart,
+			LandEnd,
+			ECC_WorldStatic,
+			Params
 		);
 
 		if (bDrawDebug) DrawDebugLine(GetWorld(), LandStart, LandEnd, bHitLand ? FColor::Purple : FColor::Red, false, 2.0f, 0, 2.0f);
 
 		if (bHitLand)
 		{
-			WallThickness = FVector::Dist(TopHitResult.ImpactPoint, LandHitResult.ImpactPoint);
+			WallThickness = FVector::DistXY(TopHitResult.ImpactPoint, LandHitResult.ImpactPoint);
 			UE_LOG(LogTemp, Warning, TEXT("착지 가능! 두께: %f"), WallThickness);
 		}
 		else
@@ -260,48 +271,6 @@ bool UBAParkourComponent::DetectWall()
 		return true;
 	}
 	return false;
-}
-
-void UBAParkourComponent::ExecuteParkour(EParkourType ParkourType)
-{
-	ABACharacter* Character = Cast<ABACharacter>(GetOwner());
-	if (!Character || !MotionWarpingComp) return;
-
-	UAnimMontage* MontageToPlay = nullptr;
-	FName WarpTargetName = NAME_None;
-
-	switch (ParkourType)
-	{
-	case EParkourType::Climb:
-		MontageToPlay = ClimbMontage;
-		WarpTargetName = FName("ClimbTarget");
-		break;
-	case EParkourType::Vault:
-		MontageToPlay = VaultMontage;
-		WarpTargetName = FName("VaultTarget");
-		break;
-	}
-
-	if (MontageToPlay)
-	{
-		Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
-			WarpTargetName,
-			WarpTargetLocation,
-			WarpTargetRotation
-		);
-
-		UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
-		if (AnimInstance)
-		{
-			AnimInstance->Montage_Play(MontageToPlay);
-
-			FOnMontageEnded EndDelegate;
-			EndDelegate.BindUObject(this, &UBAParkourComponent::OnParkourMontageEnded);
-			AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
-		}
-	}
 }
 
 void UBAParkourComponent::OnParkourMontageEnded(UAnimMontage* Montage, bool bInterrupted)
