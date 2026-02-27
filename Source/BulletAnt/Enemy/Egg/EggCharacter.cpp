@@ -13,6 +13,11 @@ bool AEggCharacter::ShouldCallAfterAttack()
 
 void AEggCharacter::AfterAttack()
 {
+	if (!IsValid(this) || GetWorld()->bIsTearingDown)	// 게임 강제 종료시 발생하는 에러 예방 코드
+	{
+		return;
+	}
+
 	Destroy();
 
 	UWorld* World = GetWorld();
