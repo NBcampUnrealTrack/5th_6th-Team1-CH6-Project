@@ -7,12 +7,24 @@
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Enemy/DataAsset/TargetPriority.h"
+#include "Net/UnrealNetwork.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
 class UBaseEnemyDataAsset;
 class UHealthAttributeSet;
 class USphereComponent;
+class UTribeDataAsset;
+
+USTRUCT()
+struct FActorArrayWrapper
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> Actors;
+};
 
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface
@@ -35,6 +47,13 @@ public:
 
 	virtual UDataAsset* GetDataAsset() const override;
 
+	virtual bool ShouldCallAfterAttack();
+
+	virtual void AfterAttack();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetNoCollision();
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
@@ -52,6 +71,11 @@ public:
 	uint8 bIsTurningLeft : 1;
 
 #pragma region Perception
+
+public:
+	USphereComponent* GetDetectionSphere() const;
+
+	USphereComponent* GetDetectedSphere() const;
 
 protected:
 	UFUNCTION()
@@ -74,25 +98,34 @@ protected:
 
 	bool IsInFieldOfView(AActor* Target, float FOVAngle);
 
+protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TObjectPtr<USphereComponent> DetectionSphere;
 
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TObjectPtr<USphereComponent> DetectedSphere;
 
+	//UPROPERTY(VisibleAnywhere, Category = "Perception")
+	//TArray<TObjectPtr<AActor>> NearbyActors;
+
+	ETargetPriorityType TargetActorPriority;
+
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
-	TArray<TObjectPtr<AActor>> NearbyActors;
+	TMap<ETargetPriorityType, FActorArrayWrapper> NearbyActors;
+
 
 	FTimerHandle SensingTimerHandle;
 
 #pragma endregion
-	
+
 #pragma region GAS
 
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
+	void InitGAS();
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
@@ -100,6 +133,9 @@ protected:
 	UHealthAttributeSet* HealthAttributeSet;
 
 	FDelegateHandle DeadEventHandle;
+
+	//FActiveGameplayEffectHandle DeathGEHandle;
+
 
 #pragma endregion
 
@@ -117,11 +153,31 @@ protected:
 
 #pragma endregion
 
-#pragma region BaseEnemyDataAsset
+#pragma region DataAsset
+
+public:
+	UTribeDataAsset* GetTribeType() const;
+
+	void SetTribeType(UTribeDataAsset* InTribeType);
+
+	void ApplyTribe();
+
+	void ApplyTribeMaterial();
+
+	void ApplyTribePriority();
+
+	UAnimMontage* GetDieAnimMontage() const;
+
+	//void Die();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
+
+protected:
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
+	TObjectPtr<UTribeDataAsset> TribeType;
 
 #pragma endregion
 

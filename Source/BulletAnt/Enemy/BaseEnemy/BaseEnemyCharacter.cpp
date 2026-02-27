@@ -5,7 +5,7 @@
 #include "Components/StateTreeComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
-#include "BaseEnemyDataAsset.h"
+#include "Enemy/DataAsset/BaseEnemyDataAsset.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
@@ -17,6 +17,9 @@
 #include "Player/BACharacter.h"
 #include "Building/BaseBuilding.h"
 #include "GAS/BAGameplayTags.h"
+#include "Enemy/DataAsset/TribeDataAsset.h"
+#include "Enemy/Spawn/TribeMaterialManagerSubsystem.h"
+#include "Components/CapsuleComponent.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -59,6 +62,19 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
 	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
+
+	TargetActor = nullptr;
+	TargetActorPriority = ETargetPriorityType::Max;
+}
+
+USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
+{
+	return DetectionSphere;
+}
+
+USphereComponent* ABaseEnemyCharacter::GetDetectedSphere() const
+{
+	return DetectedSphere;
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -71,8 +87,28 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	{
 		return;
 	}
-	
-	NearbyActors.Add(OtherActor);
+
+	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	{
+		return;
+	}
+
+	ETargetPriorityType Priority;
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	{
+		Priority = TribeType->Building;
+	}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Player
+	{
+		Priority = TribeType->Player;
+	}
+	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
+	//{
+	//	Priority = TribeType->Core;
+	//}
+
+	FActorArrayWrapper& Value = NearbyActors.FindOrAdd(Priority);
+	Value.Actors.Add(OtherActor);
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -82,7 +118,29 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 		return;
 	}
 
-	NearbyActors.Remove(OtherActor);
+	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	{
+		return;
+	}
+
+	ETargetPriorityType Priority;
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	{
+		Priority = TribeType->Building;
+	}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Player
+	{
+		Priority = TribeType->Player;
+	}
+	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
+	//{
+	//	Priority = TribeType->Core;
+	//}
+
+	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
+	{
+		Value->Actors.Remove(OtherActor);
+	}
 }
 
 void ABaseEnemyCharacter::SenseNearbyActors()
@@ -91,38 +149,58 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 	{
 		return;
 	}
-	if (!ensureMsgf(IsValid(DetectionSphere), TEXT("BaseEnemyCharacter SenseNearbyActors : DetectionSphere Missing")))
+	if (NearbyActors.Num() == 0)
 	{
 		return;
 	}
 
-	if (NearbyActors.Num() == 0 || IsValid(TargetActor))
-	{
-		return;
-	}
-
-	TargetActor = nullptr;
-	float MinDistSquared = DetectionSphere->GetScaledSphereRadius();
-	MinDistSquared *= MinDistSquared;
-
+	float MinDistSquared = TNumericLimits<float>::Max();
 	float SenseAngle = BaseEnemyDataAsset->SenseAngle;
-	for (AActor* NearbyActor : NearbyActors)
+	AActor* NewTarget;
+	ETargetPriorityType NewTargetPriority;
+	for (uint8 i = 0; i < static_cast<uint8>(TargetActorPriority); i++)
 	{
-		if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle))
+		ETargetPriorityType Key = static_cast<ETargetPriorityType>(i);
+		if (FActorArrayWrapper* Value = NearbyActors.Find(Key))
 		{
-			double DistSquared = FVector::DistSquared2D(GetActorLocation(), NearbyActor->GetActorLocation());
-			if (MinDistSquared > DistSquared)
+			for (AActor* NearbyActor : Value->Actors)
 			{
-				TargetActor = NearbyActor;
-				MinDistSquared = DistSquared;
+				if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle))
+				{
+					double DistSquared = FVector::DistSquared2D(GetActorLocation(), NearbyActor->GetActorLocation());
+					if (MinDistSquared > DistSquared)
+					{
+						NewTarget = NearbyActor;
+						NewTargetPriority = Key;
+						MinDistSquared = DistSquared;
+					}
+				}
+			}
+
+			if (TargetActor != NewTarget)
+			{
+				TargetActor = NewTarget;
+				TargetActorPriority = NewTargetPriority;
+				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+				StateTreeComponent->SendStateTreeEvent(ToRotate);
+				return;
 			}
 		}
 	}
 
-	if (TargetActor)
+	if (!IsValid(TargetActor))
 	{
-		FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
-		StateTreeComponent->SendStateTreeEvent(ToRotate);
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
+			{
+				TargetActor = BAGameState->GetTargetCore();
+				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+				StateTreeComponent->SendStateTreeEvent(ToRotate);
+			}
+		}
 	}
 }
 
@@ -148,26 +226,130 @@ UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
 
 void ABaseEnemyCharacter::OnDeadEventReceived(const FGameplayEventData* Payload)
 {
+	if (IsValid(BaseEnemyDataAsset))
+	{
+		StateTreeComponent->SendStateTreeEvent(BaseEnemyDataAsset->DeathStateTag);
+	}
+}
+
+UTribeDataAsset* ABaseEnemyCharacter::GetTribeType() const
+{
+	return TribeType;
+}
+
+void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
+{
+	ensureMsgf(IsValid(InTribeType), TEXT("BaseEnemyCharacter SetTribeType : DataAsset NULL"));
+	TribeType = InTribeType;
+}
+
+void ABaseEnemyCharacter::ApplyTribe()
+{
+	ApplyTribeMaterial();
+	ApplyTribePriority();
+}
+
+void ABaseEnemyCharacter::ApplyTribeMaterial()
+{
 	if (HasAuthority())
 	{
-		if (AbilitySystemComponent)
+		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeDataAsset Missing")))
 		{
-			AbilitySystemComponent->CancelAllAbilities();
+			return;
 		}
-	}
-
-	Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
+		if (!ensureMsgf(IsValid(GetMesh()), TEXT("BaseEnemyCharacter ApplyTribeMaterial : Mesh Missing")))
 		{
-			SpawnManagerSubsystem->OnEnemyDie();
+			return;
+		}
+
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			UTribeMaterialManagerSubsystem* TribeMaterialManagerSubsystem = GameInstance->GetSubsystem<UTribeMaterialManagerSubsystem>();
+			if (!ensureMsgf(IsValid(TribeMaterialManagerSubsystem), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeMaterialManagerSubsystem Error")))
+			{
+				return;
+			}
+
+			UMaterialInterface* BaseMat = GetMesh()->GetMaterial(0);
+			if (!IsValid(BaseMat))
+			{
+				return;
+			}
+			
+			UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
+			if (SharedMID)
+			{
+				GetMesh()->SetMaterial(0, SharedMID);
+			}
 		}
 	}
 }
+
+void ABaseEnemyCharacter::ApplyTribePriority()
+{
+	if (HasAuthority())
+	{
+		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeDataAsset Missing")))
+		{
+			return;
+		}
+		if (!ensureMsgf(IsValid(DetectionSphere), TEXT("BaseEnemyCharacter ApplyTribePriority : DetectionSphere Missing")))
+		{
+			return;
+		}
+		
+		if (TribeType->Building == ETargetPriorityType::Ignore)
+		{
+			DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);	// Building
+		}
+		if (TribeType->Player == ETargetPriorityType::Ignore)
+		{
+			DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Ignore);	// Character
+		}		
+	}
+}
+
+UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
+{
+	if (HasAuthority())
+	{
+		if (IsValid(BaseEnemyDataAsset))
+		{
+			return BaseEnemyDataAsset->DieAnimMontage;
+		}
+	}
+
+	return nullptr;
+}
+
+//void ABaseEnemyCharacter::Die()
+//{
+//	if (HasAuthority())
+//	{
+//		if (AbilitySystemComponent)
+//		{
+//			if (DeathGEHandle.IsValid())
+//			{
+//				AbilitySystemComponent->RemoveActiveGameplayEffect(DeathGEHandle);
+//				DeathGEHandle.Invalidate();
+//			}
+//
+//			AbilitySystemComponent->CancelAllAbilities();
+//		}
+//
+//		Destroy();
+//
+//		UWorld* World = GetWorld();
+//		if (IsValid(World))
+//		{
+//			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+//			if (IsValid(SpawnManagerSubsystem))
+//			{
+//				SpawnManagerSubsystem->OnEnemyDie();
+//			}
+//		}
+//	}
+//}
 
 AActor* ABaseEnemyCharacter::GetTargetActor() const
 {
@@ -177,7 +359,9 @@ AActor* ABaseEnemyCharacter::GetTargetActor() const
 void ABaseEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	InitGAS();
+
 	if (HasAuthority())
 	{		
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
@@ -189,46 +373,50 @@ void ABaseEnemyCharacter::BeginPlay()
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
 
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->InitAbilityActorInfo(this, this);
-        
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : BaseEnemyDataAsset->DefaultAbilities)
-			{
-				if (AbilityClass)
-				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1);
-					AbilitySystemComponent->GiveAbility(Spec);
-				}
-			}
-			
-			for (const TSubclassOf<UGameplayEffect>& EffectClass : BaseEnemyDataAsset->DefaultEffects)
-			{
-				if (EffectClass)
-				{
-					FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-					EffectContext.AddSourceObject(this);
-
-					// GE의 Spec(인스턴스 같은 것)을 생성
-					FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
-
-					if (SpecHandle.IsValid())
-					{
-						AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-					}
-				}
-			}
-
-			DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
-				.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
-		}		
-
 		UWorld* World = GetWorld();
 		if (IsValid(World))
 		{
 			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
 		}
 	}
+}
+
+void ABaseEnemyCharacter::InitGAS()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		for (const TSubclassOf<UGameplayAbility>& AbilityClass : BaseEnemyDataAsset->DefaultAbilities)
+		{
+			if (AbilityClass)
+			{
+				FGameplayAbilitySpec Spec(AbilityClass, 1);
+				AbilitySystemComponent->GiveAbility(Spec);
+			}
+		}
+
+		for (const TSubclassOf<UGameplayEffect>& EffectClass : BaseEnemyDataAsset->DefaultEffects)
+		{
+			if (EffectClass)
+			{
+				FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+				EffectContext.AddSourceObject(this);
+
+				// GE의 Spec(인스턴스 같은 것)을 생성
+				FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
+
+				if (SpecHandle.IsValid())
+				{
+					AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
+		}
+
+		DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
+			.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
+	}
+
 }
 
 void ABaseEnemyCharacter::PossessedBy(AController* NewController)
@@ -270,4 +458,46 @@ void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
 	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
+}
+
+bool ABaseEnemyCharacter::ShouldCallAfterAttack()
+{
+	return false;
+}
+
+void ABaseEnemyCharacter::AfterAttack()
+{
+}
+
+void ABaseEnemyCharacter::Multicast_SetNoCollision_Implementation()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	if (UCapsuleComponent* Capsule =  GetCapsuleComponent())
+	{
+		Capsule->SetSimulatePhysics(false);
+		Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (USkeletalMeshComponent* EnemyMesh = GetMesh())
+	{
+		EnemyMesh->SetSimulatePhysics(false);
+		EnemyMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (DetectionSphere)
+	{
+		DetectionSphere->SetSimulatePhysics(false);
+		DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (DetectedSphere)
+	{
+		DetectedSphere->SetSimulatePhysics(false);
+		DetectedSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
 }

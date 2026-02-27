@@ -4,6 +4,7 @@
 
 #include "Engine/DataTable.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
+#include "Enemy/DataAsset/TribeDataAsset.h"
 #include "EnemySpawnerEntry.generated.h"
 
 class ABaseEnemyCharacter;
@@ -12,14 +13,17 @@ USTRUCT(BlueprintType)
 struct BULLETANT_API FSpawnEnemyData
 {
 	GENERATED_BODY()
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+
+	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ABaseEnemyCharacter> EnemyClass;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UTribeDataAsset> TribeType;
+
+	UPROPERTY(EditDefaultsOnly)
 	int32 Count = 10;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly)
 	float SpawnInterval = 1.f;
 };
 
@@ -27,16 +31,16 @@ USTRUCT(BlueprintType)
 struct BULLETANT_API FEnemySpawnerEntry : public FTableRowBase
 {
 	GENERATED_BODY()
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 WaveIndex = 0;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FSpawnEnemyData> SpawnEnemyDataArray;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 SpawnMinDistance = 1000;
-	
+	int32 SpawnMinDistance = 2000;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 SpawnMaxDistance = 1500;
+	int32 SpawnMaxDistance = 3000;
 };
