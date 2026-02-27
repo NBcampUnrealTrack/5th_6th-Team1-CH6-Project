@@ -5,8 +5,6 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
-#include "Components/StateTreeComponent.h"
 #include "GAS/BAGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -89,24 +87,6 @@ void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
 
 void UGA_MeleeAttack::OnMontageFinished()
 {
-	AActor* Avatar = CurrentActorInfo->AvatarActor.Get();
-	if (IsValid(Avatar))
-	{
-		ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(Avatar); 
-		if (IsValid(Enemy))
-		{
-			if (Enemy->ShouldCallAfterAttack())
-			{
-				Enemy->AfterAttack();
-			}
-			else
-			{
-				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
-				Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToRotate);
-			}
-		}
-	}
-
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
