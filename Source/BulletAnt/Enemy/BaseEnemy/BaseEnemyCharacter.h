@@ -17,6 +17,15 @@ class UHealthAttributeSet;
 class USphereComponent;
 class UTribeDataAsset;
 
+USTRUCT()
+struct FActorArrayWrapper
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> Actors;
+};
+
 UCLASS()
 class BULLETANT_API ABaseEnemyCharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface
 {
@@ -89,19 +98,26 @@ protected:
 
 	bool IsInFieldOfView(AActor* Target, float FOVAngle);
 
+protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TObjectPtr<USphereComponent> DetectionSphere;
 
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TObjectPtr<USphereComponent> DetectedSphere;
 
+	//UPROPERTY(VisibleAnywhere, Category = "Perception")
+	//TArray<TObjectPtr<AActor>> NearbyActors;
+
+	ETargetPriorityType TargetActorPriority;
+
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
-	TArray<TObjectPtr<AActor>> NearbyActors;
+	TMap<ETargetPriorityType, FActorArrayWrapper> NearbyActors;
+
 
 	FTimerHandle SensingTimerHandle;
 
 #pragma endregion
-	
+
 #pragma region GAS
 
 public:

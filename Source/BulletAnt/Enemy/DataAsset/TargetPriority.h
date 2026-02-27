@@ -11,5 +11,6 @@ enum class ETargetPriorityType : uint8
     Ignore  UMETA(DisplayName = "Ignore (0)"),
     High    UMETA(DisplayName = "High (1)"),
     Medium  UMETA(DisplayName = "Medium (2)"),
-    Low     UMETA(DisplayName = "Low (3)")
+    Low     UMETA(DisplayName = "Low (3)"),
+    Max     UMETA(Hidden)
 };

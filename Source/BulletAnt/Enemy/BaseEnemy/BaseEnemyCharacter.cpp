@@ -62,6 +62,9 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
 	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
+
+	TargetActor = nullptr;
+	TargetActorPriority = ETargetPriorityType::Max;
 }
 
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
@@ -84,13 +87,28 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	{
 		return;
 	}
-	
+
 	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
 	{
 		return;
 	}
 
-	NearbyActors.Add(OtherActor);
+	ETargetPriorityType Priority;
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	{
+		Priority = TribeType->Building;
+	}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Player
+	{
+		Priority = TribeType->Player;
+	}
+	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
+	//{
+	//	Priority = TribeType->Core;
+	//}
+
+	FActorArrayWrapper& Value = NearbyActors.FindOrAdd(Priority);
+	Value.Actors.Add(OtherActor);
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -100,7 +118,29 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 		return;
 	}
 
-	NearbyActors.Remove(OtherActor);
+	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	{
+		return;
+	}
+
+	ETargetPriorityType Priority;
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	{
+		Priority = TribeType->Building;
+	}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Player
+	{
+		Priority = TribeType->Player;
+	}
+	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
+	//{
+	//	Priority = TribeType->Core;
+	//}
+
+	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
+	{
+		Value->Actors.Remove(OtherActor);
+	}
 }
 
 void ABaseEnemyCharacter::SenseNearbyActors()
@@ -109,38 +149,58 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 	{
 		return;
 	}
-	if (!ensureMsgf(IsValid(DetectionSphere), TEXT("BaseEnemyCharacter SenseNearbyActors : DetectionSphere Missing")))
+	if (NearbyActors.Num() == 0)
 	{
 		return;
 	}
 
-	if (NearbyActors.Num() == 0 || IsValid(TargetActor))
-	{
-		return;
-	}
-
-	TargetActor = nullptr;
-	float MinDistSquared = DetectionSphere->GetScaledSphereRadius();
-	MinDistSquared *= MinDistSquared;
-
+	float MinDistSquared = TNumericLimits<float>::Max();
 	float SenseAngle = BaseEnemyDataAsset->SenseAngle;
-	for (AActor* NearbyActor : NearbyActors)
+	AActor* NewTarget;
+	ETargetPriorityType NewTargetPriority;
+	for (uint8 i = 0; i < static_cast<uint8>(TargetActorPriority); i++)
 	{
-		if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle))
+		ETargetPriorityType Key = static_cast<ETargetPriorityType>(i);
+		if (FActorArrayWrapper* Value = NearbyActors.Find(Key))
 		{
-			double DistSquared = FVector::DistSquared2D(GetActorLocation(), NearbyActor->GetActorLocation());
-			if (MinDistSquared > DistSquared)
+			for (AActor* NearbyActor : Value->Actors)
 			{
-				TargetActor = NearbyActor;
-				MinDistSquared = DistSquared;
+				if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle))
+				{
+					double DistSquared = FVector::DistSquared2D(GetActorLocation(), NearbyActor->GetActorLocation());
+					if (MinDistSquared > DistSquared)
+					{
+						NewTarget = NearbyActor;
+						NewTargetPriority = Key;
+						MinDistSquared = DistSquared;
+					}
+				}
+			}
+
+			if (TargetActor != NewTarget)
+			{
+				TargetActor = NewTarget;
+				TargetActorPriority = NewTargetPriority;
+				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+				StateTreeComponent->SendStateTreeEvent(ToRotate);
+				return;
 			}
 		}
 	}
 
-	if (TargetActor)
+	if (!IsValid(TargetActor))
 	{
-		FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
-		StateTreeComponent->SendStateTreeEvent(ToRotate);
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
+			{
+				TargetActor = BAGameState->GetTargetCore();
+				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+				StateTreeComponent->SendStateTreeEvent(ToRotate);
+			}
+		}
 	}
 }
 
