@@ -15,4 +15,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect")
 	TSubclassOf<UGameplayEffect> DeadStateEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AnimMontage")
+	TObjectPtr<UAnimMontage> HitMontage;
+
+	
 };

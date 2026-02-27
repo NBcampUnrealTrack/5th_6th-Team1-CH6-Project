@@ -43,8 +43,6 @@ protected:
 	UFUNCTION()
 	void HandleRespawnBar();
 
-
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	TSubclassOf<UUW_PlayerHUDWidget> HUDClass;
 
@@ -64,6 +62,16 @@ protected:
 	float CurrentTime;
 
 	FTimerHandle RespawnBarTimer;
+#pragma region ADS
+public:
+	UFUNCTION()
+	void StartADSUI();
+
+	UFUNCTION()
+	void StopADSUI();
+protected:
+
+#pragma endregion
 	
 #pragma region GroundScanner
 

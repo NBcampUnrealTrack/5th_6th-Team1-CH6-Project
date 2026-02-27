@@ -143,6 +143,9 @@ public:
     UInputAction* AimAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* ADSAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractionAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
@@ -179,6 +182,7 @@ protected:
     void CrouchInput(const FInputActionValue& Value);
     void AimStart(const FInputActionValue& Value);
     void AimStop(const FInputActionValue& Value);
+    void ADSStart(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void EnterBuildMode(const FInputActionValue& Value);
     void ExitBuildMode(const FInputActionValue& Value);
@@ -233,6 +237,9 @@ public:
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
+
+    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
+    bool bIsADS;
 
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
@@ -359,6 +366,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
+
+    FTransform SavedSpringArmTransform;
+    float SavedSpringArmLength();
 
 #pragma endregion
 
