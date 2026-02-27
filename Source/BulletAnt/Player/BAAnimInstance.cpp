@@ -5,6 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Player/BAParkourComponent.h"
 
 void UBAAnimInstance::NativeInitializeAnimation()
 {
@@ -17,7 +18,10 @@ void UBAAnimInstance::NativeInitializeAnimation()
 		Character = Cast<ABACharacter>(Owner);
 
 		if (Character)
+		{
 			Movement = Character->GetCharacterMovement();
+			ParkourComp = Character->FindComponentByClass<UBAParkourComponent>();
+		}
 	}
 	Tag_Ranged = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Ranged"));
 	Tag_Mining = FGameplayTag::RequestGameplayTag(FName("Weapon.Equipped.Mining"));
@@ -70,7 +74,13 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 15.0f);
     AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 15.0f);
+	//if(ParkourComp&&!ParkourComp->bisParkour
+	HandIKAlpha = GetCurveValue(FName("HandIK_Alpha"));
+	FVector RightDir = OwningActor->GetActorRightVector();
 
+	float ShoulderWidth = 30.f;
+	LeftTargetLocation = ParkourComp->WarpTargetLocation - (RightDir * ShoulderWidth);
+	RightTargetLocation = ParkourComp->WarpTargetLocation + (RightDir * ShoulderWidth);
 	bIsAiming = Character->bIsAiming;
 	bIsTurning = Character->bIsTurning;
 	

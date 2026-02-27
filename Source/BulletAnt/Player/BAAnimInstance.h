@@ -16,6 +16,7 @@
  */
 
 class UCharacterMovementComponent;
+class UBAParkourComponent;
 
 UCLASS()
 class BULLETANT_API UBAAnimInstance : public UAnimInstance
@@ -38,9 +39,13 @@ public:
 	EEquipmentType CurrentEquipmentType;
 
 protected:
-	// 매번 Cast 안하기 위한 포인터
+
+
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	TObjectPtr<ABACharacter> Character;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	TObjectPtr<UBAParkourComponent> ParkourComp;
 
 	// 매번 Cast 안하기 위한 포인터
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
@@ -84,9 +89,16 @@ protected:
 	//수직 이동 속도
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float VerticalVelocity;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	FVector LeftTargetLocation;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	FVector RightTargetLocation;
 
 	FRotator PreviousRotation;
 
 	UPROPERTY(BlueprintReadOnly, Category = "TurnInPlace")
 	float RootYawOffset;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Parkour|IK")
+	float HandIKAlpha;
 };
