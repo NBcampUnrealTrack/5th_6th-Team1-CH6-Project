@@ -9,12 +9,12 @@
 
 void USpawnManagerSubsystem::OnEnemyDie()
 {
-	AliveEnemyCount--;
-	if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
-	{
-		WaveIndex++;
-		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
-	}
+	//AliveEnemyCount--;
+	//if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
+	//{
+	//	WaveIndex++;
+	//	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
+	//}
 }
 
 void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -182,6 +182,9 @@ void USpawnManagerSubsystem::SpawnEnemies()
 	if (SpawnEnemyDataIdx == Row->SpawnEnemyDataArray.Num())
 	{
 		SpawnEnemyDataIdx = 0;
+
+		WaveIndex++;
+		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5.f, false);
 		return;
 	}
 	
