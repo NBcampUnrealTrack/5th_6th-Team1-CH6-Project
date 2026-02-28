@@ -106,6 +106,10 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	//{
 	//	Priority = TribeType->Core;
 	//}
+	else
+	{
+		return;
+	}
 
 	FActorArrayWrapper& Value = NearbyActors.FindOrAdd(Priority);
 	Value.Actors.Add(OtherActor);
@@ -124,7 +128,7 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	}
 
 	ETargetPriorityType Priority;
-	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel1)	// Building
 	{
 		Priority = TribeType->Building;
 	}
@@ -136,6 +140,11 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	//{
 	//	Priority = TribeType->Core;
 	//}
+	else
+	{
+		return;
+	}
+
 
 	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
 	{
