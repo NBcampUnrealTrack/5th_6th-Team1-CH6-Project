@@ -94,7 +94,7 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	}
 
 	ETargetPriorityType Priority;
-	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel1)	// Building
 	{
 		Priority = TribeType->Building;
 	}
@@ -156,9 +156,9 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 
 	float MinDistSquared = TNumericLimits<float>::Max();
 	float SenseAngle = BaseEnemyDataAsset->SenseAngle;
-	AActor* NewTarget;
+	AActor* NewTarget = nullptr;
 	ETargetPriorityType NewTargetPriority;
-	for (uint8 i = 0; i < static_cast<uint8>(TargetActorPriority); i++)
+	for (uint8 i = 1; i < static_cast<uint8>(TargetActorPriority); i++)
 	{
 		ETargetPriorityType Key = static_cast<ETargetPriorityType>(i);
 		if (FActorArrayWrapper* Value = NearbyActors.Find(Key))
@@ -177,7 +177,7 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 				}
 			}
 
-			if (TargetActor != NewTarget)
+			if (IsValid(NewTarget) && TargetActor != NewTarget)
 			{
 				TargetActor = NewTarget;
 				TargetActorPriority = NewTargetPriority;

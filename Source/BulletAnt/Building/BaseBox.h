@@ -14,7 +14,4 @@ class BULLETANT_API ABaseBox : public ABaseBuilding
 {
 	GENERATED_BODY()
 
-protected:
-	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const override;
-
 };
