@@ -1,4 +1,4 @@
-﻿#include "GA_Fire.h"
+#include "GA_Fire.h"
 
 #include "Weapon/BaseRangedWeapon.h"
 #include "AbilitySystemComponent.h"
@@ -8,17 +8,17 @@
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h" 
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
-#include "GAS/AttributeSet/AmmoAttributeSet.h"
-#include "GAS/BAGameplayTags.h"
 
 UGA_Fire::UGA_Fire()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	FGameplayTagContainer DefaultTag;
-	DefaultTag.AddTag(TAG_Ability_Active_Fire);
-	SetAssetTags(DefaultTag);
+	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.Fire")));
+
+	TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
+
+	TAG_GameplayCue_Weapon_Fire = FGameplayTag::RequestGameplayTag(TEXT("GameplayCue.Weapon.Fire"));
 }
 
 void UGA_Fire::ActivateAbility(
@@ -33,25 +33,18 @@ void UGA_Fire::ActivateAbility(
 		return;
 	}
 	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
-	if (!SourceActor) return;
+	if (!SourceActor) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
-	if (!DataAssetInterface) return;
+	if (!DataAssetInterface) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
-	if (!RangedData) return;
+	if (!RangedData) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
-	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC) return;
+	if (!RangedData->UseStateEffect) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
+	const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
 
-	if (RangedData->UseStateEffect)
-	{
-		const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
-
-		AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
-	}
-
-	ContinuousBullet = 0;
+	AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
 	
 	if (RangedData->bAutoFire)
 	{
@@ -73,7 +66,10 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 
 	if (AttackingStateHandle.IsValid())
 	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(AttackingStateHandle);
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			ASC->RemoveActiveGameplayEffect(AttackingStateHandle);
+		}
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
@@ -82,36 +78,23 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
+
+	IFireStartInterface* FireStart = Cast<IFireStartInterface>(SourceActor);
+	if (!FireStart) return;
+	
+	const FVector Start = FireStart->GetFireStartLocation();
 	
 
-	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(ActorInfo->AvatarActor.Get());
-	FVector Dir = IFireStartInterface::Execute_GetFireDirection(ActorInfo->AvatarActor.Get());
-	
-	//총알 발사시 발생하는 이펙트 큐
-	if (RangedData->FireCueEffect)
-	{
-		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
-		Context.AddSourceObject(RangedData);
-		Context.AddOrigin(Start);
-		
-
-		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(RangedData->FireCueEffect, 1.0f, Context);
-		if (SpecHandle.IsValid())
-		{
-			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
-	}
-	
-	FHitResult LocalHit;
+	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(SourceActor);
 
-	ContinuousBullet++;	
-
 	for (int32 i = 0; i < RangedData->FirePerShot; ++i)
 	{
+		FHitResult LocalHit;
+
 		FVector FireDir = ApplySpread(
-			Dir,
+			FireStart->GetFireDirection(),
 			RangedData->SpreadDegree
 		);
 
@@ -121,7 +104,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			LocalHit,
 			Start,
 			End,
-			ECC_GameTraceChannel2,
+			ECC_Visibility,
 			Params
 		);
 
@@ -144,32 +127,21 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 		ApplyDamageEffect(
 			ActorInfo,
 			LocalHit.GetActor(),
-			RangedData,
-			LocalHit
+			RangedData
 		);
 	}
+
+	ApplyAttackCue(Start, RangedData, ActorInfo->AbilitySystemComponent.Get());
 }
 
 void UGA_Fire::StartAutoFireLoop()
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 
-	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC) return;
-
-	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
-	if (AmmoSet)
-	{
-		if (AmmoSet->GetCurrentAmmo() <= 0.f)
-		{
-			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-			return;
-		}
-	}
-
 	FireOnce(ActorInfo);
 
-	float FireDelay = 60.f / RangedData->RoundPerMinute;
+	float RPM = FMath::Max(RangedData->RoundPerMinute, 1.f);
+	float FireDelay = 60.f / RPM;
 
 	GetWorld()->GetTimerManager().SetTimer(
 		FireTimerHandler,
@@ -183,8 +155,7 @@ void UGA_Fire::StartAutoFireLoop()
 void UGA_Fire::ApplyDamageEffect(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	AActor* Target,
-	const URangedWeaponDataAsset* WeaponData,
-	FHitResult& InHitResult)
+	const URangedWeaponDataAsset* WeaponData)
 {
 	if (!Target) return;
 
@@ -195,20 +166,30 @@ void UGA_Fire::ApplyDamageEffect(
 		Target->FindComponentByClass<UAbilitySystemComponent>();
 	if (!TargetASC) return;
 
-	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	Context.AddHitResult(InHitResult);
-
 	FGameplayEffectSpecHandle Spec =
-		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, Context);
-	
+		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, SourceASC->MakeEffectContext());
+
 	if (!Spec.IsValid()) return;
 
 	Spec.Data->SetSetByCallerMagnitude(
 		TAG_Data_Combat_Damage,
 		RangedData->BaseDamage
 	);
-	
+
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
+}
+
+void UGA_Fire::ApplyAttackCue(const FVector& Location, const URangedWeaponDataAsset* WeaponData, UAbilitySystemComponent* ASC)
+{
+	if (!WeaponData || !ASC) return;
+	FGameplayCueParameters Params;
+	Params.Location = Location;
+	Params.SourceObject = WeaponData;
+
+	ASC->ExecuteGameplayCue(
+		TAG_GameplayCue_Weapon_Fire,
+		Params
+	);
 }
 
 FVector UGA_Fire::ApplySpread(const FVector& Dir, float Degree)

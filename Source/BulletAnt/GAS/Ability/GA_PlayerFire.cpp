@@ -1,4 +1,4 @@
-﻿#include "GAS/Ability/GA_PlayerFire.h"
+#include "GAS/Ability/GA_PlayerFire.h"
 #include "Player/BACharacter.h"
 #include "Player/BAPlayerController.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
@@ -29,13 +29,13 @@ void UGA_PlayerFire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	PlayerCharacter = Cast<ABACharacter>(ActorInfo->AvatarActor);
-	if (!PlayerCharacter) return;
+	if (!PlayerCharacter) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(PlayerCharacter);
-	if (!DataAssetInterface) return;
+	if (!DataAssetInterface) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
-	if (!RangedData) return;
+	if (!RangedData) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
 	if (Anim)
@@ -57,10 +57,13 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 
 void UGA_PlayerFire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
-	if (Anim)
+	if (PlayerCharacter)
 	{
-		Anim->SetIsFiring(false);
+		UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
+		if (Anim)
+		{
+			Anim->SetIsFiring(false);
+		}
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);

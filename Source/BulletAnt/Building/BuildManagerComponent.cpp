@@ -1,12 +1,8 @@
-﻿
+
 #include "Building/BuildManagerComponent.h"
 #include "Building/BaseBuilding.h"
 #include "Engine/OverlapResult.h"
-#include "UI/UISubsystem.h"
-#include "UI/UW_BuildMenu.h"
 #include <InputActionValue.h>
-#include "Framework/BAGameMode.h" 
-#include "Components/PrimitiveComponent.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
@@ -40,20 +36,21 @@ void UBuildManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
     }
 
     // 스냅 체크
-    PreviewActor->SetActorLocationAndRotation(FreeLocation, Rotation);
+    PreviewActor->UpdateTransform(FreeLocation, Rotation);
     FVector FinalLocation = FreeLocation;
     if (bSnapMode)
     {
         TrySnapPreview(FinalLocation, Rotation);
     }
 
-    PreviewActor->SetActorLocationAndRotation(FinalLocation, Rotation);
+    PreviewActor->UpdateTransform(FinalLocation, Rotation);
     PreviewActor->DrawEdgesDebug(false, 0.02f);
 
     // 설치 가능 판정
+    bool bCanPlace;
     if (bHasValidSurface)
     {
-        bCanPlace = CheckCanPlaceAt();
+        bCanPlace = CheckCanPlaceAt(FinalLocation, Rotation, PreviewActor->GetBuildingBoxExtent());
     }
     else
     {
@@ -69,46 +66,45 @@ void UBuildManagerComponent::EnterBuildMode()
         return;
     }
 
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    const FBuildingRow* Row = BuildingTable->FindRow<FBuildingRow>(DefaultBuildingRow, TEXT("EnterBuildMode"));
+    if (!Row || !Row->BuildingClass)
+    {
+        return;
+    }
+
+    FActorSpawnParameters Params;
+    Params.Owner = GetOwner();
+    Params.Instigator = Cast<APawn>(GetOwner());
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    PreviewActor = World->SpawnActor<ABaseBuilding>(Row->BuildingClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
+    if (!PreviewActor)
+    {
+        return;
+    }
+
+    PreviewActor->SetReplicates(false);
+    PreviewActor->SetPreviewMode(true);
+
     bBuildMode = true;
+    CurrentBuildingRow = DefaultBuildingRow;
+    CachedBuildingRow = Row;
+    
     RefreshCachedRef();
     CurrentYaw = 0.f;
-    SetCurrentBuildingRow(DefaultBuildingRow);
-    SetComponentTickEnabled(true);
 
-    if (auto* PC = CachedPC.Get())
-    {
-        if (auto* LP = PC->GetLocalPlayer())
-        {
-            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-            {
-                UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
-                if (IsValid(BuildMenuWidget))
-                {
-                    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-                    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-                    PC->SetShowMouseCursor(true);
-                }
-            }
-        }
-    }
-    
+    SetComponentTickEnabled(true);
 }
 
 void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
-
-    if (auto* PC = CachedPC.Get())
-    {
-        if (auto* LP = PC->GetLocalPlayer())
-        {
-            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-            {
-               UIS->HideUI(EUIType::BuildMenu);
-               PC->SetShowMouseCursor(false);
-            }
-        }
-    }
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;
@@ -123,11 +119,6 @@ void UBuildManagerComponent::ExitBuildMode()
     }
 }
 
-void UBuildManagerComponent::OnBuildMenuSelected(FName NewRow)
-{
-    SetCurrentBuildingRow(NewRow);
-}
-
 void UBuildManagerComponent::TryPlace()
 {
     if (!bBuildMode)
@@ -135,7 +126,7 @@ void UBuildManagerComponent::TryPlace()
         return;
     }
 
-    if (!PreviewActor || !bCanPlace)
+    if (!PreviewActor || !PreviewActor->CanPlace())
     {
         return;
     }
@@ -166,35 +157,6 @@ void UBuildManagerComponent::RotatePreviewByWheel(const FInputActionValue& Value
 void UBuildManagerComponent::ToggleSnapMode()
 {
     bSnapMode = !bSnapMode;
-}
-
-void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass)
-{
-    UWorld* World = GetWorld();
-    if (!World || !*BuildingClass) 
-    {
-        return;
-    }
-
-    if (PreviewActor)
-    {
-        PreviewActor->Destroy();
-        PreviewActor = nullptr;
-    }
-
-    FActorSpawnParameters Params;
-    Params.Owner = GetOwner();
-    Params.Instigator = Cast<APawn>(GetOwner());
-    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-    PreviewActor = World->SpawnActor<ABaseBuilding>(BuildingClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
-    if (!PreviewActor) 
-    {
-        return;
-    }
-
-    PreviewActor->SetReplicates(false);
-    PreviewActor->SetPreviewMode(true);
 }
 
 bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface)
@@ -256,19 +218,20 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation, FRotator& In
         return false;
     }
 
-    // 주변 빌딩 후보 찾기
+    // 주변 빌딩 후보 찾기 (차후에 빌딩 채널로 빌딩들만 체크할 예정)
     FCollisionQueryParams Params(SCENE_QUERY_STAT(SnapSearch), false);
     Params.AddIgnoredActor(PreviewActor);
 
-    FCollisionObjectQueryParams Obj;
-    Obj.AddObjectTypesToQuery(ECC_GameTraceChannel1); // Building
+    FCollisionObjectQueryParams ObjParams;
+    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
 
     TArray<FOverlapResult> Overlaps;
     const bool bAnyOverlap = World->OverlapMultiByObjectType(
         Overlaps,
         InOutLocation,
         FQuat::Identity,
-        Obj,
+        ObjParams,
         FCollisionShape::MakeSphere(SnapSearchRadius),
         Params
     );
@@ -354,75 +317,88 @@ bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation, FRotator& In
                     // "붙이기 + 슬라이드": 프리뷰 엣지 중점을 타겟 엣지 연장선에 투영
                     const FVector2D PrevMid2d = FVector2D(EPw.Mid().X, EPw.Mid().Y);
                     const FVector2D Closest2d = ClosestPointOnExtendedLine2D(PrevMid2d, EO, OtherDir2d, SlideHalfRange);
-                    const FVector2D DeltaOff2d = Closest2d - PrevMid2d;
+                    const FVector2D DeltaBase2d = Closest2d - PrevMid2d;
 
-                    // 키포인트 스냅(슬라이드 방향 성분만 추가)
-                    TArray<FVector> PrevKeys;
-                    SampleKeyPointsOnEdge(EPw, PrevKeys);
-                    for (FVector& P : PrevKeys)
+                    // 타겟 법선(2D)
+                    const FVector2D Normal2d(OtherDir2d.Y, OtherDir2d.X);
+
+                    // "건물 크기만큼 띄우기" 후보: 0 / 프리뷰 / 타겟
+                    const float PrevOffset = GetPerpFullSizeForEdge(PreviewActor, EPw);
+                    const float OtherOffset = GetPerpFullSizeForEdge(OtherBuilding, EO);
+                    const float Offsets[3] = { 0.f, PrevOffset, OtherOffset };
+
+                    for (float Offset : Offsets)
                     {
-                        P.X += DeltaOff2d.X;
-                        P.Y += DeltaOff2d.Y;
-                    }
+                        // 1차 이동(붙이기+슬라이드+오프셋)
+                        const FVector2D DeltaOff2d = DeltaBase2d + Normal2d * Offset;
 
-                    TArray<FVector> OtherKeys;
-                    SampleKeyPointsOnEdge(EO, OtherKeys);
-
-                    float BestAlong = 0.f;
-                    float BestKeyDistSq = KeyPointSnapMaxDistance * KeyPointSnapMaxDistance;
-                    bool bKeySnap = false;
-
-                    for (const FVector& PK : PrevKeys)
-                    {
-                        const FVector2D PK2d(PK.X, PK.Y);
-                        for (const FVector& OK : OtherKeys)
+                        // 키포인트 스냅(슬라이드 방향 성분만 추가)
+                        TArray<FVector> PrevKeys;
+                        SampleKeyPointsOnEdge(EPw, PrevKeys);
+                        for (FVector& P : PrevKeys)
                         {
-                            const FVector2D OK2d(OK.X, OK.Y);
-                            const FVector2D Diff = OK2d - PK2d;
+                            P.X += DeltaOff2d.X;
+                            P.Y += DeltaOff2d.Y;
+                        }
 
-                            const float DistSq = Diff.SizeSquared();
-                            if (DistSq > KeyPointSnapMaxDistance * KeyPointSnapMaxDistance)
+                        TArray<FVector> OtherKeys;
+                        SampleKeyPointsOnEdge(EO, OtherKeys);
+
+                        float BestAlong = 0.f;
+                        float BestKeyDistSq = KeyPointSnapMaxDistance * KeyPointSnapMaxDistance;
+                        bool bKeySnap = false;
+
+                        for (const FVector& PK : PrevKeys)
+                        {
+                            const FVector2D PK2d(PK.X, PK.Y);
+                            for (const FVector& OK : OtherKeys)
                             {
-                                continue;
-                            }
+                                const FVector2D OK2d(OK.X, OK.Y);
+                                const FVector2D Diff = OK2d - PK2d;
 
-                            const float Along = FVector2D::DotProduct(Diff, OtherDir2d);
+                                const float DistSq = Diff.SizeSquared();
+                                if (DistSq > KeyPointSnapMaxDistance * KeyPointSnapMaxDistance)
+                                {
+                                    continue;
+                                }
 
-                            if (DistSq < BestKeyDistSq)
-                            {
-                                BestKeyDistSq = DistSq;
-                                BestAlong = Along;
-                                bKeySnap = true;
+                                const float Along = FVector2D::DotProduct(Diff, OtherDir2d);
+
+                                if (DistSq < BestKeyDistSq)
+                                {
+                                    BestKeyDistSq = DistSq;
+                                    BestAlong = Along;
+                                    bKeySnap = true;
+                                }
                             }
                         }
+
+                        FVector2D DeltaFinal2d = DeltaOff2d;
+
+                        if (bKeySnap)
+                        {
+                            const FVector2D NewMid2d = PrevMid2d + DeltaOff2d + OtherDir2d * BestAlong;
+                            const FVector2D ClampedMid2d = ClosestPointOnExtendedLine2D(NewMid2d, EO, OtherDir2d, SlideHalfRange);
+                            DeltaFinal2d = ClampedMid2d - PrevMid2d;
+                        }
+
+                        const float DeltaZ = EO.Mid().Z - EPw.Mid().Z;
+
+                        const FVector DeltaWorld(DeltaFinal2d.X, DeltaFinal2d.Y, DeltaZ);
+
+                        // 최종 스코어: 이동량 + 회전량
+                        const float MoveCost = DeltaWorld.SizeSquared();
+                        const float RotCost = DeltaYaw * DeltaYaw;
+                        const float TotalScore = MoveCost + RotCost;
+
+                        if (TotalScore < BestScore && MoveCost <= SnapMaxDistance * SnapMaxDistance)
+                        {
+                            BestScore = TotalScore;
+                            BestDelta = DeltaWorld;
+                            BestYaw = TargetYaw;
+                            bFound = true;
+                        }
                     }
-
-                    FVector2D DeltaFinal2d = DeltaOff2d;
-
-                    if (bKeySnap)
-                    {
-                        const FVector2D NewMid2d = PrevMid2d + DeltaOff2d + OtherDir2d * BestAlong;
-                        const FVector2D ClampedMid2d = ClosestPointOnExtendedLine2D(NewMid2d, EO, OtherDir2d, SlideHalfRange);
-                        DeltaFinal2d = ClampedMid2d - PrevMid2d;
-                    }
-
-                    const float DeltaZ = EO.Mid().Z - EPw.Mid().Z;
-
-                    const FVector DeltaWorld(DeltaFinal2d.X, DeltaFinal2d.Y, DeltaZ);
-
-                    // 최종 스코어: 이동량 + 회전량
-                    const float MoveCost = DeltaWorld.SizeSquared();
-                    const float RotCost = DeltaYaw * DeltaYaw;
-                    const float TotalScore = MoveCost + RotCost;
-
-                    if (TotalScore < BestScore && MoveCost <= SnapMaxDistance * SnapMaxDistance)
-                    {
-                        BestScore = TotalScore;
-                        BestDelta = DeltaWorld;
-                        BestYaw = TargetYaw;
-                        bFound = true;
-                    }
-                    
                 }
             }
         }
@@ -452,14 +428,7 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
         return;
     }
 
-    if (ABAGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ABAGameMode>() : nullptr)
-    {
-        if (!GM->TrySpendOre(Row->BuildCost))
-        {
-            return;
-        }
-    }
-    else
+    if (!CheckCanPlaceAt(Location, Rotation, Row->BuildingBoxExtent))
     {
         return;
     }
@@ -478,58 +447,70 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
     ABaseBuilding* Spawned = World->SpawnActor<ABaseBuilding>(Row->BuildingClass, Location, Rotation, Params);
     if (Spawned)
     {
+        Spawned->SetBuildingBoxExtent(Row->BuildingBoxExtent);
         Spawned->DrawEdgesDebug(true, -1.f);
     }
 }
 
-bool UBuildManagerComponent::CheckCanPlaceAt() const
+bool UBuildManagerComponent::CheckCanPlaceAt(const FVector& Location, const FRotator& Rotation, const FVector& InBoxExtent) const
 {
-    if (!PreviewActor)
+    UWorld* World = GetWorld();
+    if (!World)
     {
         return false;
     }
 
-    TArray<UPrimitiveComponent*> Prims;
-    PreviewActor->GetPlacementPrimitives(Prims);
-    
-    if (Prims.Num() == 0)
+    FVector BoxExtent = InBoxExtent.ComponentMax(FVector(10.f));
+    const FVector Center = Location + FVector(0, 0, BoxExtent.Z);
+    const FQuat RotQ = Rotation.Quaternion();
+    const FCollisionShape BoxShape = FCollisionShape::MakeBox(BoxExtent);
+
+    FCollisionQueryParams Params(SCENE_QUERY_STAT(BuildOverlap), false);
+    if (PreviewActor) 
     {
-        return false;
+        Params.AddIgnoredActor(PreviewActor);
     }
 
-    for (UPrimitiveComponent* Prim : Prims)
+    FCollisionObjectQueryParams ObjParams;
+    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
+    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+    ObjParams.AddObjectTypesToQuery(ECC_Pawn);
+
+    TArray<FOverlapResult> Overlaps;
+    const bool bAnyOverlap = World->OverlapMultiByObjectType(
+        Overlaps,
+        Center,
+        RotQ,
+        ObjParams,
+        BoxShape,
+        Params
+    );
+
+    if (!bAnyOverlap)
     {
-        if (!Prim) 
+        return true;
+    }
+
+    for (const FOverlapResult& R : Overlaps)
+    {
+        AActor* Other = R.GetActor();
+        UPrimitiveComponent* OtherComp = R.GetComponent();
+
+        if (!Other || !OtherComp)
         {
             continue;
         }
 
-        TArray<UPrimitiveComponent*> Overlapping;
-        Prim->GetOverlappingComponents(Overlapping);
-
-        for (UPrimitiveComponent* OtherComp : Overlapping)
+        if (Other->ActorHasTag(GroundActorTag)) 
         {
-            if (!OtherComp)
-            {
-                continue;
-            }
+            continue;
+        }
 
-            AActor* OtherActor = OtherComp->GetOwner();
-            if (!OtherActor || OtherActor == PreviewActor)
-            {
-                continue;
-            }
-
-            if (OtherComp->GetCollisionObjectType() != ECC_GameTraceChannel1 && OtherComp->GetCollisionObjectType() != ECC_Pawn)
-            {
-                continue;
-            }
-
-            if (OtherActor->ActorHasTag(GroundActorTag))
-            {
-                continue;
-            }
-
+        // 작은 오차의 겹침은 허용
+        FMTDResult MTD;
+        const bool bHasMTD = OtherComp->ComputePenetration(MTD, BoxShape, Center, RotQ);
+        if (bHasMTD && MTD.Distance > AllowedPenetrationDistance)
+        {
             return false;
         }
     }
@@ -552,7 +533,7 @@ void UBuildManagerComponent::SetCurrentBuildingRow(FName NewRow)
     }
 
     const FBuildingRow* Row = BuildingTable->FindRow<FBuildingRow>(NewRow, TEXT("SetCurrentBuildingRow"));
-    if (!Row || !Row->BuildingClass) 
+    if (!Row) 
     {
         return;
     }
@@ -560,7 +541,10 @@ void UBuildManagerComponent::SetCurrentBuildingRow(FName NewRow)
     CurrentBuildingRow = NewRow;
     CachedBuildingRow = Row;
 
-    SpawnPreview(Row->BuildingClass);
+    if (PreviewActor)
+    {
+        PreviewActor->InitWithData(*CachedBuildingRow);
+    }
 }
 
 void UBuildManagerComponent::SampleKeyPointsOnEdge(const FBuildingEdge& E, TArray<FVector>& OutPts) const
@@ -585,4 +569,19 @@ FVector2D UBuildManagerComponent::ClosestPointOnExtendedLine2D(const FVector2D& 
     return Mid + TargetDir2D * ClampedS;
 }
 
+float UBuildManagerComponent::GetPerpFullSizeForEdge(const ABaseBuilding* Building, const FBuildingEdge& EdgeWorld) const
+{
+    if (!Building) return 0.f;
+
+    const FVector LocalDir = Building->GetActorTransform().InverseTransformVectorNoScale(EdgeWorld.B - EdgeWorld.A);
+
+    const FVector AbsDir = LocalDir.GetAbs();
+
+    if (AbsDir.X >= AbsDir.Y)
+    {
+        return 2.f * Building->GetBuildingBoxExtent().Y;
+    }
+
+    return 2.f * Building->GetBuildingBoxExtent().X;
+}
 

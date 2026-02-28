@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -9,11 +9,9 @@ class UVoxelGroundChunk;
 struct FNeighborLOD;
 class ABAPlayerController;
 class UGroundSettingPreset;
-class UBoxComponent;
-enum class EGroundType : uint8;
 
 UENUM()
-enum class EChunkState : uint8
+enum class EChunkState
 {
 	Ground,								// 기반암 없는 땅만
 	Air,								// 공기만
@@ -30,31 +28,10 @@ struct FVoxelGroundChunkData
 	UPROPERTY()
 	TArray<uint8> DensityValues;						// 200 초과: 기반암
 	UPROPERTY()
-	TArray<EVoxelType> VoxelTypes;
-	UPROPERTY()
 	int32 LODLevel = 0;									// 0이 가장 정밀한 LOD
 
 	UPROPERTY()
 	int32 GroundVoxelCount = 0;
-};
-
-// 정정ㅁ Density 변경 후 반환할 데이터
-USTRUCT()
-struct FVoxelChangedResult
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	EVoxelType PrevType = EVoxelType::None;
-	UPROPERTY()
-	EVoxelType CurrType = EVoxelType::None;
-	UPROPERTY()
-	uint8 PrevDensity = 0;
-	UPROPERTY()
-	uint8 CurrDensity = 0;
-
-	UPROPERTY()
-	uint8 bTypeChanged : 1 = false;
 };
 
 // 레벨 전환 시 데이터 저장용
@@ -87,29 +64,28 @@ protected:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-public:
-	void InitializeGround(int32 InSeed, const UGroundSettingPreset* InSetting);
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+public:
 	void DigGround(const FVector& WorldLocation, float Radius);
-	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap);
+	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData);
 
 	bool MakeChunkSaveData(int32 ChunkIdx, FVoxelGroundChunkSaveData& OutData);
 	bool LoadChunkSaveData(const FVoxelGroundChunkSaveData& Data);
 
 	void EnqueueChunkUpdateResult(FChunkUpdateResult&& Result);
 
-	void ApplyEditPacket(const FVoxelChunkEditPacket& Packet);
-
 protected:
+	void InitializeGround();
 	void InitializeChunkData(int32 ChunkIdx);
 	void InitializeChunkDensities(int32 ChunkIdx);
 	void SpawnChunk(int32 ChunkIdx);
 
-	void UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged);
+	void UpdateNearByChunks(const TArray<FIntVector>& PlayerChunkCoords);
 	UFUNCTION()
 	void UpdateChunkLODs();
 
-	bool ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue, FVoxelChangedResult& OutResult);
+	bool ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32 NewDensityValue);
 	uint8 GetChunkDensityValue(int32 ChunkIdx, int32 PointIdx);
 
 	int32 GetChunkIndex(int32 X, int32 Y, int32 Z) const;
@@ -127,7 +103,10 @@ protected:
 	void UpdateDirtyChunks();
 	void UpdatePriorityDirtyChunks();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_EditGround(const FVoxelChunkEditPacket& Packet);
 	void EditGroundChunk(const FVoxelChunkEditData& Data);
+	void EnqueueChunkEditData(const FVoxelChunkEditData& Data);
 
 #pragma region GroundSetting
 
@@ -150,14 +129,15 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
 
-	int32 Seed = 0;
-
+	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMin;
+	UPROPERTY(Replicated)
 	FIntVector ChunkRangeMax;
+	UPROPERTY(Replicated)
 	FIntVector GridWidth;
 
 	FTimerHandle UpdateChunkLODTimerHandle;
-	TSet<FIntVector> LastPlayerCoords;
+	TSet<int32> LastNearByChunkIdxs;
 
 	FTimerHandle UpdateDirtyChunkTimerHandle;
 	TBitArray<> ChunkMeshDirties;
@@ -169,29 +149,7 @@ protected:
 	int32 NextChunkUpdateID = 0;
 	const int32 MaxUpdatePerFrame = 20;
 
+	TQueue<FVoxelChunkEditData> EditDataQueue;
+
 #pragma endregion
-
-#pragma region Bound
-
-protected:
-	void SetBoundBox();
-
-	UFUNCTION()
-	void OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	UFUNCTION()
-	void OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-	class ASkyAtmosphere* GetSkyAtmosphere() const;
-
-
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UBoxComponent> BoundBox;
-	UPROPERTY()
-	TWeakObjectPtr<class ASkyAtmosphere> SkyAtmosphere;
-
-	float OriginReighScatterScale = 0.0f;
-	
-#pragma endregion
-
 };

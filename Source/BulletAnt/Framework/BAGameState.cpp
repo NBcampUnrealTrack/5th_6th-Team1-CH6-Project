@@ -1,4 +1,4 @@
-﻿#include "Framework/BAGameState.h"
+#include "Framework/BAGameState.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Building/BaseCore.h"
 #include "Player/BAPlayerController.h"
@@ -33,7 +33,11 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 void ABAGameState::OnRep_SetInitParams()
 {
     UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
-    ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
+    if (!IsValid(GroundSubsystem))
+    {
+        UE_LOG(LogTemp, Error, TEXT("VoxelGroundSubsystem is not valid"));
+        return;
+    }
 
     GroundSubsystem->CreateVoxelGround(GroundInitParams);
 }
@@ -44,7 +48,11 @@ void ABAGameState::Multicast_EditGround_Implementation(const FVoxelChunkEditPack
         return;
 
     UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
-    ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
+    if (!IsValid(GroundSubsystem))
+    {
+        UE_LOG(LogTemp, Error, TEXT("VoxelGroundSubsystem is not valid"));
+        return;
+    }
 
     GroundSubsystem->ApplyEditPacket(Packet);
 }

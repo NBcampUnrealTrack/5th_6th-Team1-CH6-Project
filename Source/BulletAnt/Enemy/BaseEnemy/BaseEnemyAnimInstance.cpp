@@ -36,10 +36,7 @@ void UBaseEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	Velocity = MovementComponent->Velocity;
 	GroundSpeed = Velocity.Size2D();
-	if (GroundSpeed > 0.01)
-	{
-		bShouldMove = true;
-	}
+	bShouldMove = (GroundSpeed > 0.01f);
 
 	bIsTurning = Enemy->bIsTurning;
 	bIsTurningLeft = Enemy->bIsTurningLeft;

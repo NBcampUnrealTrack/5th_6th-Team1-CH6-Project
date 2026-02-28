@@ -1,4 +1,4 @@
-﻿
+
 
 #include "GAS/Ability/GA_DestroyBuilding.h"
 #include "GAS/BAGameplayTags.h"
@@ -18,8 +18,9 @@ UGA_DestroyBuilding::UGA_DestroyBuilding()
 
 void UGA_DestroyBuilding::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	if (!GetWorld()) 
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
@@ -27,4 +28,6 @@ void UGA_DestroyBuilding::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	{
 		Source->OnDeath();
 	}
+
+	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

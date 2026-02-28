@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "AttributeSet.h"
@@ -19,6 +19,7 @@ class BULLETANT_API UHealthAttributeSet : public UAttributeSet
 public:
 	UHealthAttributeSet();
 
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
 	UFUNCTION()

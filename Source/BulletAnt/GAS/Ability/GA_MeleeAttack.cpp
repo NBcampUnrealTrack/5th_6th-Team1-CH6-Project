@@ -1,27 +1,23 @@
-﻿#include "GAS/Ability/GA_MeleeAttack.h"
+#include "GAS/Ability/GA_MeleeAttack.h"
 #include "Common/DataAssetInterface.h"
 #include "Weapon/Data/MeleeWeaponDataAsset.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "GAS/BAGameplayTags.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
+#include "Components/StateTreeComponent.h"
 
+static const FGameplayTag TAG_Data_Combat_Damage = FGameplayTag::RequestGameplayTag(TEXT("Data.Combat.Damage"));
 
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	FGameplayTagContainer DefaultTag;
-	DefaultTag.AddTag(TAG_Ability_Active_MeleeAttack);
-
-	SetAssetTags(DefaultTag);
-
-	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active);
-
-	ActivationOwnedTags.AddTag(TAG_State_Combat_Attacking);
+	AbilityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Active.MeleeAttack")));
+	
+	ActivationOwnedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Attacking")));
 }
 
 void UGA_MeleeAttack::ActivateAbility(
@@ -36,6 +32,8 @@ void UGA_MeleeAttack::ActivateAbility(
 		return;
 	}
 
+	UE_LOG(LogTemp, Error, TEXT("ActivateAbility"));
+
 	IDataAssetInterface* Interface = Cast<IDataAssetInterface>(GetAvatarActorFromActorInfo());
 	if (!Interface || !Interface->GetDataAsset())
 	{
@@ -44,13 +42,6 @@ void UGA_MeleeAttack::ActivateAbility(
 	}
 
 	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
-
-	if (Data->UseStateEffect)
-	{
-		const UGameplayEffect* EffectCDO = Data->UseStateEffect->GetDefaultObject<UGameplayEffect>();
-
-		AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
-	}
 
 	UAbilityTask_WaitGameplayEvent* WaitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, Data->HitEventTag);
 	WaitTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnHitEventReceived);
@@ -62,16 +53,6 @@ void UGA_MeleeAttack::ActivateAbility(
 	MontageTask->ReadyForActivation();
 }
 
-void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
-	if (AttackingStateHandle.IsValid())
-	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(AttackingStateHandle);
-	}
-
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
 void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
 {
 	AActor* HitActor = const_cast<AActor*>(Payload.Target.Get());
@@ -80,15 +61,32 @@ void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
 	{
 		return;
 	}
+	UE_LOG(LogTemp, Log, TEXT("Melee Hit Success: %s"), *HitActor->GetName());
 
 	ApplyDamage(CurrentActorInfo, HitActor);
 }
 
 void UGA_MeleeAttack::OnMontageFinished()
 {
+	AActor* Avatar = CurrentActorInfo->AvatarActor.Get();
+	if (IsValid(Avatar))
+	{
+		ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(Avatar); 
+		if (IsValid(Enemy))
+		{
+			FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+			Enemy->GetStateTreeComponent()->SendStateTreeEvent(ToRotate);
+		}
+	}
+	
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
+
+void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
 
 void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target)
 {

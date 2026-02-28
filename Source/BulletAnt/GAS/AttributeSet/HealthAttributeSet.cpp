@@ -1,4 +1,4 @@
-﻿#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
 #include "Common/OnDeathInterface.h"
@@ -19,6 +19,16 @@ void UHealthAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UHealthAttributeSet, Health, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UHealthAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
+}
+
+void UHealthAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
+{
+	Super::PreAttributeChange(Attribute, NewValue);
+
+	if (Attribute == GetHealthAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxHealth());
+	}
 }
 
 void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -70,9 +80,11 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 		if (LocalIncomingHeal > 0.f)
 		{
-			const float NewHealth = GetMaxHealth();
+			const float NewHealth = GetHealth() + LocalIncomingHeal;
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
 		}
+
+		SetIncomingHeal(0.f);
 	}
 }
 
