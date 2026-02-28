@@ -18,6 +18,5 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AnimMontage")
 	TObjectPtr<UAnimMontage> HitMontage;
-
 	
 };
