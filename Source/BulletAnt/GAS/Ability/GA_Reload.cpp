@@ -1,4 +1,4 @@
-﻿#include "GAS/Ability/GA_Reload.h"
+#include "GAS/Ability/GA_Reload.h"
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
@@ -33,9 +33,10 @@ void UGA_Reload::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 	}
 
 	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
-	if (!SourceActor) return;
+	if (!SourceActor) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	Data = Cast<URangedWeaponDataAsset>(Interface->GetDataAsset());
+	if (!Data) { EndAbility(Handle, ActorInfo, ActivationInfo, true, true); return; }
 
 	if (Data->UseStateEffect)
 	{

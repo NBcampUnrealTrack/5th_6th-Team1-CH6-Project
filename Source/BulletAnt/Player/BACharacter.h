@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -6,13 +6,10 @@
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h"
-#include "Common/OnDeathInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
-#include "Engine/DataTable.h"
 #include "BACharacter.generated.h"
 
-class UCapsuleComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UMotionWarpingComponent;
@@ -21,12 +18,8 @@ class UHealthAttributeSet;
 class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
-class UAmmoAttributeSet;
-class UBAAbilitySystemComponent;
-class USceneCaptureComponent2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -43,28 +36,6 @@ enum class EAbilityInputID : uint8
     Fire,
     Reload,
     Aim
-};
-
-UENUM(BlueprintType)
-enum class EEquipmentType : uint8
-{
-    Ranged       UMETA(DisplayName = "Ranged"),
-    Mining      UMETA(DisplayName = "Mining"),
-    Melee       UMETA(DisplayName = "Melee")
-};
-USTRUCT(BlueprintType)
-struct FAnimChoice : public FTableRowBase
-{
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere)
-    UAnimSequence* AnimAsset;
-
-    UPROPERTY(EditAnywhere)
-    float TargetAngle;
-    
-    UPROPERTY(EditAnywhere)
-    float TargetSpeed;
 };
 
 UCLASS()
@@ -86,27 +57,24 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    virtual void OnRep_PlayerState() override;
+    virtual void OnRep_Controller() override;
 
 
+    FORCEINLINE TObjectPtr<USkeletalMeshComponent> GetFPSMesh() const { return FPSMesh; }
     //TEST
-    FORCEINLINE UCameraComponent* GetCamera() const { return CameraComponent; }
-    void SpringArmRot(bool check);
+    FORCEINLINE UCameraComponent* GetCamera() const { return FirstPersonCameraComponent; }
+
 
 protected:
     // --- 카메라 관련 컴포넌트 ---
     //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     //TObjectPtr<USpringArmComponent> CameraBoom;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DetectedCapsule")
-    UCapsuleComponent* DetectedCapsule;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spring Arm")
-    USpringArmComponent* SpringArm;
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-    TObjectPtr<UCameraComponent> CameraComponent;
-
+    TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
+    // --- 1인칭 관련 컴포넌트 ---
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FPS")
+    TObjectPtr<USkeletalMeshComponent> FPSMesh;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
     TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
 
@@ -131,19 +99,13 @@ public:
     UInputAction* LookAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* ReloadAction;
+    class UInputAction* AttackAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* AttackAction;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* SwitchAction;
+    class UInputAction* SwitchAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* AimAction;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* ADSAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* InteractionAction;
@@ -163,9 +125,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* ToggleSnapModeAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
-    UInputAction* GroundScannerAction;
-
 #pragma endregion
 
 #pragma region Action Function
@@ -175,14 +134,12 @@ protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void StartAttack(const FInputActionValue& Value);
-    void Reload(const FInputActionValue& Value);
     void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
     void CrouchInput(const FInputActionValue& Value);
     void AimStart(const FInputActionValue& Value);
     void AimStop(const FInputActionValue& Value);
-    void ADSStart(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void EnterBuildMode(const FInputActionValue& Value);
     void ExitBuildMode(const FInputActionValue& Value);
@@ -223,29 +180,19 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StopTurnMontage();
 
-    void StopMontage();
-
-    UFUNCTION(Server, Reliable)
-    void Server_SetAiming(bool bNewIsAiming);
-
-    UFUNCTION(Server, Reliable)
-    void Server_SetRunning(bool bNewIsRunning);
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
-    TArray<FAnimChoice> AnimDataBase;
 
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
-
-    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
-    bool bIsADS;
+    UFUNCTION(Server, Reliable)
+    void ServerSetAiming(bool bNewIsAiming);
 
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsRunning;
-    UPROPERTY(BlueprintReadOnly, Category = "Combat")
-    EEquipmentType CurrentEquipmentType = EEquipmentType::Ranged;
+    UFUNCTION(Server, Reliable)
+    void ServerSetRunning(bool bNewIsRunning);
 
     // --- 에디터 수정 가능 ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -256,8 +203,6 @@ public:
     float RunningSpeed = 800.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float CrouchSpeed = 300.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float SpringArmZ;
 
 
     //최대 조준시 좌우 시선 회전 각도
@@ -266,7 +211,7 @@ public:
     //최대 좌우 시선 회전 각도
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
     float IdleTurn = 90.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharAnimation")
     float LineTraceRange = 500.f;
     UPROPERTY(Replicated)
     float SyncAimYaw;
@@ -276,9 +221,7 @@ public:
     float RemoteViewYaw;
     FRotator ControlRot;
     float CurrentTurnSpeed;
-
-    float LastBodyYaw;
-    float RootYawOffset;
+    FRotator DeltaRot;
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
@@ -305,6 +248,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
     TObjectPtr<UAnimMontage> CrouchTurnRight180Montage;
 
+    UPROPERTY(Transient)
     UAnimMontage* CurrentTurnMontage;
 
 public:
@@ -325,7 +269,7 @@ public:
 
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UBAAbilitySystemComponent* AbilitySystemComponent;
+    UAbilitySystemComponent* AbilitySystemComponent;
 
     UPROPERTY()
     UHealthAttributeSet* HealthAttributeSet;
@@ -347,6 +291,10 @@ public:
     virtual FVector GetFireStartLocation_Implementation() const override;
     virtual FVector GetFireDirection_Implementation() const override;
 
+    void SetRecoil(float InPitch, float InYaw);
+
+
+
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
@@ -356,80 +304,13 @@ public:
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
-    UPROPERTY()
-    UAmmoAttributeSet* AmmoAttributeSet;
-
-    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
-    FOnAmmoChangedDelegate OnAmmoChanged;
-
-    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
-    FTransform SavedSpringArmTransform;
-    float SavedSpringArmLength();
-
 #pragma endregion
-
-#pragma region Recoil
-public:
-    void SetRecoil(float InPitch, float InYaw);
-
-protected:
-    float CurrentRecoilPitch = 0.f;
-    float CurrentRecoilYaw = 0.f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, category = "Recoil")
-    float RecoilInterpSpeed = 10.f;
-#pragma endregion
-
-protected:
-
-    UFUNCTION()
-    void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
-
-    UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
-    float RespawnTime = 5.f;
-
+    
 protected:
     UPROPERTY(VisibleAnywhere)
     UBuildManagerComponent* BuildManager;
-
-#pragma region GroundScanner
-
-public:
-    FORCEINLINE USceneCaptureComponent2D* GetGroundScannerSceneCapture() { return SceneCapture2D; }
-    void RotateScannerParent(const FVector2D& Input);
-    void ChangeScannerDistance(float Input);
-    void SwitchGroundScanner();
-        
-protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    TObjectPtr<USpringArmComponent> SceneCaptureParent;
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    TObjectPtr<USceneCaptureComponent2D> SceneCapture2D;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    TObjectPtr<UMaterialInterface> M_PostProcessGroundScanner;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    TObjectPtr<UTextureRenderTarget2D> RT_GroundScanner;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    float DefaultScannerDistance = 600.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    float MinScannerDistance = 300.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    float MaxScannerDistance = 900.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    float ScannerZoomMultiplier = 60.0f;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    FRotator ScannerDefaultRotation = FRotator(-40.0f, 0.0f, 0.0f);
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    float ScannerRotateMultiplier = 0.2f;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
-    TObjectPtr<UStaticMeshComponent> ArrowMesh;
-
-#pragma endregion
-
+   
 };

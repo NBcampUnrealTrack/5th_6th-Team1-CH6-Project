@@ -1,4 +1,4 @@
-﻿
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -32,9 +32,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ExitBuildMode();
 
-	UFUNCTION()
-	void OnBuildMenuSelected(FName NewRow);
-
 	UFUNCTION(BlueprintCallable)
 	void TryPlace();
 
@@ -47,14 +44,14 @@ public:
 	bool IsBuildMode() const { return bBuildMode; }
 
 private:
-	void SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass);
 	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);
+
 	bool TrySnapPreview(FVector& InOutLocation, FRotator& InOutRotation);
 
 	UFUNCTION(Server, Reliable)
 	void Server_TryPlace(FName BuildingRow, const FVector& Location, const FRotator& Rotation);
 
-	bool CheckCanPlaceAt() const;
+	bool CheckCanPlaceAt(const FVector& Location, const FRotator& Rotation, const FVector& InBoxExtent) const;
 
 	void RefreshCachedRef();
 
@@ -63,6 +60,8 @@ private:
 	void SampleKeyPointsOnEdge(const FBuildingEdge& E, TArray<FVector>& OutPts) const;
 
 	FVector2D ClosestPointOnExtendedLine2D(const FVector2D& Point2D, const FBuildingEdge& TargetEdgeWorld, const FVector2D& TargetDir2D, float HalfRange) const;
+
+	float GetPerpFullSizeForEdge(const ABaseBuilding* Building, const FBuildingEdge& EdgeWorld) const;
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Data")
@@ -78,7 +77,6 @@ private:
 	TObjectPtr<ABaseBuilding> PreviewActor;
 
 	bool bBuildMode = false;
-	bool bCanPlace = false;
 
 	UPROPERTY()
 	TWeakObjectPtr<AActor> CachedOwner;
@@ -109,7 +107,7 @@ private:
 	float KeyPointSnapMaxDistance = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
-	float MaxBuildDistance = 2000.f;
+	float MaxBuildDistance = 5000.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	float AllowedPenetrationDistance = 1.f;

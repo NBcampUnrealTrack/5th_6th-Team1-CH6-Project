@@ -1,12 +1,12 @@
-﻿#include "Weapon/BaseRangedWeapon.h"
+#include "Weapon/BaseRangedWeapon.h"
 
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 
 void ABaseRangedWeapon::BeginPlay()
 {
 	Super::BeginPlay();
-	Data = Cast<URangedWeaponDataAsset>(WeaponData);
+	URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(WeaponData);
+	if (!Data) return;
 
 	bAutoActive = Data->bAutoFire;
 }
-

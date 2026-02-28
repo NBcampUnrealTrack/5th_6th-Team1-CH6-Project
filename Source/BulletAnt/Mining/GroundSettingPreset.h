@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
@@ -26,6 +26,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
 	EVoxelType PillarVoxelType;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
+	float CaveScale = 0.003f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundSetting")
+	float CaveThreshold = 0.3f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
 	TObjectPtr<UMaterialInterface> GroundMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
+	TObjectPtr<UMaterialInterface> BedrockMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
+	TObjectPtr<UMaterialInterface> NormalGroundMaterial;
 };

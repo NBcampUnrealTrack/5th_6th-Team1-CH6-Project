@@ -1,4 +1,4 @@
-﻿#include "Weapon/MeleeWeapon/AnimNotifyState_MeleeHitCheck.h"
+#include "Weapon/MeleeWeapon/AnimNotifyState_MeleeHitCheck.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Common/DataAssetInterface.h"
@@ -93,12 +93,15 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 
 				HitActors.Add(OverlapActor);
 
-				FGameplayEventData Payload;
-				Payload.Target = OverlapActor;
-				Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(OverlapActor);
-				FGameplayTag EventTag = Data->HitEventTag;
+				if (OwnerActor->HasAuthority())
+				{
+					FGameplayEventData Payload;
+					Payload.Target = OverlapActor;
+					Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(OverlapActor);
+					FGameplayTag EventTag = Data->HitEventTag;
 
-				ASC->HandleGameplayEvent(EventTag, &Payload);
+					ASC->HandleGameplayEvent(EventTag, &Payload);
+				}
 			}
 		}
 	}
