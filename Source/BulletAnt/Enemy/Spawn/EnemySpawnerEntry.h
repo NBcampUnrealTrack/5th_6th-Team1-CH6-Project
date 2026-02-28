@@ -35,12 +35,15 @@ struct BULLETANT_API FEnemySpawnerEntry : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 WaveIndex = 0;
 
+	UPROPERTY(EditDefaultsOnly)
+	int32 WavePreparationTime = 5;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<FSpawnEnemyData> SpawnEnemyDataArray;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 SpawnMinDistance = 2000;
+	int32 SpawnMinDistance = 10000;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 SpawnMaxDistance = 3000;
+	int32 SpawnMaxDistance = 13000;
 };

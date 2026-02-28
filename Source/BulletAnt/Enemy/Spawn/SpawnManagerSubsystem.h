@@ -15,6 +15,7 @@ class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 	
 public:
 	 void OnEnemyDie();
+	 int GetWavePreparationTime() const;
 	
 protected:	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -22,6 +23,9 @@ protected:
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	
 	void SetSpawnDataTable();
+	bool CanStartWave();
+	void PrepareWave();
+	void UpdatePreparationTime();
 	void StartWave();
 	void SpawnEnemies();
 	
@@ -41,13 +45,16 @@ protected:
 	int32 WaveIndex = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
-	int32 MaxWaveIndex = 2;
+	int32 MaxWaveIndex;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	int32 AliveEnemyCount = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	int32 SpawnEnemyDataIdx = 0;
+
+	UPROPERTY()
+	int32 WavePreparationTime;
 	
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
