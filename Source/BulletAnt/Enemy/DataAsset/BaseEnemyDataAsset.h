@@ -24,6 +24,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Effects")
 	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 
+#pragma region BaseStat
+
+	UPROPERTY(EditDefaultsOnly, Category = "BaseStat")
+	int32 Health = 100.f;
+
+#pragma endregion
+
 #pragma region Move
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Move")
@@ -69,7 +76,7 @@ public:
 	float SenseRadius = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Perception")
-	float SenseAngle = 120.f;
+	float SenseAngle = 160.f;
 
 #pragma endregion
 

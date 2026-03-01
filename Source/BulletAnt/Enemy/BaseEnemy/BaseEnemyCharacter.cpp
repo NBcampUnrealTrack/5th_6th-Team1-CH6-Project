@@ -382,6 +382,10 @@ void ABaseEnemyCharacter::BeginPlay()
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
 
+		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health);
+		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health);
+
+
 		UWorld* World = GetWorld();
 		if (IsValid(World))
 		{
