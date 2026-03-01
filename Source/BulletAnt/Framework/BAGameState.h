@@ -40,6 +40,7 @@ private:
 public:
 	void SetOreCount(EVoxelType OreType, int32 Count);
 	int32 GetOreCount(EVoxelType OreType);
+	FORCEINLINE const TMap<EVoxelType, int32>& GetOreInventory() const { return OreInventory; }
 
 	void BindOnOreChanged(const FOnOreChanged::FDelegate& Delegate);
 	void UnbindOnOreChanged(const UObject* Object);
@@ -48,8 +49,8 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_UpdateOreCount(EVoxelType OreType, int32 Count);
 
-private:
-	UPROPERTY()
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TMap<EVoxelType, int32> OreInventory;
 
 	UPROPERTY()

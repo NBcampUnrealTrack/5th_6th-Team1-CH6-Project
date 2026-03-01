@@ -81,3 +81,16 @@ struct FGroundInitializeParams
 	UPROPERTY()
 	EGroundType GroundType;
 };
+
+USTRUCT()
+struct FBuryBoundInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FTransform Transform;
+	UPROPERTY()
+	FVector Extent;
+	UPROPERTY()
+	FBox Bound;
+};
