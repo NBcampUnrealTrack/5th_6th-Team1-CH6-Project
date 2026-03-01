@@ -59,6 +59,12 @@ void ABAPlayerController::BeginPlay()
 				FOnOreChanged::FDelegate Delegate;
 				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
 				GS->BindOnOreChanged(Delegate);
+
+				const auto& OreInventory = GS->GetOreInventory();
+				for (const auto& OrePair : OreInventory)
+				{
+					OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
+				}
 			}
 		}
 

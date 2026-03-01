@@ -16,7 +16,7 @@ void ABAGameState::BeginPlay()
 
     if (HasAuthority() == true)
     {
-        GroundInitParams.Seed = 1337;
+        GroundInitParams.Seed = FMath::RandRange(0, 56928);
         GroundInitParams.GroundType = EGroundType::Default;
 
         OnRep_SetInitParams();

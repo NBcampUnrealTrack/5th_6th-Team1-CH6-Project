@@ -38,7 +38,7 @@ struct FVoxelGroundChunkData
 	int32 GroundVoxelCount = 0;
 };
 
-// 정정ㅁ Density 변경 후 반환할 데이터
+// 정점 Density 변경 후 반환할 데이터
 USTRUCT()
 struct FVoxelChangedResult
 {
@@ -73,6 +73,48 @@ struct FVoxelGroundChunkSaveData
 	int32 UncompressedSize = 0;
 };
 
+USTRUCT()
+struct FBuriedLocationData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FTransform BuriedTransform;
+	UPROPERTY()
+	TSubclassOf<AActor> BuriedActorClass;
+	UPROPERTY()
+	TArray<FBuryBoundInfo> BoundInfos;
+
+	UPROPERTY()
+	uint8 bCarveDensity : 1 = true;
+};
+
+USTRUCT()
+struct FPillarLocationData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector PillarLocation;
+	UPROPERTY()
+	float PillarRadius;
+	UPROPERTY()
+	float PillarHeight;
+	UPROPERTY()
+	FVector PillarNormal;
+};
+
+USTRUCT()
+struct FVeinLocationData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector VeinLocation;
+	UPROPERTY()
+	float VeinRadius;
+};
+
 UCLASS()
 class BULLETANT_API AVoxelGround : public AActor
 {
@@ -103,6 +145,8 @@ public:
 protected:
 	void InitializeChunkData(int32 ChunkIdx);
 	void InitializeChunkDensities(int32 ChunkIdx);
+	void PlaceObjectsByCell();
+	uint8 GetBaseDensity(const FVector& WorldPos);
 	void SpawnChunk(int32 ChunkIdx);
 
 	void UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged);
@@ -155,6 +199,13 @@ protected:
 	FIntVector ChunkRangeMin;
 	FIntVector ChunkRangeMax;
 	FIntVector GridWidth;
+
+	float ChunkSize = 0.0f;
+	float BuriedRegionSize = 0.0f;
+	float CellSize = 0.0f;
+	TMap<FIntVector, FBuriedLocationData> BuriedLocationDatas;				// BuriedActor 영향권 청크
+	TMap<FIntVector, FPillarLocationData> PillarLocationDatas;				// Pillar 광물 영향권 Cell
+	TMap<FIntVector, FVeinLocationData> VeinLocationDatas;					// Vein 광물 영향권 Cell
 
 	FTimerHandle UpdateChunkLODTimerHandle;
 	TSet<FIntVector> LastPlayerCoords;

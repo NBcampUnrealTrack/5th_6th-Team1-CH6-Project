@@ -10,6 +10,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
+#include "Weapon/Projectile/BaseProjectile.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -101,12 +102,11 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 		}
 	}
-	
-	FHitResult LocalHit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(SourceActor);
 
-	ContinuousBullet++;	
+	ContinuousBullet++;
+
+	FActorSpawnParameters Params;
+	Params.Owner = SourceActor;
 
 	for (int32 i = 0; i < RangedData->FirePerShot; ++i)
 	{
@@ -115,38 +115,24 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			RangedData->SpreadDegree
 		);
 
-		const FVector End = Start + FireDir * RangedData->Range;
-
-		bool bHit = SourceActor->GetWorld()->LineTraceSingleByChannel(
-			LocalHit,
+		Prj = GetWorld()->SpawnActor<ABaseProjectile>(
+			RangedData->ProjectileClass,
 			Start,
-			End,
-			ECC_GameTraceChannel2,
+			FireDir.Rotation(),
 			Params
 		);
 
-		DrawDebugLine(
-			SourceActor->GetWorld(),
+		Prj->InitProjectile(
 			Start,
-			bHit ? LocalHit.ImpactPoint : End,
-			FColor::Red,
-			false,
-			1.f,
-			0,
-			1.f
-		);
-
-		if (!bHit)
-		{
-			continue;
-		}
-
-		ApplyDamageEffect(
-			ActorInfo,
-			LocalHit.GetActor(),
+			Dir,
+			RangedData->ProjectileRadius,
+			RangedData->ProjectileSpeed,
+			RangedData->BaseDamage,
 			RangedData,
-			LocalHit
+			SourceActor
 		);
+
+		Prj->ActivateProjectile();
 	}
 }
 
