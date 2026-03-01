@@ -28,6 +28,7 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(ThisClass, GroundInitParams);
+    DOREPLIFETIME(ThisClass, WavePreparationTime);
 }
 
 void ABAGameState::OnRep_SetInitParams()
@@ -121,4 +122,29 @@ ABAPlayerController* ABAGameState::GetPlayerControllerByIndex(int32 Index) const
         return ConnectedPlayers[Index];
     }
     return nullptr;
+}
+
+int32 ABAGameState::GetInitWavePreparationTime() const
+{
+    return InitWavePreparationTime;
+}
+
+void ABAGameState::SetInitWavePreparationTime(int32 InTime)
+{
+    InitWavePreparationTime = InTime;
+}
+
+int32 ABAGameState::GetWavePreparationTime() const
+{
+    return WavePreparationTime;
+}
+
+void ABAGameState::SetWavePreparationTime(int32 InTime)
+{
+    WavePreparationTime = InTime;
+}
+
+void ABAGameState::OnRep_WavePreparationTime()
+{
+    OnWaveTimeChanged.Broadcast();
 }

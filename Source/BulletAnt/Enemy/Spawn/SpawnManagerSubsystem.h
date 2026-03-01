@@ -7,40 +7,37 @@
 #include "SpawnManagerSubsystem.generated.h"
 
 class ABaseCore;
+class ABAGameState;
 
 UCLASS()
 class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
-	
+
 public:
-	 void OnEnemyDie();
-	 int GetWavePreparationTime() const;
-	
-protected:	
-	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	virtual void Deinitialize() override;
+	void OnEnemyDie();
+
+protected:
+	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
+	virtual void OnWorldEndPlay(UWorld& InWorld) override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
-	
+
 	void SetSpawnDataTable();
 	bool CanStartWave();
 	void PrepareWave();
 	void UpdatePreparationTime();
 	void StartWave();
 	void SpawnEnemies();
-	
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<ABaseCore> TargetCore;
-	
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	//TObjectPtr<UDataTable> SpawnDataTable;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
-	FDataTableRowHandle EnemySpawnHandle;	
-	
+	FDataTableRowHandle EnemySpawnHandle;
+
 	inline static const FString SpawnContextString = (TEXT("EnemySpawnContext"));
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	int32 WaveIndex = 0;
 
@@ -54,8 +51,8 @@ protected:
 	int32 SpawnEnemyDataIdx = 0;
 
 	UPROPERTY()
-	int32 WavePreparationTime;
-	
+	TObjectPtr<ABAGameState> CachedGameState;
+
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
 };

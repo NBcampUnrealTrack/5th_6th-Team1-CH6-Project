@@ -9,6 +9,8 @@
 #include "GAS/BAGameplayTags.h"
 #include "UI/UW_OreCount.h"
 #include "Framework/BAGameState.h"
+#include "UI/UW_WaveTimer.h"
+#include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
 
 void ABAPlayerController::BeginPlay()
@@ -59,7 +61,24 @@ void ABAPlayerController::BeginPlay()
 				GS->BindOnOreChanged(Delegate);
 			}
 		}
+
+		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManager))
+		{
+			WaveTimerUI = UISubsystem->ShowUI<UUW_WaveTimer>(EUIType::WaveTimer);
+		}
 	}
+}
+
+void ABAPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsValid(WaveTimerUI))
+	{
+		WaveTimerUI->RemoveFromParent();
+		WaveTimerUI = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void ABAPlayerController::SwitchingMode()

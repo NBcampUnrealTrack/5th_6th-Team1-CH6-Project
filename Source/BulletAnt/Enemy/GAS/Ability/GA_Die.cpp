@@ -8,8 +8,6 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 
-#include "Engine/Engine.h" // GEngine 사용을 위해 필요
-
 UGA_Die::UGA_Die()
 {
     FGameplayTag DeathTag = FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Dead"));
