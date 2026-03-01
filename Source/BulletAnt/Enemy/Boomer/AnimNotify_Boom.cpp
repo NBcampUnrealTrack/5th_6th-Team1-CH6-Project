@@ -3,6 +3,7 @@
 
 #include "Enemy/Boomer/AnimNotify_Boom.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
+#include "AbilitySystemComponent.h"
 
 void UAnimNotify_Boom::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
@@ -28,4 +29,19 @@ void UAnimNotify_Boom::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBas
 	}
 
 	BaseEnemyCharacter->Multicast_SetNoCollision();
+
+	if (!GameplayCueBoomTag.IsValid())
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = BaseEnemyCharacter->GetAbilitySystemComponent())
+	{
+		FGameplayCueParameters Params;
+		Params.Instigator = BaseEnemyCharacter;
+		Params.Location = MeshComp->GetSocketLocation(SocketName);
+		Params.Normal = MeshComp->GetSocketRotation(SocketName).Vector();
+
+		ASC->ExecuteGameplayCue(GameplayCueBoomTag, Params);
+	}
 }
