@@ -11,6 +11,7 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Mining/VoxelGroundSubsystem.h"
 #include "Components/SceneCaptureComponent2D.h"
+#include "Mining/BuriedComponent.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -72,7 +73,6 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 
 	TRACE_CPUPROFILER_EVENT_SCOPE(DigGround);
 	FVector RelativeLocation = WorldLocation - GetActorLocation();
-	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
 
 	int32 MinX = FMath::FloorToInt((RelativeLocation.X - Radius) / ChunkSize);
 	int32 MaxX = FMath::FloorToInt((RelativeLocation.X + Radius) / ChunkSize);
@@ -124,7 +124,6 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap)
 {
 	const FVector RelativeLocation = WorldLocation - GetActorLocation();
-	const float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
 	const int32 ChunkPoints = Setting->ChunkGridSize + 1;
 	const float RadiusSquared = Radius * Radius;
 
@@ -255,16 +254,20 @@ void AVoxelGround::InitializeGround(int32 InSeed, const UGroundSettingPreset* In
 
 	ensureMsgf(IsValid(Setting) == true, TEXT("Setting is not valid"));
 
-	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
+	ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
+	CellSize = ChunkSize * 0.25f;
+	BuriedRegionSize = ChunkSize * 2.0f;
 
 	const FVector& GroundSize = Setting->GroundSize;
 	ChunkRangeMax.X = FMath::CeilToInt(GroundSize.X * 0.5f / ChunkSize) + 1;
 	ChunkRangeMax.Y = FMath::CeilToInt(GroundSize.Y * 0.5f / ChunkSize) + 1;
 	ChunkRangeMax.Z = -1;
-	ChunkRangeMin.X = -ChunkRangeMax.X;
-	ChunkRangeMin.Y = -ChunkRangeMax.Y;
+	ChunkRangeMin.X = -(ChunkRangeMax.X + 1);
+	ChunkRangeMin.Y = -(ChunkRangeMax.Y + 1);
 	ChunkRangeMin.Z = -(FMath::CeilToInt(GroundSize.Z / ChunkSize) + 1);
 	GridWidth = ChunkRangeMax - ChunkRangeMin + FIntVector(1, 1, 1);
+
+	PlaceObjectsByCell();
 
 	int ChunkCount = 
 		(ChunkRangeMax.X - ChunkRangeMin.X + 1) * 
@@ -395,117 +398,81 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 						WorldPos.Y >= BoundMinRange.Y && WorldPos.Y <= BoundMaxRange.Y &&
 						WorldPos.Z >= BoundMinRange.Z && WorldPos.Z <= BoundMaxRange.Z;
 
-					// 시드 기반으로 바꿔야 함. PerlinNoise 매개변수에 섞는 방법 고려.
-					auto CalculateCave =
-						[&](const FVector& WorldPos) -> uint8
+					auto ApplyBuried =
+						[&](const FVector& WorldPos)
 						{
-							const static float CaveFrequency = 0.0002f;
-							const static float CaveThreshold = 0.2f;
-
-							float Density = 200.0f;
-
-							FRandomStream Stream(LocalSeed);
-							FVector SeedOffset = Stream.GetUnitVector() * 20000.0f;
-							FVector SamplePos = WorldPos + SeedOffset;
-							FVector CavePos = SamplePos * CaveFrequency;
-							CavePos.Z *= 1.6f;
-							float CaveNoise0 = FMath::Abs(FMath::PerlinNoise3D(CavePos));
-							float CaveNoise1 = FMath::Abs(FMath::PerlinNoise3D(CavePos + FVector::OneVector * 100.0f));
-							float CaveNoise2 = FMath::Abs(FMath::PerlinNoise3D(CavePos + FVector::OneVector * 200.0f));
-							float CaveValue = FMath::Sqrt(CaveNoise0 * CaveNoise0 + CaveNoise1 * CaveNoise1 + CaveNoise2 * CaveNoise2);
-
-							if (CaveValue > CaveThreshold)
+							FIntVector BuriedRegion = FIntVector(
+								FMath::FloorToInt(WorldPos.X / BuriedRegionSize),
+								FMath::FloorToInt(WorldPos.Y / BuriedRegionSize),
+								FMath::FloorToInt(WorldPos.Z / BuriedRegionSize));
+							if (const FBuriedLocationData* Data = BuriedLocationDatas.Find(BuriedRegion))
 							{
-								float Alpha = FMath::Clamp((CaveValue - CaveThreshold) / (1.0f - CaveThreshold), 0.0f, 1.0f);
-								Density -= Alpha * 200.0f;
+								if (Data->bCarveDensity == false)
+									return;
+
+								const auto& BoundInfos = Data->BoundInfos;
+								for (const auto& BoundInfo : BoundInfos)
+								{
+									FVector LocalPos = BoundInfo.Transform.InverseTransformPosition(WorldPos);
+									if (FMath::Abs(LocalPos.X) <= BoundInfo.Extent.X &&
+										FMath::Abs(LocalPos.Y) <= BoundInfo.Extent.Y &&
+										FMath::Abs(LocalPos.Z) <= BoundInfo.Extent.Z)
+									{
+										VoxelType = EVoxelType::None;
+										FinalDensity = 0;
+									}
+								}
 							}
-
-							return (uint8)FMath::Clamp(Density, 0, 200);
 						};
 
-					auto CalculateVein =
-						[&](const FVector& WorldPos, const float ChunkVoxelSize)
+					auto ApplyVein =
+						[&](const FVector& WorldPos)
 						{
-							float CellSize = 1600.0f;
-							int32 CellX = FMath::FloorToInt(WorldPos.X / CellSize);
-							int32 CellY = FMath::FloorToInt(WorldPos.Y / CellSize);
-							int32 CellZ = FMath::FloorToInt(WorldPos.Z / CellSize);
+							FIntVector Cell = FIntVector(
+								FMath::FloorToInt(WorldPos.X / CellSize),
+								FMath::FloorToInt(WorldPos.Y / CellSize),
+								FMath::FloorToInt(WorldPos.Z / CellSize));
 
-							int32 Hash = HashCombine(HashCombine(CellX, CellY), HashCombine(CellZ, LocalSeed));
-							FRandomStream Stream(Hash);
+							if (const FVeinLocationData* Data = VeinLocationDatas.Find(Cell))
+							{
+								float Dist = FVector::Distance(WorldPos, Data->VeinLocation);
 
-							if (Stream.FRand() < 0.7f)
-								return;
+								if (Dist > Data->VeinRadius)
+									return;
 
-							// 400 ~ 560 / 800 ~ 1120
-							float Radius = 400.0f + Stream.FRand() * 160.0f;
-							// Cell의 양끝에서 Radius만큼은 떨어져야 옆 청크 침범 X
-							float Available = CellSize - Radius * 2.0f;
+								float t = 1.0f - (Dist / Data->VeinRadius);
 
-							FVector VeinCenter(
-								CellX * CellSize + Radius + (Available * Stream.FRand()),
-								CellY * CellSize + Radius + (Available * Stream.FRand()),
-								CellZ * CellSize + Radius + (Available * Stream.FRand()));
+								float RoughNoise = FMath::PerlinNoise3D(WorldPos * 0.02f);
+								float Roughness = RoughNoise * 4.0f;
 
-							float Dist = FVector::Distance(WorldPos, VeinCenter);
-
-							if (Dist > Radius)
-								return;
-
-							float t = 1.0f - (Dist / Radius);
-
-							float RoughNoise = FMath::PerlinNoise3D(WorldPos * 0.02f);
-							float Roughness = RoughNoise * 4.0f;
-
-							VoxelType = VeinVoxelType;
-							FinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
+								VoxelType = VeinVoxelType;
+								FinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
+							}
 						};
 
-					auto CalculatePillar =
-						[&](const FVector& WorldPos, const int32 PointIdx)
+					auto ApplyPillar =
+						[&](const FVector& WorldPos)
 						{
-							float CellSize = 1600.0f;
-							int32 CellX = FMath::FloorToInt(WorldPos.X / CellSize);
-							int32 CellY = FMath::FloorToInt(WorldPos.Y / CellSize);
-							int32 CellZ = FMath::FloorToInt(WorldPos.Z / CellSize);
+							FIntVector Cell = FIntVector(
+								FMath::FloorToInt(WorldPos.X / CellSize),
+								FMath::FloorToInt(WorldPos.Y / CellSize),
+								FMath::FloorToInt(WorldPos.Z / CellSize));
 
-							int32 Hash = HashCombine(HashCombine(CellX, CellY), HashCombine(CellZ, LocalSeed));
-							FRandomStream Stream(Hash);
+							if (const FPillarLocationData* Data = PillarLocationDatas.Find(Cell))
+							{
+								FVector Delta = WorldPos - Data->PillarLocation;
+								float AlongNormal = FVector::DotProduct(Delta, Data->PillarNormal);
+								float Radial = (Delta - (Data->PillarNormal * AlongNormal)).Length();
 
-							if (Stream.FRand() > 0.5f)
-								return;
+								if (AlongNormal < 0 || Radial > Data->PillarRadius)
+									return;
 
-							// 안정적으로 만들기 위해 일단 셀 중앙에서만 생성
-							FVector PillarCenter(
-								(CellX + 0.5f) * CellSize,
-								(CellY + 0.5f) * CellSize,
-								(CellZ + 0.5f) * CellSize);
+								float Distance = Radial / Data->PillarRadius;
+								float DistanceValue = (1.0f - Distance) * (1.0f - (AlongNormal / Data->PillarHeight) * 0.2f);
 
-							// 노이즈 기반으로 맵을 생성했기 때문에 지표면 근처는 Density가 IsoLevel에 가까움
-							bool bIsNearSurface = FMath::Abs(CalculateCave(PillarCenter) - IsoLevel) < 8;
-							if (bIsNearSurface == false)
-								return;
-
-							float Dx = CalculateCave(PillarCenter + FVector(ChunkVoxelSize, 0, 0)) - CalculateCave(PillarCenter - FVector(ChunkVoxelSize, 0, 0));
-							float Dy = CalculateCave(PillarCenter + FVector(0, ChunkVoxelSize, 0)) - CalculateCave(PillarCenter - FVector(0, ChunkVoxelSize, 0));
-							float Dz = CalculateCave(PillarCenter + FVector(0, 0, ChunkVoxelSize)) - CalculateCave(PillarCenter - FVector(0, 0, ChunkVoxelSize));
-
-							// 지형에 Normal한 방향으로 기둥이 자라야 함. Density가 큰 쪽이 지형이므로 -연산.
-							FVector Normal = -FVector(Dx, Dy, Dz).GetSafeNormal();
-							FVector Delta = WorldPos - PillarCenter;
-							float AlongNormal = FVector::DotProduct(Delta, Normal);
-							float Radial = (Delta - (Normal * AlongNormal)).Length();
-							float Radius = 240.f;
-							float Height = 400.0f + 400.0f * Stream.FRand();
-
-							if (AlongNormal < 0 || Radial > Radius)
-								return;
-
-							float Distance = Radial / Radius;
-							float DistanceValue = (1.0f - Distance) * (1.0f - (AlongNormal / Height) * 0.2f);
-
-							VoxelType = PillarVoxelType;
-							FinalDensity = (uint8)FMath::Clamp(DistanceValue * 200, 0, 200);
+								VoxelType = PillarVoxelType;
+								FinalDensity = (uint8)FMath::Clamp(DistanceValue * 200, 0, 200);
+							}
 						};
 
 					// Bound 내부라면
@@ -513,6 +480,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 					{
 						FVector LocalPos = WorldPos - Center;
 						FVector AbsLocalPos = LocalPos.GetAbs();
+						float DistXYSquared = LocalPos.X * LocalPos.X + LocalPos.Y * LocalPos.Y;
 
 						float MaxAxisRatio = FMath::Max3(
 							AbsLocalPos.X / HalfSize.X,
@@ -520,12 +488,11 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							AbsLocalPos.Z / HalfSize.Z);
 
 						bool bBedRock = false;
-						const static float BedRockNoiseWeight = 0.058f;
-						const static float BedRockThickness = 0.06f;
+						const static float BedRockNoiseWeight = 0.02f;
+						const static float BedRockThickness = 0.04f;
 						// MaxAxisRatio가 기반암이 생성 가능한 수치 이내라면, 위쪽 중앙 입구 지역이 아니라면
 						bool bIsBedRockRange = MaxAxisRatio >= (1 - BedRockNoiseWeight - BedRockThickness);
-						bool bEntrance = bIsBedRockRange == true && (WorldPos.Z > Center.Z && AbsLocalPos.X <= 400.0f && AbsLocalPos.Y <= 400.0f);
-						if (bIsBedRockRange == true && bEntrance == false)
+						if (bIsBedRockRange == true)
 						{
 							float BedRockNoiseValue = FMath::PerlinNoise3D(WorldPos * 0.0008f);
 							float DistortedRatio = MaxAxisRatio + BedRockNoiseValue * BedRockNoiseWeight;
@@ -542,30 +509,34 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 						if (bBedRock == false)
 						{
-							if (bEntrance == true)
+							FinalDensity = GetBaseDensity(WorldPos);
+							ApplyBuried(WorldPos);
+
+							bool bGround = FinalDensity > IsoLevel;
+							if (bGround == true)
 							{
-								FinalDensity = 200;
 								VoxelType = EVoxelType::NormalRock;
+
+								// 땅이라면, Vein 계산
+								ApplyVein(WorldPos);
 							}
 							else
 							{
-								// 기반암이 아니라면, Cave 계산
-								FinalDensity = CalculateCave(WorldPos);
-
-								bool bGround = FinalDensity > IsoLevel;
-								if (bGround == true)
-								{
-									VoxelType = EVoxelType::NormalRock;
-
-									// 땅이라면, Vein 계산
-									CalculateVein(WorldPos, ChunkVoxelSize);
-								}
-								else
-								{
-									// 공기라면, Pillar 계산
-									CalculatePillar(WorldPos, PointIdx);
-								}
+								// 공기라면, Pillar 계산
+								ApplyPillar(WorldPos);
 							}
+						}
+
+						const float EntranceRadius = 400.0f;
+						//bool bEntrance = bIsBedRockRange == true && (WorldPos.Z > Center.Z && DistXYSquared <= (EntranceRadius * EntranceRadius));
+						bool bEntrance = bIsBedRockRange == true && AbsLocalPos.X <= EntranceRadius && AbsLocalPos.Y <= EntranceRadius;
+						if (bEntrance == true)
+						{
+							// Bedrock 구분 방법 denstiy로 되어 있는 걸 전부 EVoxelType으로 교체 후에 원형 구멍으로 변경
+							FinalDensity = 0;
+							VoxelType = EVoxelType::None;
+							//FinalDensity = (uint8)FMath::Clamp(FMath::RoundToInt((DistXYSquared / (EntranceRadius * EntranceRadius)) * 200.0f), 0, 200);
+							//VoxelType = FinalDensity > IsoLevel ? VoxelType : EVoxelType::None;
 						}
 					}
 
@@ -597,13 +568,288 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 	if (GroundVoxelCount <= 0 ||
 		(GroundVoxelCount == TotalPoints && BedRockCount == TotalPoints))
 	{
-		NewChunkState = GroundVoxelCount == 0 ? EChunkState::Ground : EChunkState::Air;
+		NewChunkState = GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
 	}
 	ChunkDatas[ChunkIdx].ChunkState = NewChunkState;
 
 	ChunkDatas[ChunkIdx].GroundVoxelCount = GroundVoxelCount;
 	ChunkDatas[ChunkIdx].DensityValues = MoveTemp(TempDensities);
 	ChunkDatas[ChunkIdx].VoxelTypes = MoveTemp(TempVoxelTypes);
+}
+
+void AVoxelGround::PlaceObjectsByCell()
+{
+	const int32 ChunkPoints = Setting->ChunkGridSize + 1;
+	const float VoxelSize = Setting->ChunkVoxelSize;								// Buried Actor는 Cell의 4배까지 크다고 가정 
+	const auto& BuriedActorClasses = Setting->BuriedActorClasses;
+	const uint8 IsoLevel = Setting->IsoLevel;
+	const FVector& GroundSize = Setting->GroundSize;
+
+	// Region
+	FIntVector BuriedRegionRangeMin = FIntVector(
+		FMath::Floor(ChunkRangeMin.X * 0.5f) + 2,
+		FMath::Floor(ChunkRangeMin.Y * 0.5f) + 2,
+		FMath::Floor(ChunkRangeMin.Z * 0.5f) + 2);
+	FIntVector BuriedRegionRangeMax = FIntVector(
+		FMath::Floor(ChunkRangeMax.X * 0.5f) - 2,
+		FMath::Floor(ChunkRangeMax.Y * 0.5f) - 2,
+		FMath::Floor(ChunkRangeMax.Z * 0.5f) - 1);
+
+	TArray<FIntVector> BuriedRegions;
+	for (int32 Z = BuriedRegionRangeMin.Z; Z <= BuriedRegionRangeMax.Z; ++Z)
+	{
+		for (int32 Y = BuriedRegionRangeMin.Y; Y <= BuriedRegionRangeMax.Y; ++Y)
+		{
+			for (int32 X = BuriedRegionRangeMin.X; X <= BuriedRegionRangeMax.X; ++X)
+			{
+				BuriedRegions.Add(FIntVector(X, Y, Z));
+			}
+		}
+	}
+
+	FRandomStream StreamBury(Seed);
+	int32 TotalBuryRegions = BuriedRegions.Num();
+	for (int32 Idx = 0; Idx < TotalBuryRegions; ++Idx)
+	{
+		int32 SwapIdx = StreamBury.RandRange(Idx, TotalBuryRegions - 1);
+		BuriedRegions.Swap(Idx, SwapIdx);
+	}
+
+	int32 RegionIdx = 0;
+	for (const auto& [BuriedActorClass, BuriedActorCount] : BuriedActorClasses)
+	{
+		if (IsValid(BuriedActorClass) == false)
+			continue;
+
+		FActorSpawnParameters TempSpawnParams;
+		TempSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AActor* TempBuriedActor = GetWorld()->SpawnActor<AActor>(BuriedActorClass, TempSpawnParams);
+		if (IsValid(TempBuriedActor) == false)
+			continue;
+
+		UBuriedComponent* BuriedComponent = TempBuriedActor->GetComponentByClass<UBuriedComponent>();
+		if (IsValid(BuriedComponent) == false)
+			continue;
+
+		bool bCarveDensity = BuriedComponent->IsCarveDensity();
+
+		for (int32 Count = 0; Count < BuriedActorCount && RegionIdx < BuriedRegions.Num(); ++RegionIdx)
+		{
+			TArray<FBuryBoundInfo> BuryBoundInfos;
+			FRotator Rotation = FRotator(0.0f, StreamBury.FRandRange(0.0f, 360.0f), 0.0f);
+			FTransform Transform(Rotation);
+			BuriedComponent->GetPredictedBoundInfos(BuryBoundInfos, Transform);
+			FBox TotalBound(EForceInit::ForceInit);
+			for (const auto& BoundInfo : BuryBoundInfos)
+			{
+				TotalBound += BoundInfo.Bound;
+			}
+
+			const FIntVector& BuriedRegion = BuriedRegions[RegionIdx];
+			FVector HalfBoundSize = (TotalBound.Max - TotalBound.Min) * 0.5f;
+			FVector Available = FVector::OneVector * BuriedRegionSize - HalfBoundSize * 2.0f;
+			FVector CandidateRangeMin = FVector(BuriedRegion) * BuriedRegionSize + HalfBoundSize;
+			FVector CandidateRangeMax = CandidateRangeMin + Available;
+			for (int32 CandidateCount = 0; CandidateCount < 16; ++CandidateCount)
+			{
+				FVector Candidate = FVector(
+					StreamBury.FRandRange(CandidateRangeMin.X, CandidateRangeMax.X),
+					StreamBury.FRandRange(CandidateRangeMin.Y, CandidateRangeMax.Y),
+					StreamBury.FRandRange(CandidateRangeMin.Z, CandidateRangeMax.Z));
+
+				uint8 BaseDensity = GetBaseDensity(Candidate);
+				if (BaseDensity <= IsoLevel)
+					continue;
+
+				FBuriedLocationData LocationData;
+				FTransform BuryTransform(Rotation, Candidate);
+				LocationData.BuriedTransform = BuryTransform;
+				LocationData.BuriedActorClass = BuriedActorClass;
+				LocationData.bCarveDensity = bCarveDensity;
+				BuriedComponent->GetPredictedBoundInfos(LocationData.BoundInfos, BuryTransform);
+
+				/*DrawDebugSphere(
+					GetWorld(),
+					Candidate,
+					400.0f,
+					16,
+					FColor::Red,
+					true);*/
+
+				BuriedLocationDatas.Add(BuriedRegion, LocationData);
+				++Count;
+				break;
+			}
+		}
+
+		TempBuriedActor->Destroy();
+	}
+
+	// Cell: Vein, Pillar
+	FIntVector CellRangeMin = FIntVector(
+		(ChunkRangeMin.X + 3) * 4 + 2,
+		(ChunkRangeMin.Y + 3) * 4 + 2,
+		(ChunkRangeMin.Z + 1) * 4 + 2);
+	FIntVector CellRangeMax = FIntVector(
+		(ChunkRangeMax.X - 3) * 4,
+		(ChunkRangeMax.Y - 3) * 4,
+		(ChunkRangeMax.Z) * 2 + 2);
+
+	TArray<FIntVector> Cells;
+	for (int32 Z = CellRangeMin.Z; Z <= CellRangeMax.Z; ++Z)
+	{
+		for (int32 Y = CellRangeMin.Y; Y <= CellRangeMax.Y; ++Y)
+		{
+			for (int32 X = CellRangeMin.X; X <= CellRangeMax.X; ++X)
+			{
+				Cells.Add(FIntVector(X, Y, Z));
+			}
+		}
+	}
+
+	FRandomStream StreamCell(Seed + 1000);
+	int32 TotalCells = Cells.Num();
+	for (int32 Idx = 0; Idx < TotalCells; ++Idx)
+	{
+		int32 SwapIdx = StreamCell.RandRange(Idx, TotalCells - 1);
+		Cells.Swap(Idx, SwapIdx);
+	}
+
+	const int32 MaxPillarCount = Setting->PillarCount;
+	for (int32 PillarCount = 0, CellIdx = 0; PillarCount < MaxPillarCount && CellIdx < Cells.Num(); ++CellIdx)
+	{
+		const FIntVector& Cell = Cells[CellIdx];
+		FIntVector ChunkIncludeCell = FIntVector(
+			FMath::Floor(Cell.X * 0.5f),
+			FMath::Floor(Cell.Y * 0.5f),
+			FMath::Floor(Cell.Z * 0.5f));
+		if (BuriedLocationDatas.Contains(ChunkIncludeCell) == true)
+			continue;
+
+		int32 Hash = HashCombine(HashCombine(Cell.X, Cell.Y), HashCombine(Cell.Z, Seed));
+		FRandomStream Stream(Hash);
+
+		FVector CellCenter = FVector(
+			(Cell.X + 0.5f) * CellSize,
+			(Cell.Y + 0.5f) * CellSize,
+			(Cell.Z + 0.5f) * CellSize);
+		float PillarRadius = 240.0f;
+		float PillarHeight = 320.0f + 180.0f * Stream.FRand();
+		float Available = CellSize - PillarRadius * 2.0f;
+		FVector CandidateRangeMin = FVector(CellSize) * BuriedRegionSize + PillarRadius;
+		FVector CandidateRangeMax = CandidateRangeMin + Available;
+
+		for (int32 Count = 0; Count < 16; ++Count)
+		{
+			FVector Candidate = FVector(
+				Cell.X * CellSize + PillarRadius + (Available * Stream.FRand()),
+				Cell.Y * CellSize + PillarRadius + (Available * Stream.FRand()),
+				Cell.Z * CellSize + PillarRadius + (Available * Stream.FRand()));
+
+			bool bIsNearSurface = FMath::Abs(GetBaseDensity(Candidate) - IsoLevel) < 8;
+			if (bIsNearSurface == false)
+				continue;
+
+			float Dx = GetBaseDensity(Candidate + FVector(VoxelSize, 0, 0)) - GetBaseDensity(Candidate - FVector(VoxelSize, 0, 0));
+			float Dy = GetBaseDensity(Candidate + FVector(0, VoxelSize, 0)) - GetBaseDensity(Candidate - FVector(0, VoxelSize, 0));
+			float Dz = GetBaseDensity(Candidate + FVector(0, 0, VoxelSize)) - GetBaseDensity(Candidate - FVector(0, 0, VoxelSize));
+
+			FVector Normal = -FVector(Dx, Dy, Dz).GetSafeNormal();
+			FVector DirCenter = CellCenter - Candidate;
+			if ((DirCenter.X * Normal.X < 0.0f) ||
+				(DirCenter.Y * Normal.Y < 0.0f) ||
+				(DirCenter.Z * Normal.Z < 0.0f))
+				continue;
+
+			FPillarLocationData LocationData;
+			LocationData.PillarLocation = Candidate;
+			LocationData.PillarRadius = PillarRadius;
+			LocationData.PillarHeight = PillarHeight;
+			LocationData.PillarNormal = Normal;
+			PillarLocationDatas.Add(Cell, LocationData);
+			++PillarCount;
+
+			/*DrawDebugSphere(
+				GetWorld(),
+				Candidate,
+				400.0f,
+				4,
+				FColor::Red,
+				true);*/
+			break;
+		}
+	}
+
+	const int32 MaxVeinCount = Setting->VeinCount;
+	for (int32 VeinCount = 0, CellIdx = 0; VeinCount < MaxVeinCount && CellIdx < Cells.Num(); ++CellIdx)
+	{
+		const FIntVector& Cell = Cells[CellIdx];
+		FIntVector ChunkIncludeCell = FIntVector(
+			FMath::Floor(Cell.X * 0.5f),
+			FMath::Floor(Cell.Y * 0.5f),
+			FMath::Floor(Cell.Z * 0.5f));
+		if (BuriedLocationDatas.Contains(ChunkIncludeCell) == true || PillarLocationDatas.Contains(Cell) == true)
+			continue;
+
+		int32 Hash = HashCombine(HashCombine(Cell.X, Cell.Y), HashCombine(Cell.Z, Seed));
+		FRandomStream Stream(Hash);
+
+		// 반지름 = 100 ~ 360 / 지름 = 200 ~ 720
+		float Radius = 100.0f +Stream.FRand() * 260.0f;
+		float Available = CellSize - Radius * 2.0f;
+		for (int32 Count = 0; Count < 16; ++Count)
+		{
+			FVector Candidate = FVector(
+				Cell.X * CellSize + Radius + (Available * Stream.FRand()),
+				Cell.Y * CellSize + Radius + (Available * Stream.FRand()),
+				Cell.Z * CellSize + Radius + (Available * Stream.FRand()));
+
+			uint8 BaseDensity = GetBaseDensity(Candidate);
+			if (BaseDensity <= IsoLevel)
+				continue;
+
+			FVeinLocationData LocationData;
+			LocationData.VeinLocation = Candidate;
+			LocationData.VeinRadius = Radius;
+			VeinLocationDatas.Add(Cell, LocationData);
+			++VeinCount;
+
+			/*DrawDebugSphere(
+				GetWorld(),
+				Candidate,
+				400.0f,
+				4,
+				FColor::Yellow,
+				true);*/
+			break;
+		}
+	}
+}
+
+uint8 AVoxelGround::GetBaseDensity(const FVector& WorldPos)
+{
+	const static float CaveFrequency = 0.0006f;
+	const static float CaveThreshold = 0.2f;
+
+	float Density = 200.0f;
+
+	FRandomStream Stream(Seed);
+	FVector SeedOffset = Stream.GetUnitVector() * 20000.0f;
+	FVector SamplePos = WorldPos + SeedOffset;
+	FVector CavePos = SamplePos * CaveFrequency;
+	CavePos.Z *= 1.4f;
+	float CaveNoise0 = FMath::Abs(FMath::PerlinNoise3D(CavePos));
+	float CaveNoise1 = FMath::Abs(FMath::PerlinNoise3D(CavePos + FVector::OneVector * 100.0f));
+	float CaveNoise2 = FMath::Abs(FMath::PerlinNoise3D(CavePos + FVector::OneVector * 200.0f));
+	float CaveValue = FMath::Sqrt(CaveNoise0 * CaveNoise0 + CaveNoise1 * CaveNoise1 + CaveNoise2 * CaveNoise2);
+
+	if (CaveValue > CaveThreshold)
+	{
+		float Alpha = FMath::Clamp((CaveValue - CaveThreshold) / (1.0f - CaveThreshold), 0.0f, 1.0f);
+		Density -= Alpha * 200.0f;
+	}
+
+	return (uint8)FMath::Clamp(Density, 0, 200);
 }
 
 void AVoxelGround::SpawnChunk(int32 ChunkIdx)
@@ -639,6 +885,8 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->InitializeChunk(Setting->ChunkGridSize, Setting->ChunkVoxelSize, Setting->IsoLevel);
 	NewChunk->CoordV = Coord;
 	NewChunk->ChunkIdxV = ChunkIdx;
+
+	//NewChunk->SetVisibility(false);
 }
 
 void AVoxelGround::UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged)
@@ -699,8 +947,6 @@ void AVoxelGround::UpdateChunkLODs()
 	TSet<FIntVector> CoordsChanged = LastPlayerCoords;
 	TSet<FIntVector> CurrentPlayerCoords;
 
-	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
-
 	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
 	ensureMsgf(IsValid(GS) == true, TEXT("GameState is not valid"));
 
@@ -753,13 +999,13 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 
 	int32 ChunkPoints = Setting->ChunkGridSize + 1;
 	int32 TotalPoints = ChunkPoints * ChunkPoints * ChunkPoints;
-	if (PointIdx < 0 || PointIdx > TotalPoints)
+	if (PointIdx < 0 || PointIdx >= TotalPoints)
 		return false;
 
 	bool bIsGroundNew = NewDensityValue > Setting->IsoLevel;
 	if (ChunkDatas[ChunkIdx].DensityValues.IsEmpty() == true)
 	{
-		ensureMsgf(ChunkDatas[ChunkIdx].ChunkState == EChunkState::Complex, TEXT("Complex Chunk, but no density values"));
+		ensureMsgf(ChunkDatas[ChunkIdx].ChunkState != EChunkState::Complex, TEXT("Complex Chunk, but no density values"));
 		if ((bIsGroundNew == true && ChunkDatas[ChunkIdx].ChunkState == EChunkState::Ground) ||
 			(bIsGroundNew == false && ChunkDatas[ChunkIdx].ChunkState == EChunkState::Air))
 			return false;
@@ -790,7 +1036,7 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 		}
 		else
 		{
-			ChunkDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Ground : EChunkState::Air;
+			ChunkDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
 			ChunkDatas[ChunkIdx].DensityValues.Empty(0);
 			ChunkDatas[ChunkIdx].VoxelTypes.Empty(0);
 		}
@@ -836,7 +1082,6 @@ FIntVector AVoxelGround::GetChunkCoord(int32 ChunkIdx) const
 
 FVector AVoxelGround::GetChunkOffset(int32 X, int32 Y, int32 Z) const
 {
-	float ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
 	return FVector(X, Y, Z) * ChunkSize;
 }
 

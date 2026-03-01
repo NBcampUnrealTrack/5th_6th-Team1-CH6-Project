@@ -24,7 +24,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
 	EVoxelType VeinVoxelType;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
+	int32 VeinCount = 32768;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
 	EVoxelType PillarVoxelType;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
+	int32 PillarCount = 8192;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BuriedActors")
+	TMap<TSubclassOf<AActor>, int32> BuriedActorClasses;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundMaterial")
 	TObjectPtr<UMaterialInterface> GroundMaterial;
