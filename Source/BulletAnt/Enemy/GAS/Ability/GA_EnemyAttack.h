@@ -15,6 +15,8 @@ class BULLETANT_API UGA_EnemyAttack : public UGA_MeleeAttack
 	GENERATED_BODY()
 	
 public:
+	UGA_EnemyAttack();
+
 	virtual void EndAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,

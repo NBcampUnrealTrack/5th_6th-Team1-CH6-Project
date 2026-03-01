@@ -15,6 +15,7 @@ enum class EUIType : uint8
     RespawnBar,
     GroundScanner,
     OreCount,
+    WaveTimer,
 };
 
 USTRUCT()

@@ -10,6 +10,8 @@ class ABAPlayerController;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EVoxelType, OreType, int32, OreCount);
 
+DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
+
 UCLASS()
 class BULLETANT_API ABAGameState : public AGameState
 {
@@ -20,7 +22,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
-	
+
 #pragma region Ground
 
 public:
@@ -78,6 +80,29 @@ protected:
 
 	UPROPERTY()
 	TArray<TObjectPtr<ABAPlayerController>> ConnectedPlayers;
+
+#pragma endregion
+
+#pragma region Wave
+public:
+	int32 GetInitWavePreparationTime() const;
+	void SetInitWavePreparationTime(int32 InTime);
+
+	int32 GetWavePreparationTime() const;
+	void SetWavePreparationTime(int32 InTime);
+
+	UFUNCTION()
+	void OnRep_WavePreparationTime();
+
+protected:
+	UPROPERTY(Replicated)
+	int32 InitWavePreparationTime;
+
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_WavePreparationTime)
+	int32 WavePreparationTime;
+
+public:
+	FOnWaveTimeChanged OnWaveTimeChanged;
 
 #pragma endregion
 };

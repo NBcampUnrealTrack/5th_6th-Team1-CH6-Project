@@ -13,6 +13,7 @@ class UUW_PlayerHUDWidget;
 class UUW_RespawnBar;
 class ABACharacter;
 class UUISubsystem;
+class UUW_WaveTimer;
 
 UCLASS()
 class BULLETANT_API ABAPlayerController : public APlayerController
@@ -39,6 +40,8 @@ public:
 	FORCEINLINE UUW_PlayerHUDWidget* GetHUD() { return HUD; };
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 
 	UFUNCTION()
 	void HandleRespawnBar();
@@ -83,4 +86,12 @@ protected:
 
 #pragma endregion
 
+
+#pragma region WaveTimer
+
+protected:
+	UPROPERTY()
+	TObjectPtr<UUW_WaveTimer> WaveTimerUI;
+
+#pragma endregion
 };
