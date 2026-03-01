@@ -38,7 +38,7 @@ struct FVoxelGroundChunkData
 	int32 GroundVoxelCount = 0;
 };
 
-// 정정ㅁ Density 변경 후 반환할 데이터
+// 정점 Density 변경 후 반환할 데이터
 USTRUCT()
 struct FVoxelChangedResult
 {

@@ -568,7 +568,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 	if (GroundVoxelCount <= 0 ||
 		(GroundVoxelCount == TotalPoints && BedRockCount == TotalPoints))
 	{
-		NewChunkState = GroundVoxelCount == 0 ? EChunkState::Ground : EChunkState::Air;
+		NewChunkState = GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
 	}
 	ChunkDatas[ChunkIdx].ChunkState = NewChunkState;
 
@@ -999,7 +999,7 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 
 	int32 ChunkPoints = Setting->ChunkGridSize + 1;
 	int32 TotalPoints = ChunkPoints * ChunkPoints * ChunkPoints;
-	if (PointIdx < 0 || PointIdx > TotalPoints)
+	if (PointIdx < 0 || PointIdx >= TotalPoints)
 		return false;
 
 	bool bIsGroundNew = NewDensityValue > Setting->IsoLevel;
@@ -1036,7 +1036,7 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 		}
 		else
 		{
-			ChunkDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Ground : EChunkState::Air;
+			ChunkDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
 			ChunkDatas[ChunkIdx].DensityValues.Empty(0);
 			ChunkDatas[ChunkIdx].VoxelTypes.Empty(0);
 		}
