@@ -88,7 +88,11 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 		return;
 	}
 
-	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	//if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	//{
+	//	return;
+	//}
+	if (!IsValid(TribeType))
 	{
 		return;
 	}
