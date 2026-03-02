@@ -121,7 +121,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			RangedData->SpreadDegree
 		);
 
-		Prj = GetWorld()->SpawnActor<ABaseProjectile>(
+		ABaseProjectile* Prj = GetWorld()->SpawnActor<ABaseProjectile>(
 			RangedData->ProjectileClass,
 			Start,
 			FireDir.Rotation(),
@@ -130,7 +130,7 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 
 		Prj->InitProjectile(
 			Start,
-			Dir,
+			FireDir,
 			RangedData->ProjectileRadius,
 			RangedData->ProjectileSpeed,
 			RangedData->BaseDamage,
