@@ -476,7 +476,7 @@ void ABACharacter::Reload(const FInputActionValue& Value)
 	if (!AbilitySystemComponent) return;
 	if (bIsADS)
 	{
-		ADSStart(0.f);
+		ADSStart(1.f);
 	}
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Ability_Active_Reload);
@@ -677,8 +677,6 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 		if (bIsADS)
 		{
 			PC->StartADSUI();
-			bIsAiming = true;
-			GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 			AimStart(1.f);
 
 			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
@@ -689,9 +687,7 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 		else
 		{
 			PC->StopADSUI();
-			bIsAiming = false;
-			GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-			AimStop(0.f);
+			AimStop(1.f);
 
 			SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 			SpringArm->SetRelativeTransform(SavedSpringArmTransform);
@@ -818,12 +814,13 @@ void ABACharacter::OnCycleNext(const FInputActionValue& Value)
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)) return;
+
 	int32 Index = (int32)Value.Get<float>() - 1;
 	if (!OwnedEquipment.IsValidIndex(Index)) return;
 
 	if (bIsADS)
 	{
-		ADSStart(0.f);
+		ADSStart(1.f);
 	}
 
 	Server_EquipWeapon(OwnedEquipment[Index]);

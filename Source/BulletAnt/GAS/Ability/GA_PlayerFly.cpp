@@ -29,16 +29,32 @@ void UGA_PlayerFly::ActivateAbility(const FGameplayAbilitySpecHandle Handle, con
 	}
 
 	AActor* SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
-	if (!SourceActor) return;
+	if (!SourceActor)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	PlayerCharacter = Cast<ACharacter>(SourceActor);
-	if (!PlayerCharacter) return;
+	if (!PlayerCharacter)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
-	if (!DataAssetInterface) return;
+	if (!DataAssetInterface)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	UJetpackWeaponDataAsset* Data = Cast<UJetpackWeaponDataAsset>(DataAssetInterface->GetDataAsset());
-	if (!Data) return;
+	if (!Data)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	PlayerCharacter->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 

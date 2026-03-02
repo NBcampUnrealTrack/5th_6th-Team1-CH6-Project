@@ -83,7 +83,6 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 
 void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-
 	if (Source)
 	{
 		if (PC)

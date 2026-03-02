@@ -74,34 +74,29 @@ void UGA_Reload::OnMontageFinished()
 void UGA_Reload::ReloadAmmo()
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-	if (!ActorInfo || !ActorInfo->IsNetAuthority())
+	UE_LOG(LogTemp, Warning, TEXT("Authority: %d"), ActorInfo->IsNetAuthority());
+	if (ActorInfo->IsNetAuthority())
 	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
+		UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
+		if (!SourceASC)
+		{
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
 
-	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!SourceASC)
-	{
+		FGameplayEffectSpecHandle Spec =
+			SourceASC->MakeOutgoingSpec(Data->ReloadEffect, 1.f, SourceASC->MakeEffectContext());
+
+		if (Spec.IsValid())
+		{
+			Spec.Data->SetSetByCallerMagnitude(
+				TAG_Data_Ammo_Reload,
+				Data->MaxAmmo
+			);
+
+			SourceASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+		}		
+
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	FGameplayEffectSpecHandle Spec =
-		SourceASC->MakeOutgoingSpec(Data->ReloadEffect, 1.f, SourceASC->MakeEffectContext());
-
-	if (!Spec.IsValid())
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	Spec.Data->SetSetByCallerMagnitude(
-		TAG_Data_Ammo_Reload,
-		Data->MaxAmmo
-	);
-
-	SourceASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
-
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	}	
 }
