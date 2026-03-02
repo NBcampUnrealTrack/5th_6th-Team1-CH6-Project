@@ -9,6 +9,8 @@
 #include "GAS/BAGameplayTags.h"
 #include "UI/UW_OreCount.h"
 #include "Framework/BAGameState.h"
+#include "UI/UW_WaveTimer.h"
+#include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
 
 void ABAPlayerController::BeginPlay()
@@ -57,9 +59,32 @@ void ABAPlayerController::BeginPlay()
 				FOnOreChanged::FDelegate Delegate;
 				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
 				GS->BindOnOreChanged(Delegate);
+
+				const auto& OreInventory = GS->GetOreInventory();
+				for (const auto& OrePair : OreInventory)
+				{
+					OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
+				}
 			}
 		}
+
+		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManager))
+		{
+			WaveTimerUI = UISubsystem->ShowUI<UUW_WaveTimer>(EUIType::WaveTimer);
+		}
 	}
+}
+
+void ABAPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsValid(WaveTimerUI))
+	{
+		WaveTimerUI->RemoveFromParent();
+		WaveTimerUI = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void ABAPlayerController::SwitchingMode()

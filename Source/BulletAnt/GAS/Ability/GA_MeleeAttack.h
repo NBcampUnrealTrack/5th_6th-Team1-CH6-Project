@@ -39,9 +39,6 @@ protected:
 	UFUNCTION()
 	void OnMontageFinished();
 
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<UGameplayEffect> DamageEffectClass;
-
 	FActiveGameplayEffectHandle AttackingStateHandle;
 
 };

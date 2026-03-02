@@ -17,22 +17,41 @@ void USpawnManagerSubsystem::OnEnemyDie()
 	//}
 }
 
-void USpawnManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void USpawnManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
-	Super::Initialize(Collection);
-	
-	if (!ensureMsgf(IsValid(GetWorld()), TEXT("SpawnManagerSubsystem : GetWorld Is NULL")))
+	Super::OnWorldBeginPlay(InWorld);
+
+	UWorld* World = GetWorld();
+	if (!ensureMsgf(IsValid(World), TEXT("SpawnManagerSubsystem : GetWorld Is NULL")))
 	{
 		return;
 	}
+	if (World->GetNetMode() == ENetMode::NM_Client)
+	{
+		return;
+	}
+	CachedGameState = World->GetGameState<ABAGameState>();
 
-	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 180.f, false);
+	if (IsValid(EnemySpawnHandle.DataTable) == false)
+	{
+		SetSpawnDataTable();
+	}
+	if (!ensureMsgf(IsValid(EnemySpawnHandle.DataTable), TEXT("SpawnManagerSubsystem Initialize : DataTable Error")))
+	{
+		return;
+	}
+	MaxWaveIndex = EnemySpawnHandle.DataTable->GetRowMap().Num();
+
+	if (CanStartWave())
+	{
+		PrepareWave();
+	}
 }
 
-void USpawnManagerSubsystem::Deinitialize()
+void USpawnManagerSubsystem::OnWorldEndPlay(UWorld& InWorld)
 {
-	Super::Deinitialize();
-	
+	Super::OnWorldEndPlay(InWorld);
+
 	if (IsValid(GetWorld()))
 	{
 		GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
@@ -43,34 +62,23 @@ bool USpawnManagerSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	if (!Super::ShouldCreateSubsystem(Outer))
 	{
-		
-		// UE_LOG(LogTemp, Warning, TEXT("1"))
 		return false;
 	}
 
 	UWorld* World = Cast<UWorld>(Outer);
 	if (IsValid((World)))
-	{
-		if (World->GetNetMode() == ENetMode::NM_Client)
-		{
-			// UE_LOG(LogTemp, Warning, TEXT("2"))
-			return false;
-		}
-		
+	{		
 		if (!(World->IsGameWorld() || World->IsPlayInEditor()))
 		{
-			// UE_LOG(LogTemp, Warning, TEXT("3"))
 			return false;
 		}
 
 		FString LevelName = World->GetMapName();
 		if (LevelName.Contains(TEXT("TestMap")) || LevelName.Contains(TEXT("MainLevel")))
 		{
-			// UE_LOG(LogTemp, Warning, TEXT("4"))
 			return true; 
 		}
 	}
-	// UE_LOG(LogTemp, Warning, TEXT("5"))
 	return false;
 }
 
@@ -93,6 +101,48 @@ void USpawnManagerSubsystem::SetSpawnDataTable()
 	}
 }
 
+bool USpawnManagerSubsystem::CanStartWave()
+{
+	if (WaveIndex >= MaxWaveIndex)
+	{
+		// Game Win Logic (적 모두 처치 시 게임엔딩)
+		return false;
+	}
+	return true;
+}
+
+void USpawnManagerSubsystem::PrepareWave()
+{
+	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), WaveIndex + 1));
+	EnemySpawnHandle.RowName = RowName;
+
+	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(SpawnContextString);
+	if (Row == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem-SpawnEnemies : GetRow Error"));
+		return;
+	}
+
+	CachedGameState->SetInitWavePreparationTime(Row->WavePreparationTime);
+	CachedGameState->SetWavePreparationTime(Row->WavePreparationTime);
+	CachedGameState->OnRep_WavePreparationTime();
+
+	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::UpdatePreparationTime, 1.f, true);
+}
+
+void USpawnManagerSubsystem::UpdatePreparationTime()
+{
+	int32 WavePreparationTime = CachedGameState->GetWavePreparationTime();
+	WavePreparationTime--;
+	CachedGameState->SetWavePreparationTime(WavePreparationTime);
+	CachedGameState->OnRep_WavePreparationTime();
+
+	if (WavePreparationTime <= 0)
+	{
+		StartWave();
+	}
+}
+
 void USpawnManagerSubsystem::StartWave()
 {
 	UWorld* World = GetWorld();
@@ -102,9 +152,9 @@ void USpawnManagerSubsystem::StartWave()
 	}
 	World->GetTimerManager().ClearTimer(WaveTimer);
 
-	if (ABAGameState* GS = World->GetGameState<ABAGameState>())
+	if (IsValid(CachedGameState))
 	{
-		TargetCore = GS->GetTargetCore();
+		TargetCore = CachedGameState->GetTargetCore();
 	}
 	
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
@@ -132,10 +182,16 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem-SpawnEnemies : GetRow Error"));
 		return;
 	}
-	
+
 	if (SpawnEnemyDataIdx >= Row->SpawnEnemyDataArray.Num())
 	{
 		SpawnEnemyDataIdx = 0;
+
+		WaveIndex++;
+		if (CanStartWave())
+		{
+			PrepareWave();
+		}
 		return;
 	}
 	
@@ -177,21 +233,21 @@ void USpawnManagerSubsystem::SpawnEnemies()
 			Enemy->ApplyTribe();
 		}
 	}
-	
-	SpawnEnemyDataIdx++;
-	if (SpawnEnemyDataIdx == Row->SpawnEnemyDataArray.Num())
-	{
-		SpawnEnemyDataIdx = 0;
 
-		WaveIndex++;
-		GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 5.f, false);
-		return;
+	int NextSpawnTime = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].SpawnInterval;
+	SpawnEnemyDataIdx++;
+	if (NextSpawnTime == 0)
+	{
+		SpawnEnemies();
 	}
-	
-	GetWorld()->GetTimerManager().SetTimer(
-		SpawnTimer,
-		this, 
-		&USpawnManagerSubsystem::SpawnEnemies, 
-		Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].SpawnInterval, 
-		false);
+	else
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			SpawnTimer,
+			this,
+			&USpawnManagerSubsystem::SpawnEnemies,
+			NextSpawnTime,
+			false
+		);
+	}
 }

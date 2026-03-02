@@ -5,6 +5,12 @@
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
 
+UGA_EnemyAttack::UGA_EnemyAttack()
+{
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
+}
+
 void UGA_EnemyAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	AActor* Avatar = CurrentActorInfo->AvatarActor.Get();

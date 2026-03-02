@@ -88,13 +88,17 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 		return;
 	}
 
-	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	//if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	//{
+	//	return;
+	//}
+	if (!IsValid(TribeType))
 	{
 		return;
 	}
 
 	ETargetPriorityType Priority;
-	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel1)	// Building
 	{
 		Priority = TribeType->Building;
 	}
@@ -106,6 +110,10 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	//{
 	//	Priority = TribeType->Core;
 	//}
+	else
+	{
+		return;
+	}
 
 	FActorArrayWrapper& Value = NearbyActors.FindOrAdd(Priority);
 	Value.Actors.Add(OtherActor);
@@ -124,7 +132,7 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	}
 
 	ETargetPriorityType Priority;
-	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_EngineTraceChannel1)	// Building
+	if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel1)	// Building
 	{
 		Priority = TribeType->Building;
 	}
@@ -136,6 +144,11 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	//{
 	//	Priority = TribeType->Core;
 	//}
+	else
+	{
+		return;
+	}
+
 
 	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
 	{
@@ -372,6 +385,10 @@ void ABaseEnemyCharacter::BeginPlay()
 		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
+
+		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health);
+		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health);
+
 
 		UWorld* World = GetWorld();
 		if (IsValid(World))

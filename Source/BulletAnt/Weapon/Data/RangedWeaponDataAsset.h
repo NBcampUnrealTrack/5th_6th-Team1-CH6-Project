@@ -6,12 +6,23 @@
 #include "Weapon/Data/WeaponDataAsset.h"
 #include "RangedWeaponDataAsset.generated.h"
 
+class ABaseProjectile;
+
 UCLASS()
 class BULLETANT_API URangedWeaponDataAsset : public UWeaponDataAsset
 {
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ABaseProjectile> ProjectileClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	float ProjectileRadius;
+
+	UPROPERTY(EditDefaultsOnly)
+	float ProjectileSpeed;
+
 	UPROPERTY(EditDefaultsOnly)
 	float BaseDamage;
 

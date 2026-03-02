@@ -148,6 +148,16 @@ void ABACharacter::BeginPlay()
 	}
 }
 
+void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (HasAuthority() && EquippedWeapon)
+	{
+		EquippedWeapon->Destroy();
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 // Called every frame
 void ABACharacter::Tick(float DeltaTime)
 {

@@ -47,6 +47,12 @@ EStateTreeRunStatus UDieTask::EnterState(FStateTreeExecutionContext& Context, co
 
 void UDieTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {
+	if (!IsValid(ContextActor))
+	{
+		Super::ExitState(Context, Transition);
+		return;
+	}
+
 	UAbilitySystemComponent* ASC = ContextActor->GetAbilitySystemComponent();
 	if (!ensureMsgf(ASC, TEXT("DieTask EnterState : ASC Error")))
 	{

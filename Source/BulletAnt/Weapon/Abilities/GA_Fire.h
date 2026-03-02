@@ -7,6 +7,7 @@
 class ABaseWeapon;
 class UGameplayEffect;
 class URangedWeaponDataAsset;
+class ABaseProjectile;
 
 UCLASS()
 class BULLETANT_API UGA_Fire : public UGameplayAbility
@@ -56,6 +57,9 @@ protected:
 
 	UPROPERTY()
 	UAbilitySystemComponent* CachedASC;
+
+	UPROPERTY()
+	TObjectPtr<ABaseProjectile> Prj;
 
 	int32 ContinuousBullet;
 	float CurrentRecoilPitch;
