@@ -125,6 +125,19 @@ void ABaseTurret::SetPreviewMode(bool bInPreview)
 	{
 		BarrelMesh->SetMaterial(i, PreviewMID);
 	}
+
+	if (TargetSerchingSphere)
+	{
+		TargetSerchingSphere->SetGenerateOverlapEvents(false);
+		TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if(ASC)
+	{
+		ASC->SetComponentTickEnabled(false);
+	}
+
+	CurrentTarget = nullptr;
 }
 
 FVector ABaseTurret::GetFireStartLocation_Implementation() const
