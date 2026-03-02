@@ -14,14 +14,17 @@ ABaseProjectile::ABaseProjectile()
 
 	RootComponent = CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision Component"));
 	
-	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
-	CollisionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	CollisionComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	CollisionComponent->SetCollisionProfileName("Bullet");
 	CollisionComponent->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_No;
 
 	CollisionComponent->OnComponentHit.AddDynamic(this, &ABaseProjectile::OnHit);
+
+	BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Bullet Mesh"));
+	BulletMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BulletMesh->SetCollisionObjectType(ECC_GameTraceChannel8);
+
+	BulletMesh->SetupAttachment(CollisionComponent);
+	
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Projectile Movement"));
 
