@@ -7,6 +7,7 @@
 class UProjectileMovementComponent;
 class USphereComponent;
 class URangedWeaponDataAsset;
+class UStaticMeshComponent;
 
 UCLASS()
 class BULLETANT_API ABaseProjectile : public AActor
@@ -18,6 +19,9 @@ class BULLETANT_API ABaseProjectile : public AActor
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UProjectileMovementComponent* ProjectileMovement;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UStaticMeshComponent* BulletMesh;
 	
 public:	
 	ABaseProjectile();

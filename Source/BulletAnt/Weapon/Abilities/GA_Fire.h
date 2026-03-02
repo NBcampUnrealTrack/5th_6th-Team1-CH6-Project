@@ -58,9 +58,6 @@ protected:
 	UPROPERTY()
 	UAbilitySystemComponent* CachedASC;
 
-	UPROPERTY()
-	TObjectPtr<ABaseProjectile> Prj;
-
 	int32 ContinuousBullet;
 	float CurrentRecoilPitch;
 	float CurrentRecoilYaw;
