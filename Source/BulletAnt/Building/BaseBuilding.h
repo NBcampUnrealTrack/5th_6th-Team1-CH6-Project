@@ -108,6 +108,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Build|Destruction")
 	TObjectPtr<UGeometryCollectionComponent> DestructionComp;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Destruction")
+	float DebrisLifeSeconds = 5.f;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Build|Preview")
 	bool bPreviewMode = false;
 

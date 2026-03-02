@@ -89,6 +89,7 @@ void ABaseBuilding::OnDeath()
 	Multicast_PlayDestruction(GetActorLocation());
 	bDead = true;
 	OnRep_Dead();
+	SetLifeSpan(DebrisLifeSeconds);
 }
 
 void ABaseBuilding::GetEdgesWorld(TArray<FBuildingEdge>& OutEdges) const

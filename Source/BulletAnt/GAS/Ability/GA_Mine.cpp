@@ -75,8 +75,17 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 void UGA_Mine::OnMontageFinished()
 {
 	ABACharacter* Owner = Cast<ABACharacter>(SourceActor);
-	FVector Start = Owner->GetCamera()->GetComponentLocation();
-	FVector End = Start + Owner->GetController()->GetControlRotation().Vector() * 700.0f;
+
+	UCameraComponent* Camera = Owner->GetCamera();
+	if (IsValid(Camera) == false)
+		return;
+
+	AController* Controller = Owner->GetController();
+	if (IsValid(Controller) == false)
+		return;
+
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + Controller->GetControlRotation().Vector() * 700.0f;
 
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
@@ -118,6 +127,8 @@ void UGA_Mine::MiningOnce()
 	{
 		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, CachedMiningAM, Playrate);
 		MontageTask->OnCompleted.AddDynamic(this, &UGA_Mine::OnMontageFinished);
+		MontageTask->OnInterrupted.AddDynamic(this, &UGA_Mine::OnMontageFinished);
+		MontageTask->OnCancelled.AddDynamic(this, &UGA_Mine::OnMontageFinished);
 		MontageTask->ReadyForActivation();
 	}	
 }
