@@ -74,7 +74,6 @@ void UGA_Reload::OnMontageFinished()
 void UGA_Reload::ReloadAmmo()
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-	UE_LOG(LogTemp, Warning, TEXT("Authority: %d"), ActorInfo->IsNetAuthority());
 	if (ActorInfo->IsNetAuthority())
 	{
 		UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
