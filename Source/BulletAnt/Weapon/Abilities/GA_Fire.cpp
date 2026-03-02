@@ -63,12 +63,6 @@ void UGA_Fire::ActivateAbility(
 		return;
 	}
 
-	if (!RangedData->UseStateEffect)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
-
 	ContinuousBullet = 0;
 	
 	if (RangedData->bAutoFire)
