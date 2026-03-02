@@ -74,46 +74,48 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 
 void UGA_Mine::OnMontageFinished()
 {
-	ABACharacter* Owner = Cast<ABACharacter>(SourceActor);
-
-	UCameraComponent* Camera = Owner->GetCamera();
-	if (IsValid(Camera) == false)
+	if (CurrentActorInfo->IsNetAuthority()) 
 	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
+		ABACharacter* Owner = Cast<ABACharacter>(SourceActor);
 
-	AController* Controller = Owner->GetController();
-	if (IsValid(Controller) == false)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
-
-	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + Controller->GetControlRotation().Vector() * 700.0f;
-
-	FHitResult HitResult;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(SourceActor);
-
-	bool bHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(MiningData->TraceRadius), Params);
-
-	if (bHit)
-	{
-		AActor* HitActor = HitResult.GetActor();
-		if (HitActor)
+		UCameraComponent* Camera = Owner->GetCamera();
+		if (IsValid(Camera) == false)
 		{
-			AVoxelGround* Ground = Cast<AVoxelGround>(HitActor);
-			if (!Ground) Ground = Cast<AVoxelGround>(HitActor->GetOwner());
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+			return;
+		}
 
-			if (IsValid(Ground) == true)
+		AController* Controller = Owner->GetController();
+		if (IsValid(Controller) == false)
+		{
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+			return;
+		}
+
+		FVector Start = Camera->GetComponentLocation();
+		FVector End = Start + Controller->GetControlRotation().Vector() * 700.0f;
+
+		FHitResult HitResult;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(SourceActor);
+
+		bool bHit = GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(MiningData->TraceRadius), Params);
+
+		if (bHit)
+		{
+			AActor* HitActor = HitResult.GetActor();
+			if (HitActor)
 			{
-				Ground->DigGround(HitResult.Location, MiningData->DigRadius);
+				AVoxelGround* Ground = Cast<AVoxelGround>(HitActor);
+				if (!Ground) Ground = Cast<AVoxelGround>(HitActor->GetOwner());
+
+				if (IsValid(Ground) == true)
+				{
+					Ground->DigGround(HitResult.Location, MiningData->DigRadius);
+				}
 			}
 		}
 	}
-
 	StartAutoDigLoop();
 }
 

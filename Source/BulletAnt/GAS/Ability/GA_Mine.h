@@ -35,6 +35,8 @@ public:
 		bool bReplicateCancelAbility) override;
 
 	void MiningOnce();
+
+	UFUNCTION()
 	void EndMining();
 
 	UFUNCTION()

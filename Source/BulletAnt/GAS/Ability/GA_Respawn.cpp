@@ -60,8 +60,6 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
-
 	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(DeadStateEffect, 1.f, ASC->MakeEffectContext());
 	Spec.Data->SetSetByCallerMagnitude(
 		TAG_Data_Combat_RespawnTime,
@@ -71,6 +69,15 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data);
 
 	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
+
+	Source->GetMesh()->SetSimulatePhysics(true);
+	Source->GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	if (ActorInfo->IsNetAuthority())
+	{
+		Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Source->GetCharacterMovement()->DisableMovement();
+		Source->GetCharacterMovement()->StopMovementImmediately();
+	}
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -90,10 +97,16 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 			Source->EnableInput(PC);
 		}
 
+		Source->GetMesh()->SetSimulatePhysics(false);
 		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
 		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
-		Source->TeleportTo(FVector(0.f, 1000.f, 5.f), FRotator::ZeroRotator, false, true);
-		Source->ForceNetUpdate();
+		Source->GetMesh()->SetCollisionProfileName(TEXT("Pawn"));
+		if (ActorInfo->IsNetAuthority())
+		{
+			Source->TeleportTo(FVector(0.f, 1000.f, 5.f), FRotator::ZeroRotator, false, true);
+			Source->ForceNetUpdate();
+			Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		}
 	}
 
 	const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
