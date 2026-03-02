@@ -74,6 +74,7 @@ void UBuildManagerComponent::EnterBuildMode()
     RefreshCategoryCache();
     CurrentYaw = 0.f;
     SetCurrentBuildingRow(DefaultBuildingRow);
+    SelectCategory(CurrentCategory);
     SetComponentTickEnabled(true);
 
     //if (auto* PC = CachedPC.Get())
