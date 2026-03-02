@@ -20,6 +20,8 @@ UGA_Fire::UGA_Fire()
 	FGameplayTagContainer DefaultTag;
 	DefaultTag.AddTag(TAG_Ability_Active_Fire);
 	SetAssetTags(DefaultTag);
+	
+	ActivationOwnedTags.AddTag(TAG_State_Combat_Attacking);
 }
 
 void UGA_Fire::ActivateAbility(
@@ -30,26 +32,41 @@ void UGA_Fire::ActivateAbility(
 {
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
-	if (!SourceActor) return;
+	if (!SourceActor)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
-	if (!DataAssetInterface) return;
+	if (!DataAssetInterface)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
 	RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
-	if (!RangedData) return;
+	if (!RangedData)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
 	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC) return;
-
-	if (RangedData->UseStateEffect)
+	if (!CachedASC) 
 	{
-		const UGameplayEffect* EffectCDO = RangedData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
-		AttackingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
+	if (!RangedData->UseStateEffect)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
 	}
 
 	ContinuousBullet = 0;
@@ -70,11 +87,6 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 	if (GetWorld())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(FireTimerHandler);
-	}
-
-	if (AttackingStateHandle.IsValid())
-	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(AttackingStateHandle);
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
@@ -141,7 +153,11 @@ void UGA_Fire::StartAutoFireLoop()
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 
 	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC) return;
+	if (!CachedASC)
+	{
+		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
 
 	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
 	if (AmmoSet)
@@ -172,14 +188,26 @@ void UGA_Fire::ApplyDamageEffect(
 	const URangedWeaponDataAsset* WeaponData,
 	FHitResult& InHitResult)
 {
-	if (!Target) return;
+	if (!Target)
+	{
+		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
 
 	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!SourceASC) return;
+	if (!SourceASC)
+	{
+		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
 
 	UAbilitySystemComponent* TargetASC =
 		Target->FindComponentByClass<UAbilitySystemComponent>();
-	if (!TargetASC) return;
+	if (!TargetASC)
+	{
+		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
 
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddHitResult(InHitResult);
@@ -187,7 +215,11 @@ void UGA_Fire::ApplyDamageEffect(
 	FGameplayEffectSpecHandle Spec =
 		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, Context);
 	
-	if (!Spec.IsValid()) return;
+	if (!Spec.IsValid())
+	{
+		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
 
 	Spec.Data->SetSetByCallerMagnitude(
 		TAG_Data_Combat_Damage,

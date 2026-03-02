@@ -2,7 +2,6 @@
 
 #include "GAS/BAGameplayTags.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
 
 UGA_PlayerHitReact::UGA_PlayerHitReact()
 {
@@ -22,12 +21,9 @@ void UGA_PlayerHitReact::ActivateAbility(const FGameplayAbilitySpecHandle Handle
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
-	}
+	};
 
-	UBAAbilitySystemComponent* ASC = Cast<UBAAbilitySystemComponent>(GetAbilitySystemComponentFromActorInfo());
-	if (!ASC) return;
-
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, ASC->HitMontage);
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, HitMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_PlayerHitReact::OnMontageFinished);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_PlayerHitReact::OnMontageFinished);
 	MontageTask->ReadyForActivation();

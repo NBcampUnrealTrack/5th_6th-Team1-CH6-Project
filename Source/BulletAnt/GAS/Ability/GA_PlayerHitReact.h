@@ -27,4 +27,7 @@ public:
 	
 	UFUNCTION()
 	void OnMontageFinished();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AnimMontage")
+	TObjectPtr<UAnimMontage> HitMontage;
 };

@@ -38,8 +38,5 @@ public:
 	TObjectPtr<USoundBase> ActiveSound;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
-	TSubclassOf<UGameplayEffect> UseStateEffect;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|GAS")
 	TSubclassOf<UGameplayEffect> OnUseStateHitEffect;
 };

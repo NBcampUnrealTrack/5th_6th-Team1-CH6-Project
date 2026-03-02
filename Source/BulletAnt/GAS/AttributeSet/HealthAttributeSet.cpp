@@ -70,9 +70,21 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 		if (LocalIncomingHeal > 0.f)
 		{
-			const float NewHealth = GetMaxHealth();
+			const float NewHealth = GetHealth() + LocalIncomingHeal;
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
 		}
+
+		SetIncomingHeal(0.f);
+	}
+}
+
+void UHealthAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
+{
+	Super::PreAttributeBaseChange(Attribute, NewValue);
+
+	if (Attribute == GetHealthAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxHealth());
 	}
 }
 

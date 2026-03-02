@@ -47,10 +47,15 @@ protected:
 	FTimerHandle RespawnHandler;
 
 	FTransform SavedMeshRelativeTransform;
-	FGameplayEffectSpecHandle DeadStateHandle;
 	UPROPERTY()
-	UBAAbilitySystemComponent* ASC;
+	UAbilitySystemComponent* ASC;
 
 	FGameplayTagContainer DeadTag;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> DeadStateEffect;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> RespawnHealEffect;
 
 };

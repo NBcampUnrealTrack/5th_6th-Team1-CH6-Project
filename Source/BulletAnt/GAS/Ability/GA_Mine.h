@@ -29,6 +29,10 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		bool bReplicateEndAbility,
 		bool bWasCancelled) override;
+	virtual void CancelAbility(const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateCancelAbility) override;
 
 	void MiningOnce();
 
@@ -49,8 +53,8 @@ protected:
 	UPROPERTY()
 	FTimerHandle DigTimerHandler;
 
-	FActiveGameplayEffectHandle MiningStateHandle;
-
 	UPROPERTY()
 	UAnimMontage* CachedMiningAM;
+
+	bool bEndInput;
 };
