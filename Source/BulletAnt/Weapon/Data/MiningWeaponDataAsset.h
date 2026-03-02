@@ -10,13 +10,13 @@ class BULLETANT_API UMiningWeaponDataAsset : public UWeaponDataAsset
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float TraceRadius = 20.f;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float DigRadius = 200.f;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float DigPerMinute = 180.f;
 
 	UPROPERTY(EditDefaultsOnly)

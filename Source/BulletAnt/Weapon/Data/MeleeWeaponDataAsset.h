@@ -15,7 +15,7 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	float BaseDamage;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float AttackRadius;
 
 	UPROPERTY(EditDefaultsOnly)

@@ -17,31 +17,31 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ABaseProjectile> ProjectileClass;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 0.f))
 	float ProjectileRadius;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 0.f));
 	float ProjectileSpeed;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly);
 	float BaseDamage;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float RoundPerMinute;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1));
 	int32 MaxAmmo;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float Range;
 
 	UPROPERTY(EditDefaultsOnly)
 	uint8 bAutoFire : 1 = true;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	int32 FirePerShot = 1;
 	
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 0.f));
 	float SpreadDegree;
 
 	UPROPERTY(EditDefaultsOnly)
