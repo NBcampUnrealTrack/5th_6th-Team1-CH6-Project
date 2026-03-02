@@ -163,6 +163,21 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* ToggleSnapModeAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* SelectCat1Action;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* SelectCat2Action;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* SelectCat3Action;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* CyclePrevAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* CycleNextAction;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
     UInputAction* GroundScannerAction;
 
@@ -189,6 +204,11 @@ protected:
     void PlaceBuilding(const FInputActionValue& Value);
     void RotateBuilding(const FInputActionValue& Value);
     void ToggleSnapMode(const FInputActionValue& Value);
+    void OnSelectCat1(const FInputActionValue& Value);
+    void OnSelectCat2(const FInputActionValue& Value);
+    void OnSelectCat3(const FInputActionValue& Value);
+    void OnCyclePrev(const FInputActionValue& Value);
+    void OnCycleNext(const FInputActionValue& Value);
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
 

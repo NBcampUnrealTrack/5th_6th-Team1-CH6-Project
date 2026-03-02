@@ -269,6 +269,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 			EnhancedInputComponent->BindAction(SwitchAction, ETriggerEvent::Started, this, &ABACharacter::StartSwitchWeapon);
 		}
 
+		// 건설
 		if (EnterBuildModeAction)
 		{
 			EnhancedInputComponent->BindAction(EnterBuildModeAction, ETriggerEvent::Started, this, &ABACharacter::EnterBuildMode);
@@ -289,6 +290,28 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(ToggleSnapModeAction, ETriggerEvent::Started, this, &ABACharacter::ToggleSnapMode);
 		}
+		if (SelectCat1Action)
+		{
+			EnhancedInputComponent->BindAction(SelectCat1Action, ETriggerEvent::Started, this, &ABACharacter::OnSelectCat1);
+		}
+		if (SelectCat2Action)
+		{
+			EnhancedInputComponent->BindAction(SelectCat2Action, ETriggerEvent::Started, this, &ABACharacter::OnSelectCat2);
+		}
+		if (SelectCat3Action)
+		{
+			EnhancedInputComponent->BindAction(SelectCat3Action, ETriggerEvent::Started, this, &ABACharacter::OnSelectCat3);
+		}
+		if (CyclePrevAction)
+		{
+			EnhancedInputComponent->BindAction(CyclePrevAction, ETriggerEvent::Started, this, &ABACharacter::OnCyclePrev);
+		}
+		if (CycleNextAction)
+		{
+			EnhancedInputComponent->BindAction(CycleNextAction, ETriggerEvent::Started, this, &ABACharacter::OnCycleNext);
+		}
+
+		// 지하
 		if (GroundScannerAction)
 		{
 			EnhancedInputComponent->BindAction(GroundScannerAction, ETriggerEvent::Started, this, &ABACharacter::SwitchGroundScanner);
@@ -715,7 +738,14 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 {
 	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
-	BuildManager->EnterBuildMode();
+	if (!BuildManager->IsBuildMode())
+	{
+		BuildManager->EnterBuildMode();
+	}
+	else
+	{
+		BuildManager->ExitBuildMode();
+	}
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
@@ -725,6 +755,11 @@ void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 
 void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
 {
+	if (!BuildManager->IsBuildMode())
+	{
+		return;
+	}
+
 	BuildManager->ExitBuildMode();
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
@@ -746,6 +781,31 @@ void ABACharacter::RotateBuilding(const FInputActionValue& Value)
 void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
 {
 	BuildManager->ToggleSnapMode();
+}
+
+void ABACharacter::OnSelectCat1(const FInputActionValue& Value)
+{
+	BuildManager->OnSelectCat1();
+}
+
+void ABACharacter::OnSelectCat2(const FInputActionValue& Value)
+{
+	BuildManager->OnSelectCat2();
+}
+
+void ABACharacter::OnSelectCat3(const FInputActionValue& Value)
+{
+	BuildManager->OnSelectCat3();
+}
+
+void ABACharacter::OnCyclePrev(const FInputActionValue& Value)
+{
+	BuildManager->OnCyclePrev();
+}
+
+void ABACharacter::OnCycleNext(const FInputActionValue& Value)
+{
+	BuildManager->OnCycleNext();
 }
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)

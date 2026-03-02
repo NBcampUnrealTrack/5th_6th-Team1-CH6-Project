@@ -71,26 +71,27 @@ void UBuildManagerComponent::EnterBuildMode()
 
     bBuildMode = true;
     RefreshCachedRef();
+    RefreshCategoryCache();
     CurrentYaw = 0.f;
     SetCurrentBuildingRow(DefaultBuildingRow);
     SetComponentTickEnabled(true);
 
-    if (auto* PC = CachedPC.Get())
-    {
-        if (auto* LP = PC->GetLocalPlayer())
-        {
-            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-            {
-                UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
-                if (IsValid(BuildMenuWidget))
-                {
-                    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-                    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-                    PC->SetShowMouseCursor(true);
-                }
-            }
-        }
-    }
+    //if (auto* PC = CachedPC.Get())
+    //{
+    //    if (auto* LP = PC->GetLocalPlayer())
+    //    {
+    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+    //        {
+    //            UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+    //            if (IsValid(BuildMenuWidget))
+    //            {
+    //                BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+    //                BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+    //                PC->SetShowMouseCursor(true);
+    //            }
+    //        }
+    //    }
+    //}
     
 }
 
@@ -98,17 +99,17 @@ void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
 
-    if (auto* PC = CachedPC.Get())
-    {
-        if (auto* LP = PC->GetLocalPlayer())
-        {
-            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-            {
-               UIS->HideUI(EUIType::BuildMenu);
-               PC->SetShowMouseCursor(false);
-            }
-        }
-    }
+    //if (auto* PC = CachedPC.Get())
+    //{
+    //    if (auto* LP = PC->GetLocalPlayer())
+    //    {
+    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+    //        {
+    //           UIS->HideUI(EUIType::BuildMenu);
+    //           PC->SetShowMouseCursor(false);
+    //        }
+    //    }
+    //}
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;
@@ -544,6 +545,63 @@ void UBuildManagerComponent::RefreshCachedRef()
     CachedPC = OwnerPawn ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
 }
 
+void UBuildManagerComponent::RefreshCategoryCache()
+{
+    CategoryRows.Reset();
+    if (!BuildingTable)
+    {
+        return;
+    }
+
+    const TArray<FName> RowNames = BuildingTable->GetRowNames();
+
+    for (const FName& RowName : RowNames)
+    {
+        const FBuildingRow* Row = BuildingTable->FindRow<FBuildingRow>(RowName, TEXT("RefreshCategoryCache"));
+        if (!Row || !Row->BuildingClass)
+        {
+            continue;
+        }
+
+        CategoryRows.FindOrAdd(Row->Category).Add(RowName);
+    }
+
+    for (auto& Pair : CategoryRows)
+    {
+        Pair.Value.Sort([this](const FName& A, const FName& B)
+            {
+                const FBuildingRow* RA = BuildingTable->FindRow<FBuildingRow>(A, TEXT("SortA"));
+                const FBuildingRow* RB = BuildingTable->FindRow<FBuildingRow>(B, TEXT("SortB"));
+
+                const int32 OA = RA ? RA->Order : 0;
+                const int32 OB = RB ? RB->Order : 0;
+
+                if (OA != OB) 
+                {
+                    return OA < OB;
+                }
+                return A.LexicalLess(B);
+            });
+    }
+
+    const TArray<FName>* CurList = CategoryRows.Find(CurrentCategory);
+    if (!CurList || CurList->Num() == 0)
+    {
+        for (const auto& Any : CategoryRows)
+        {
+            if (Any.Value.Num() > 0)
+            {
+                CurrentCategory = Any.Key;
+                CurrentIndexInCategory = 0;
+                break;
+            }
+        }
+        return;
+    }
+
+    CurrentIndexInCategory = FMath::Clamp(CurrentIndexInCategory, 0, CurList->Num() - 1);
+}
+
 void UBuildManagerComponent::SetCurrentBuildingRow(FName NewRow)
 {
     if (!BuildingTable) 
@@ -586,3 +644,34 @@ FVector2D UBuildManagerComponent::ClosestPointOnExtendedLine2D(const FVector2D& 
 }
 
 
+void UBuildManagerComponent::SelectCategory(EBuildCategory NewCategory)
+{
+    CurrentCategory = NewCategory;
+    CurrentIndexInCategory = 0;
+
+    const TArray<FName>* List = CategoryRows.Find(CurrentCategory);
+    if (!List || List->Num() == 0)
+    {
+        return;
+    }
+
+    SetCurrentBuildingRow((*List)[CurrentIndexInCategory]);
+}
+
+void UBuildManagerComponent::CycleInCategory(int32 Delta)
+{
+    const TArray<FName>* List = CategoryRows.Find(CurrentCategory);
+    if (!List || List->Num() == 0)
+    {
+        return;
+    }
+
+    const int32 N = List->Num();
+    CurrentIndexInCategory = (CurrentIndexInCategory + Delta) % N;
+    if (CurrentIndexInCategory < 0)
+    {
+        CurrentIndexInCategory += N;
+    }
+
+    SetCurrentBuildingRow((*List)[CurrentIndexInCategory]);
+}
