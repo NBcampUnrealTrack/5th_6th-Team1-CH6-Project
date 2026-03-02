@@ -92,7 +92,7 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 
 		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
 		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
-		Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
+		Source->TeleportTo(FVector(0.f, 1000.f, 5.f), FRotator::ZeroRotator, false, true);
 		Source->ForceNetUpdate();
 	}
 
