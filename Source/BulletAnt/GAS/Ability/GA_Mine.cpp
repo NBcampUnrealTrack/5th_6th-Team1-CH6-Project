@@ -84,7 +84,7 @@ void UGA_Mine::OnMontageFinished()
 	}
 
 	AController* Controller = Owner->GetController();
-	if (IsValid(Controller) == true)
+	if (IsValid(Controller) == false)
 	{
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		return;
