@@ -16,6 +16,8 @@ UGA_PlayerFly::UGA_PlayerFly()
 	DefaultTag.AddTag(TAG_Ability_Active_Jetpack);
 
 	SetAssetTags(DefaultTag);
+
+	ActivationOwnedTags.AddTag(TAG_State_Combat_Attacking);
 }
 
 void UGA_PlayerFly::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -39,12 +41,6 @@ void UGA_PlayerFly::ActivateAbility(const FGameplayAbilitySpecHandle Handle, con
 	if (!Data) return;
 
 	PlayerCharacter->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
-	
-	if (Data->UseStateEffect)
-	{
-		const UGameplayEffect* EffectCDO = Data->UseStateEffect->GetDefaultObject<UGameplayEffect>();
-		FlyingStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
-	}
 
 	if (Data->bAutoActive)
 	{
@@ -61,11 +57,6 @@ void UGA_PlayerFly::EndAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	GetWorld()->GetTimerManager().ClearTimer(FlyTimerHandler);
 	
 	PlayerCharacter->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-
-	if (FlyingStateHandle.IsValid())
-	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(FlyingStateHandle);
-	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

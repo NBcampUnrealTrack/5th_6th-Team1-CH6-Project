@@ -18,10 +18,17 @@ UGA_Mine::UGA_Mine()
 	DefaultTag.AddTag(TAG_Ability_Active_Mining);
 
 	SetAssetTags(DefaultTag);
+
+	ActivationOwnedTags.AddTag(TAG_State_Combat_Attacking);
 }
 
 void UGA_Mine::StartAutoDigLoop()
 {
+	if (bEndInput)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}
 	MiningOnce();
 }
 
@@ -34,36 +41,35 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	}
 
 	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
-	if (!SourceActor) return;
+	if (!SourceActor)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
-	if (!DataAssetInterface) return;
+	if (!DataAssetInterface)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	MiningData = Cast<UMiningWeaponDataAsset>(DataAssetInterface->GetDataAsset());
-	if (!MiningData) return;
+	if (!MiningData)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 	
 	CachedMiningAM = MiningData->MiningMontage;
+
+	bEndInput = false;
 
 	TargetDuration = 60.f / MiningData->DigPerMinute;
 	float BaseMontageLength = CachedMiningAM->GetPlayLength();
 	Playrate = FMath::Clamp(BaseMontageLength / TargetDuration,0.8f,1.8f);
 
-	if (MiningData->UseStateEffect) 
-	{
-		const UGameplayEffect* EffectCDO = MiningData->UseStateEffect->GetDefaultObject<UGameplayEffect>();
-
-		MiningStateHandle = ApplyGameplayEffectToOwner(Handle, ActorInfo, ActivationInfo, EffectCDO, 1.f, 1);
-	}
-
-	if (MiningData->bAutoActive)
-	{
-		StartAutoDigLoop();
-	}
-	else
-	{
-		MiningOnce();
-		EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
-	}
+	StartAutoDigLoop();
 }
 
 void UGA_Mine::OnMontageFinished()
@@ -98,11 +104,12 @@ void UGA_Mine::OnMontageFinished()
 
 void UGA_Mine::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	if (MiningStateHandle.IsValid())
-	{
-		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(MiningStateHandle);
-	}
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_Mine::CancelAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateCancelAbility)
+{
+	bEndInput = true;
 }
 
 void UGA_Mine::MiningOnce()

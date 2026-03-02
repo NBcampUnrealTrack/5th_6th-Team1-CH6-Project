@@ -74,11 +74,11 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 
 	DrawDebugSphere(
 		OwnerActor->GetWorld(),
-		Origin,                      
-		Data->AttackRadius,         
-		12,                          
-		bHit ? FColor::Green : FColor::Red,  
-		false,                       
+		Origin,
+		Data->AttackRadius,
+		12,
+		bHit ? FColor::Green : FColor::Red,
+		false,
 		-1.f                         // 1frame
 	);
 

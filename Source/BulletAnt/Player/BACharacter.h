@@ -22,7 +22,6 @@ class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
-class UBAAbilitySystemComponent;
 class USceneCaptureComponent2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
@@ -86,7 +85,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    virtual void OnRep_PlayerState() override;
+    virtual void OnRep_Controller() override;
 
 
     //TEST
@@ -325,7 +324,7 @@ public:
 
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UBAAbilitySystemComponent* AbilitySystemComponent;
+    UAbilitySystemComponent* AbilitySystemComponent;
 
     UPROPERTY()
     UHealthAttributeSet* HealthAttributeSet;

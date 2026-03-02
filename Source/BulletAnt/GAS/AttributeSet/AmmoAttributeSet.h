@@ -20,12 +20,11 @@ public:
 	UAmmoAttributeSet();
 
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
-
+	
 	UFUNCTION()
 	virtual void OnRep_CurrentAmmo(const FGameplayAttributeData& OldCurrentAmmo);
 	UFUNCTION()
 	virtual void OnRep_MaxAmmo(const FGameplayAttributeData& OldMaxAmmo);
-
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:

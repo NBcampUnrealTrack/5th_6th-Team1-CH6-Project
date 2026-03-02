@@ -16,9 +16,8 @@
 #include "UI/UW_PlayerHUDWidget.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
-#include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
+#include "AbilitySystemComponent.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
-#include "Components/CapsuleComponent.h"
 #include "Common/BAItemInterface.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Weapon/BaseRangedWeapon.h"
@@ -71,7 +70,7 @@ ABACharacter::ABACharacter()
 	ParkourComponent = CreateDefaultSubobject<UBAParkourComponent>(TEXT("ParkourComponent"));
 
 	//GAS
-	AbilitySystemComponent = CreateDefaultSubobject<UBAAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
@@ -306,36 +305,34 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
-void ABACharacter::OnRep_PlayerState()
+void ABACharacter::OnRep_Controller()
 {
-	Super::OnRep_PlayerState();
-	if (AbilitySystemComponent)
+	Super::OnRep_Controller();
+	if (IsLocallyControlled())
 	{
+		if (AbilitySystemComponent)
 		{
-			if (IsLocallyControlled())
+			AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
 			{
-				AbilitySystemComponent->InitAbilityActorInfo(this, this);
-
-				for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+				if (AbilityClass)
 				{
-					if (AbilityClass)
-					{
-						FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
-						AbilitySystemComponent->GiveAbility(Spec);
-					}
+					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+					AbilitySystemComponent->GiveAbility(Spec);
 				}
-
-				AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-					.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-
-				AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-					.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-
-				AbilitySystemComponent->RegisterGameplayTagEvent(
-					TAG_State_Combat_Dead,
-					EGameplayTagEventType::NewOrRemoved
-				).AddUObject(this, &ABACharacter::HandleRespawnUI);
 			}
+
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+
+			AbilitySystemComponent->RegisterGameplayTagEvent(
+				TAG_State_Combat_Dead,
+				EGameplayTagEventType::NewOrRemoved
+			).AddUObject(this, &ABACharacter::HandleRespawnUI);
 		}
 	}
 }
@@ -592,7 +589,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 
 			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
 
-			return (AimEnd - WeaponSocketLocation).GetSafeNormal();	
+			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 		}
 	}
 
@@ -662,8 +659,8 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 			AimStart(1.f);
 
 			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
-			
-			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
+
+			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
 			SpringArm->TargetArmLength = 0.f;
 		}
 		else
@@ -761,13 +758,15 @@ void ABACharacter::ToggleSnapMode(const FInputActionValue& Value)
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)) return;
+	int32 Index = (int32)Value.Get<float>() - 1;
+	if (!OwnedEquipment.IsValidIndex(Index)) return;
 
 	if (bIsADS)
 	{
 		ADSStart(0.f);
 	}
 
-	Server_EquipWeapon(OwnedEquipment[(int32)Value.Get<float>() - 1]);
+	Server_EquipWeapon(OwnedEquipment[Index]);
 }
 
 void ABACharacter::JumpHandler(const FInputActionValue& Value)
@@ -792,6 +791,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, bIsRunning);
 	DOREPLIFETIME(ABACharacter, SyncAimYaw);
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
+	DOREPLIFETIME(ABACharacter, EquippedWeapon);
 }
 
 void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)

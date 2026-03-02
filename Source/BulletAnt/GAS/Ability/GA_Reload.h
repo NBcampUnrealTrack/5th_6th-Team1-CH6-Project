@@ -45,7 +45,5 @@ public:
 	AActor* SourceActor;
 
 	FTimerHandle ReloadHandler;
-
-	FActiveGameplayEffectHandle ReloadStateHandle;
 	
 };

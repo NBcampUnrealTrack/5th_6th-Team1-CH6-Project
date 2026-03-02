@@ -39,5 +39,4 @@ protected:
 	float CachedZSpeed;
 
 	FTimerHandle FlyTimerHandler;
-	FActiveGameplayEffectHandle FlyingStateHandle;
 };

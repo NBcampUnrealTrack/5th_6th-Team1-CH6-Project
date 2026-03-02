@@ -38,7 +38,4 @@ protected:
 
 	UFUNCTION()
 	void OnMontageFinished();
-
-	FActiveGameplayEffectHandle AttackingStateHandle;
-
 };

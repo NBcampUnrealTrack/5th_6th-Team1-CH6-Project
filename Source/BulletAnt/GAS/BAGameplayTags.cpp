@@ -1,6 +1,6 @@
 ﻿#include "GAS/BAGameplayTags.h"
 
-UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Fire, "Ability.Active.fire");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Fire, "Ability.Active.Fire");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_MeleeAttack, "Ability.Active.MeleeAttack");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Mining, "Ability.Active.Mining");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Jetpack, "Ability.Active.Jetpack");

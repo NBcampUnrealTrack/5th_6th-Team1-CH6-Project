@@ -34,10 +34,18 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	if (!GetWorld()) return;
+	if (!GetWorld())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	Source = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-	if (!Source) return;
+	if (!Source)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	PC = Cast<APlayerController>(Source->GetController());
 	if (PC)
@@ -45,12 +53,16 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		Source->DisableInput(PC);
 	}
 
-	ASC = Cast<UBAAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
-	if (!ASC) return;
+	ASC = Cast<UAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
 	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 
-	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(ASC->DeadStateEffect, 1.f, ASC->MakeEffectContext());
+	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(DeadStateEffect, 1.f, ASC->MakeEffectContext());
 	Spec.Data->SetSetByCallerMagnitude(
 		TAG_Data_Combat_RespawnTime,
 		TriggerEventData->EventMagnitude
@@ -70,30 +82,34 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 }
 
 void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{	
-	if (!Source) return;
-	if (PC)
+{
+
+	if (Source)
 	{
-		Source->EnableInput(PC);
+		if (PC)
+		{
+			Source->EnableInput(PC);
+		}
+
+		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
+		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
+		Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
+		Source->ForceNetUpdate();
 	}
 
-	ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
-	Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
-	Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
-	Source->ForceNetUpdate();
-	
 	const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
 
-	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(ASC->RespawnHealEffect, 1.f, ASC->MakeEffectContext());
+	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(RespawnHealEffect, 1.f, ASC->MakeEffectContext());
 
-	if (!Spec.IsValid()) return;
+	if (Spec.IsValid())
+	{
+		Spec.Data->SetSetByCallerMagnitude(
+			TAG_Data_Combat_Heal,
+			HealthSet->GetMaxHealth()
+		);
 
-	Spec.Data->SetSetByCallerMagnitude(
-		TAG_Data_Combat_Heal,
-		HealthSet->GetMaxHealth()
-	);
-
-	ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
