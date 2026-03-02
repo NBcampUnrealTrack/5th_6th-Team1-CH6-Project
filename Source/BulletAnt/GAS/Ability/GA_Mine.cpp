@@ -36,28 +36,28 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 {
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
 	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
 	if (!SourceActor)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
 	IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
 	if (!DataAssetInterface)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
 	MiningData = Cast<UMiningWeaponDataAsset>(DataAssetInterface->GetDataAsset());
 	if (!MiningData)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
@@ -78,11 +78,17 @@ void UGA_Mine::OnMontageFinished()
 
 	UCameraComponent* Camera = Owner->GetCamera();
 	if (IsValid(Camera) == false)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		return;
+	}
 
 	AController* Controller = Owner->GetController();
-	if (IsValid(Controller) == false)
+	if (IsValid(Controller) == true)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 		return;
+	}
 
 	FVector Start = Camera->GetComponentLocation();
 	FVector End = Start + Controller->GetControlRotation().Vector() * 700.0f;
@@ -127,10 +133,15 @@ void UGA_Mine::MiningOnce()
 	{
 		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, CachedMiningAM, Playrate);
 		MontageTask->OnCompleted.AddDynamic(this, &UGA_Mine::OnMontageFinished);
-		MontageTask->OnInterrupted.AddDynamic(this, &UGA_Mine::OnMontageFinished);
-		MontageTask->OnCancelled.AddDynamic(this, &UGA_Mine::OnMontageFinished);
+		MontageTask->OnInterrupted.AddDynamic(this, &UGA_Mine::EndMining);
+		MontageTask->OnCancelled.AddDynamic(this, &UGA_Mine::EndMining);
 		MontageTask->ReadyForActivation();
 	}	
+}
+
+void UGA_Mine::EndMining()
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
 

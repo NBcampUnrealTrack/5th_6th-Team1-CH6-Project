@@ -813,8 +813,6 @@ void ABACharacter::OnCycleNext(const FInputActionValue& Value)
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
-	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)) return;
-
 	int32 Index = (int32)Value.Get<float>() - 1;
 	if (!OwnedEquipment.IsValidIndex(Index)) return;
 
