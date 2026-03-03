@@ -27,6 +27,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Damaged, "Event.Combat.Damaged");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Dead, "GameplayCue.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Weapon_Fire, "GameplayCue.Weapon.Fire");
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Damaged, "GameplayCue.Combat.Damaged");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Ammo_Reload, "Data.Ammo.Reload");
 

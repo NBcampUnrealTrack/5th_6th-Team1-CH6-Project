@@ -48,7 +48,7 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	}
 
 	PC = Cast<APlayerController>(Source->GetController());
-	if (PC)
+	if (PC&&ActorInfo->IsLocallyControlled())
 	{
 		Source->DisableInput(PC);
 	}
@@ -60,15 +60,16 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
 
 	if (ActorInfo->IsNetAuthority())
 	{	
 		Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Source->GetCharacterMovement()->DisableMovement();
-		Source->GetCharacterMovement()->StopMovementImmediately();
+		Source->GetCharacterMovement()->StopMovementImmediately();		
 	}
+
+	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -83,18 +84,20 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 {
 	if (Source)
 	{
-		if (PC)
-		{
-			Source->EnableInput(PC);
-		}
-
 		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
+
 		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
 		if (ActorInfo->IsNetAuthority())
-		{		
-			Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);
+		{	
+			Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);		
 			Source->ForceNetUpdate();
-			Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);					
+		}
+
+		if (PC&&ActorInfo->IsLocallyControlled())
+		{
+			PC->SetControlRotation(FRotator::ZeroRotator);
+			Source->EnableInput(PC);
 		}
 	}
 

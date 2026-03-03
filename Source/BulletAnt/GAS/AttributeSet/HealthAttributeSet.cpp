@@ -38,6 +38,10 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 			Payload.ContextHandle = Data.EffectSpec.GetContext();
 			AActor* TargetActor = Data.Target.GetAvatarActor();
 
+			FGameplayCueParameters Params;
+			Params.EffectContext = Data.EffectSpec.GetContext();
+			Data.Target.ExecuteGameplayCue(TAG_GameplayCue_Combat_Damaged,Params);
+
 			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 				TargetActor,
 				TAG_Event_Combat_Damaged,
