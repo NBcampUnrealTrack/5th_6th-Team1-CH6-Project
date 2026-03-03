@@ -18,13 +18,11 @@ void AGC_PlayerDead::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type
     case EGameplayCueEvent::OnActive:
         Mesh->SetSimulatePhysics(true);
         Mesh->SetCollisionProfileName(TEXT("Ragdoll"));
-        Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         return;
 
     case EGameplayCueEvent::Removed:
         Mesh->SetSimulatePhysics(false);
         Mesh->SetCollisionProfileName(TEXT("Pawn"));
-        Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
         return;
 
     default:

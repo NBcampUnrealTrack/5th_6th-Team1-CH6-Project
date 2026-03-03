@@ -26,6 +26,7 @@ void UGA_PlayerHitReact::ActivateAbility(const FGameplayAbilitySpecHandle Handle
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, HitMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_PlayerHitReact::OnMontageFinished);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_PlayerHitReact::OnMontageFinished);
+	MontageTask->OnCancelled.AddDynamic(this, &UGA_PlayerHitReact::OnMontageFinished);
 	MontageTask->ReadyForActivation();
 }
 
