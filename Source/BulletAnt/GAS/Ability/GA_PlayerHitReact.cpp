@@ -10,7 +10,7 @@ UGA_PlayerHitReact::UGA_PlayerHitReact()
 
 	FGameplayTagContainer Tags;
 	FAbilityTriggerData Trigger;
-	Trigger.TriggerTag = TAG_Event_Combat_Hit;
+	Trigger.TriggerTag = TAG_Event_Combat_Damaged;
 
 	AbilityTriggers.Add(Trigger);
 }

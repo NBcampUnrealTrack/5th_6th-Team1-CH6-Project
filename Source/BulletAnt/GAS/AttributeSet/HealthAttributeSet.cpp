@@ -40,7 +40,7 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 				TargetActor,
-				TAG_Event_Combat_Hit,
+				TAG_Event_Combat_Damaged,
 				Payload
 			);
 
