@@ -619,6 +619,25 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 	return GetActorRotation().Vector();
 }
 
+void ABACharacter::OnRep_bIsFiring()
+{
+	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(GetMesh()->GetAnimInstance());
+	if (Anim)
+	{
+		Anim->SetIsFiring(bIsFiring);
+	}
+}
+
+void ABACharacter::SetbIsFiring(bool InIsFiring)
+{
+	bIsFiring = InIsFiring;
+	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(GetMesh()->GetAnimInstance());
+	if (Anim)
+	{
+		Anim->SetIsFiring(bIsFiring);
+	}
+}
+
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());

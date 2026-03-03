@@ -366,8 +366,13 @@ public:
     virtual FVector GetFireStartLocation_Implementation() const override;
     virtual FVector GetFireDirection_Implementation() const override;
 
+    UFUNCTION()
+    void OnRep_bIsFiring();
+
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
+
+    void SetbIsFiring(bool InIsFiring);
 
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
@@ -387,7 +392,9 @@ public:
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
     FTransform SavedSpringArmTransform;
-    float SavedSpringArmLength();
+    
+    UPROPERTY(ReplicatedUsing = OnRep_bIsFiring)
+    bool bIsFiring = false;
 
 #pragma endregion
 
