@@ -133,7 +133,7 @@ public:
 	void InitializeGround(int32 InSeed, const UGroundSettingPreset* InSetting);
 
 	void DigGround(const FVector& WorldLocation, float Radius);
-	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap);
+	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EOreType, int32>& MinedOreMap);
 
 	bool MakeChunkSaveData(int32 ChunkIdx, FVoxelGroundChunkSaveData& OutData);
 	bool LoadChunkSaveData(const FVoxelGroundChunkSaveData& Data);
@@ -241,6 +241,7 @@ protected:
 	UPROPERTY()
 	TWeakObjectPtr<class ASkyAtmosphere> SkyAtmosphere;
 
+	float OriginMieScatterScale = 0.0f;
 	float OriginReighScatterScale = 0.0f;
 	
 #pragma endregion
