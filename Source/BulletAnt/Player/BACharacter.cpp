@@ -36,7 +36,7 @@ ABACharacter::ABACharacter()
 
 	// 캐릭터 회전 설정
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = true;
+	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
 
@@ -80,7 +80,7 @@ ABACharacter::ABACharacter()
 	//Test
 	//앉기 기능 활성화
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
-
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	bIsAiming = false;
 	bIsRunning = false;
 
@@ -144,7 +144,36 @@ void ABACharacter::BeginPlay()
 	{
 		SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
 		SceneCapture2D->TextureTarget = RT_GroundScanner;
+
+		TArray<USceneComponent*> MeshChildren;
+		GetMesh()->GetChildrenComponents(false, MeshChildren);
+
+		USceneComponent* FaceComp = nullptr;
+		for (USceneComponent* Child : MeshChildren)
+		{
+			if (Child->GetName().Contains(TEXT("Face")))
+			{
+				FaceComp = Child;
+				break;
+			}
+		}
+
+		if (FaceComp)
+		{
+			TArray<USceneComponent*> FaceAndHair;
+			FaceComp->GetChildrenComponents(true, FaceAndHair);
+			FaceAndHair.Add(FaceComp);
+
+			for (USceneComponent* Comp : FaceAndHair)
+			{
+				if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(Comp))
+				{
+					HiddenComp.Add(PrimComp);
+				}
+			}
+		}
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -165,10 +194,10 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	/*if (Speed > 1.f)
-		bUseControllerRotationYaw = true;
+	if (Speed > 1.f|| GetCharacterMovement()->IsFalling()||bIsAiming)
+		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
-		bUseControllerRotationYaw = false;*/
+		GetCharacterMovement()->bUseControllerDesiredRotation = false;
 
 	if (HasAuthority())
 	{
@@ -577,6 +606,14 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	NewWeapon->EquipWeapon(AbilitySystemComponent);
 
 	EquippedWeapon = NewWeapon;
+	if (WeaponAdsCamera == nullptr)
+	{
+		WeaponAdsCamera = EquippedWeapon->FindComponentByClass<UCameraComponent>();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("카메라 찾았다!!! 이름: %s"), *WeaponAdsCamera->GetName());
+	}
 }
 
 FVector ABACharacter::GetFireStartLocation_Implementation() const
@@ -651,7 +688,7 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	//bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	Server_SetAiming(true);
 }
 
@@ -662,7 +699,8 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 	bIsAiming = false;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	//bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+
 	Server_SetAiming(false);
 }
 
@@ -676,22 +714,54 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 	{
 		if (bIsADS)
 		{
+			GetCharacterMovement()->bUseControllerDesiredRotation = true;
 			PC->StartADSUI();
 			AimStart(1.f);
 
-			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
+			//SavedSpringArmTransform = SpringArm->GetRelativeTransform();
 
-			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-			SpringArm->TargetArmLength = 0.f;
+			//SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
+			CameraComponent->SetActive(false);
+			if(WeaponAdsCamera !=nullptr)
+				WeaponAdsCamera->SetActive(true);
+			//SpringArm->TargetArmLength = 0.f;
+
+			if (IsLocallyControlled())
+			{
+				GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
+				for (UPrimitiveComponent* Comp : HiddenComp)
+				{
+					if (Comp)
+					{
+						Comp->SetOwnerNoSee(true);
+					}
+				}
+			}
 		}
 		else
 		{
+			GetCharacterMovement()->bUseControllerDesiredRotation = false;
 			PC->StopADSUI();
 			AimStop(1.f);
 
-			SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-			SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-			SpringArm->TargetArmLength = 223.f;
+			//SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+			if (WeaponAdsCamera != nullptr)
+				WeaponAdsCamera->SetActive(false);
+			CameraComponent->SetActive(true);
+			//SpringArm->SetRelativeTransform(SavedSpringArmTransform);
+			//SpringArm->TargetArmLength = 223.f;
+
+			if (IsLocallyControlled())
+			{
+				GetMesh()->UnHideBoneByName(FName("head"));
+				for (UPrimitiveComponent* Comp : HiddenComp)
+				{
+					if (Comp)
+					{
+						Comp->SetOwnerNoSee(false);
+					}
+				}
+			}
 		}
 	}
 }
