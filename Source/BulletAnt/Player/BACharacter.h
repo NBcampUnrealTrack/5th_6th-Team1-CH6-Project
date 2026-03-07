@@ -109,6 +109,10 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
     TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
 
+private:
+    UPROPERTY()
+    TArray<UPrimitiveComponent*> HiddenComp;
+
 
 #pragma region InputAction
 
@@ -379,6 +383,8 @@ public:
 
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
+
+    UCameraComponent* WeaponAdsCamera;
 
     UPROPERTY()
     UAmmoAttributeSet* AmmoAttributeSet;
