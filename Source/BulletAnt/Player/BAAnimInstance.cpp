@@ -1,9 +1,10 @@
-#include "Player/BAAnimInstance.h"
+﻿#include "Player/BAAnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Player/BAParkourComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "Weapon/BaseRangedWeapon.h"
 
 void UBAAnimInstance::NativeInitializeAnimation()
 {
@@ -65,13 +66,21 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		DeltaRot = CameraTargetOffset();
 	}
-	TargetPitch = FMath::Clamp(DeltaRot.Pitch, -90.0f, 90.0f);
-	TargetYaw = FMath::Clamp(DeltaRot.Yaw, -90.0f, 90.0f);
+	TargetPitch = (FMath::Abs(DeltaRot.Pitch) > 90.0f) ? 0.0f : DeltaRot.Pitch;
+	TargetYaw = (FMath::Abs(DeltaRot.Yaw) > 90.0f) ? 0.0f : DeltaRot.Yaw;
 
 	AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 15.0f);
     AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 15.0f);
 	//if(ParkourComp&&!ParkourComp->bisParkour
 	HandIKAlpha = GetCurveValue(FName("HandIK_Alpha"));
+	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged))
+	{
+		if (Character->EquippedWeapon)
+		{
+			USkeletalMeshComponent* WeaponMesh = Character->EquippedWeapon->GetWeaponMesh();
+			LeftHandIKLoc = Character->EquippedWeapon->GetWeaponMesh()->GetSocketLocation(FName("LeftHandSocket"));
+		}
+	}
 	FVector RightDir = OwningActor->GetActorRightVector();
 
 	float ShoulderWidth = 30.f;
