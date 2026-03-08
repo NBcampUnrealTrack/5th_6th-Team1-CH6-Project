@@ -1,7 +1,6 @@
 ﻿#include "GAS/GameplayCue/GC_PlayerDead.h"
 
 #include "GameFramework/Character.h"
-#include "Components/CapsuleComponent.h"
 
 void AGC_PlayerDead::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type EventType, const FGameplayCueParameters& Parameters)
 {
@@ -11,7 +10,6 @@ void AGC_PlayerDead::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type
     if (!Character) return;
 
     USkeletalMeshComponent* Mesh = Character->GetMesh();
-    UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
 
     switch (EventType)
     {

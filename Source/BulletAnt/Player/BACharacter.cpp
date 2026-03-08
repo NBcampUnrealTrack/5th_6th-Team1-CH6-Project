@@ -639,7 +639,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		{
 			if (bIsADS)
 			{
-				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
 
 			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
@@ -653,7 +653,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		}
 	}
 
-	return GetActorRotation().Vector();
+	return GetActorRotation().Vector().GetSafeNormal();
 }
 
 void ABACharacter::OnRep_bIsFiring()

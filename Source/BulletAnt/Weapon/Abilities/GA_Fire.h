@@ -36,15 +36,8 @@ protected:
 
 	void StartAutoFireLoop();
 
-	void ApplyDamageEffect(const FGameplayAbilityActorInfo* ActorInfo,
-		AActor* Target,
-		const URangedWeaponDataAsset* WeaponData,
-		FHitResult& InHitResult);
-
 	UFUNCTION()
 	FVector ApplySpread(const FVector& Dir, float Degree);
-
-	FActiveGameplayEffectHandle AttackingStateHandle;
 
 	UPROPERTY()
 	TObjectPtr<AActor> SourceActor;

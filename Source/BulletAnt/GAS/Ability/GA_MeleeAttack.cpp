@@ -91,13 +91,17 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 
 		UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		if (!Data) return;
-	
-		FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
-		ContextHandle.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
 
 		if (Data->OnUseStateHitEffect)
 		{
-			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(Data->OnUseStateHitEffect, GetAbilityLevel(), ContextHandle);
+			FHitResult Hit;
+			Hit.ImpactPoint = Target->GetActorLocation();
+
+			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+			Context.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
+			Context.AddHitResult(Hit);
+
+			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(Data->OnUseStateHitEffect, GetAbilityLevel(), Context);
 
 			if (SpecHandle.IsValid())
 			{
