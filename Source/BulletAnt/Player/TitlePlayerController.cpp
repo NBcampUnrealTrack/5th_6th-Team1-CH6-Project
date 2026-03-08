@@ -5,6 +5,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "UI/UISubsystem.h"
 #include "UI/UW_TitleScreen.h"
+#include "Multiplayer/MultiplayerSubsystem.h"
 
 ATitlePlayerController::ATitlePlayerController()
 {
@@ -40,23 +41,20 @@ void ATitlePlayerController::BeginPlay()
 	}
 }
 
-void ATitlePlayerController::JoinServer(const FString& InIPAddress)
-{
-	FString Address = InIPAddress.TrimStartAndEnd();
-	if (Address.IsEmpty())
-	{
-		return;
-	}
-
-	UGameplayStatics::OpenLevel(GetWorld(), FName(*Address), true);
-}
-
 void ATitlePlayerController::HandleJoinRequested(const FText& InIpPort)
 {
-	JoinServer(InIpPort.ToString());
+	UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	if (IsValid(MultiplayerSubSystem) == true)
+	{
+		MultiplayerSubSystem->SearchSessions();
+	}
 }
 
 void ATitlePlayerController::HandleOptionRequested()
 {
-	UGameplayStatics::OpenLevel(GetWorld(), FName("MainLevel"), true, "listen?port=17777");
+	UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	if (IsValid(MultiplayerSubSystem) == true)
+	{
+		MultiplayerSubSystem->CreateSession();
+	}
 }
