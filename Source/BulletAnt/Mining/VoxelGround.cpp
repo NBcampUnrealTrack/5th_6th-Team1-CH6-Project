@@ -84,7 +84,7 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 	UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
 	ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
 
-	TMap<EVoxelType, int32> MinedOreMap;
+	TMap<EOreType, int32> MinedOreMap;
 	for (int32 Z = MinZ; Z <= MaxZ; ++Z)
 	{
 		for (int32 Y = MinY; Y <= MaxY; ++Y)
@@ -108,9 +108,7 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 
 	for (const auto& Pair : MinedOreMap)
 	{
-		if (Pair.Key == EVoxelType::BedRock ||
-			Pair.Key == EVoxelType::NormalRock ||
-			Pair.Key == EVoxelType::None)
+		if (Pair.Key == EOreType::None)
 			continue;
 
 		ABAGameMode* GameMode = GetWorld()->GetAuthGameMode<ABAGameMode>();
@@ -121,7 +119,7 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 	}
 }
 
-bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& MinedOreMap)
+bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EOreType, int32>& MinedOreMap)
 {
 	const FVector RelativeLocation = WorldLocation - GetActorLocation();
 	const int32 ChunkPoints = Setting->ChunkGridSize + 1;
@@ -159,7 +157,23 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 							OutData.PointEditDatas.Add({ PointIdx, TargetDensity });
 							if (OutResult.bTypeChanged == true && OutResult.CurrType == EVoxelType::None)
 							{
-								++MinedOreMap.FindOrAdd(OutResult.PrevType);
+								EOreType OreType = EOreType::None;
+								switch (OutResult.PrevType)
+								{
+									case EVoxelType::Vein:
+										OreType = Setting->VeinOreType;
+										break;
+									case EVoxelType::Pillar:
+										OreType = Setting->PillarOreType;
+										break;
+									default:
+										break;
+								}
+
+								if (OreType != EOreType::None)
+								{
+									++MinedOreMap.FindOrAdd(OreType);
+								}
 							}
 						}
 					}
@@ -372,8 +386,6 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 	const float ChunkVoxelSize = Setting->ChunkVoxelSize;
 	const uint8 IsoLevel = Setting->IsoLevel;
-	const EVoxelType VeinVoxelType = Setting->VeinVoxelType;
-	const EVoxelType PillarVoxelType = Setting->PillarVoxelType;
 	const int32 LocalSeed = Seed;
 
 	ParallelFor(ChunkPoints, [&](int32 Z)
@@ -445,7 +457,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 								float RoughNoise = FMath::PerlinNoise3D(WorldPos * 0.02f);
 								float Roughness = RoughNoise * 4.0f;
 
-								VoxelType = VeinVoxelType;
+								VoxelType = EVoxelType::Vein;
 								FinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
 							}
 						};
@@ -470,7 +482,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 								float Distance = Radial / Data->PillarRadius;
 								float DistanceValue = (1.0f - Distance) * (1.0f - (AlongNormal / Data->PillarHeight) * 0.2f);
 
-								VoxelType = PillarVoxelType;
+								VoxelType = EVoxelType::Pillar;
 								FinalDensity = (uint8)FMath::Clamp(DistanceValue * 200, 0, 200);
 							}
 						};
@@ -1318,7 +1330,9 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 		SceneCapture2D->HideComponent(BoundBox);
 	}
 
+	OriginMieScatterScale = SkyComp->MieScatteringScale;
 	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
+	//SkyComp->SetMieScatteringScale(0.0f);
 	//SkyComp->SetRayleighScatteringScale(0.0f);
 }
 
@@ -1336,6 +1350,7 @@ void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor
 	if (IsValid(SkyComp) == false)
 		return;
 
+	SkyComp->SetMieScatteringScale(OriginMieScatterScale);
 	SkyComp->SetRayleighScatteringScale(OriginReighScatterScale);
 }
 

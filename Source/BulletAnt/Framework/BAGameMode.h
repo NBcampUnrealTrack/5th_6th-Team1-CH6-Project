@@ -4,7 +4,7 @@
 #include "GameFramework/GameMode.h"
 #include "BAGameMode.generated.h"
 
-enum class EVoxelType : uint8;
+enum class EOreType;
 
 UCLASS()
 class BULLETANT_API ABAGameMode : public AGameMode
@@ -18,9 +18,9 @@ public:
 
 	virtual void Logout(AController* Exiting) override;
 
-	void MineOre(EVoxelType OreType, int32 PointCount);
+	void MineOre(EOreType OreType, int32 PointCount);
 
-	bool TrySpendOre(const TMap<EVoxelType, int32>& Cost);
+	bool TrySpendOre(const TMap<EOreType, int32>& Cost);
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
