@@ -39,7 +39,12 @@ public class BulletAnt : ModuleRules
 			// UI
 			"UMG",
 			"Slate",
-			"SlateCore"
+			"SlateCore",
+
+			// EOS
+			"OnlineSubsystem",
+			"OnlineSubsystemUtils",
+			"OnlineSubsystemEOS"
 		});
 
 		PublicIncludePaths.AddRange(new string[] {
