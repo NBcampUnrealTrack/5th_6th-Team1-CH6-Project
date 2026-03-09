@@ -51,6 +51,7 @@ void UGA_MeleeAttack::ActivateAbility(
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->AttackMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
+	MontageTask->OnCancelled.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
 	MontageTask->ReadyForActivation();
 }
 
@@ -65,11 +66,7 @@ void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
 
 	AActor* HitActor = const_cast<AActor*>(Payload.Target.Get());
 
-	if (!HitActor)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
+	if (!HitActor) return;
 
 	ApplyDamage(CurrentActorInfo, HitActor);
 }
@@ -82,11 +79,7 @@ void UGA_MeleeAttack::OnMontageFinished()
 
 void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target)
 {
-	if (!ActorInfo || !Target)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
+	if (!ActorInfo || !Target) return;
 
 	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
@@ -94,25 +87,21 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 	if (SourceASC && TargetASC)
 	{
 		IDataAssetInterface* Interface = Cast<IDataAssetInterface>(ActorInfo->AvatarActor.Get());
-		if (!Interface || !Interface->GetDataAsset())
-		{
-			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-			return;
-		}
+		if (!Interface || !Interface->GetDataAsset()) return;
 
 		UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
-		if (!Data)
-		{
-			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-			return;
-		}
-
-		FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
-		ContextHandle.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
+		if (!Data) return;
 
 		if (Data->OnUseStateHitEffect)
 		{
-			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(Data->OnUseStateHitEffect, GetAbilityLevel(), ContextHandle);
+			FHitResult Hit;
+			Hit.ImpactPoint = Target->GetActorLocation();
+
+			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+			Context.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
+			Context.AddHitResult(Hit);
+
+			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(Data->OnUseStateHitEffect, GetAbilityLevel(), Context);
 
 			if (SpecHandle.IsValid())
 			{

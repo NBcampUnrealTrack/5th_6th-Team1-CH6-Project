@@ -22,8 +22,8 @@ UGA_Respawn::UGA_Respawn()
 
 	AbilityTriggers.Add(Trigger);
 
-	DeadTag.AddTag(TAG_Event_Combat_Dead);
 	bIsBlockingOtherAbilities = true;
+	ActivationOwnedTags.AddTag(TAG_State_Combat_Dead);
 }
 
 void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -48,7 +48,7 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 	}
 
 	PC = Cast<APlayerController>(Source->GetController());
-	if (PC)
+	if (PC&&ActorInfo->IsLocallyControlled())
 	{
 		Source->DisableInput(PC);
 	}
@@ -60,24 +60,16 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(DeadStateEffect, 1.f, ASC->MakeEffectContext());
-	Spec.Data->SetSetByCallerMagnitude(
-		TAG_Data_Combat_RespawnTime,
-		TriggerEventData->EventMagnitude
-	);
-
-	ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data);
-
 	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
 
-	Source->GetMesh()->SetSimulatePhysics(true);
-	Source->GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 	if (ActorInfo->IsNetAuthority())
-	{
+	{	
 		Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Source->GetCharacterMovement()->DisableMovement();
-		Source->GetCharacterMovement()->StopMovementImmediately();
+		Source->GetCharacterMovement()->StopMovementImmediately();		
 	}
+
+	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -92,20 +84,20 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 {
 	if (Source)
 	{
-		if (PC)
-		{
-			Source->EnableInput(PC);
+		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
+
+		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
+		if (ActorInfo->IsNetAuthority())
+		{	
+			Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);		
+			Source->ForceNetUpdate();
+			Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);					
 		}
 
-		Source->GetMesh()->SetSimulatePhysics(false);
-		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
-		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
-		Source->GetMesh()->SetCollisionProfileName(TEXT("Pawn"));
-		if (ActorInfo->IsNetAuthority())
+		if (PC&&ActorInfo->IsLocallyControlled())
 		{
-			Source->TeleportTo(FVector(0.f, 1000.f, 5.f), FRotator::ZeroRotator, false, true);
-			Source->ForceNetUpdate();
-			Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			PC->SetControlRotation(FRotator::ZeroRotator);
+			Source->EnableInput(PC);
 		}
 	}
 
@@ -124,6 +116,17 @@ void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_Respawn::PreActivate(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, FOnGameplayAbilityEnded::FDelegate* OnGameplayAbilityEndedDelegate, const FGameplayEventData* TriggerEventData)
+{
+	ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (ASC)
+	{
+		ASC->CancelAbilities();
+	}
+
+	Super::PreActivate(Handle, ActorInfo, ActivationInfo, OnGameplayAbilityEndedDelegate, TriggerEventData);
 }
 
 void UGA_Respawn::HandleRespawn()

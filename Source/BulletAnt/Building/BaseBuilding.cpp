@@ -26,6 +26,9 @@ ABaseBuilding::ABaseBuilding()
 	PlacementRoot = CreateDefaultSubobject<USceneComponent>(TEXT("PlacementRoot"));
 	PlacementRoot->SetupAttachment(RootComponent);
 
+	SupportRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SupportRoot"));
+	SupportRoot->SetupAttachment(RootComponent);
+
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComp"));
 	StaticMeshComp->SetupAttachment(RootComponent);
 
@@ -46,6 +49,28 @@ ABaseBuilding::ABaseBuilding()
 	DestructionComp->SetIsReplicated(false);
 
 	PreviewBaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/BulletAnt/Building/M_BuildingPreview.M_BuildingPreview"));
+}
+
+void ABaseBuilding::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	if (!StaticMeshComp || !StaticMeshComp->GetStaticMesh())
+	{
+		return;
+	}
+
+	FVector Min, Max;
+	StaticMeshComp->GetLocalBounds(Min, Max);
+	FVector LocalCenter = (Min + Max) * 0.5f;
+	LocalCenter.Z = Min.Z;
+
+	StaticMeshComp->SetRelativeLocation(-LocalCenter);
+	EdgesRoot->SetRelativeLocation(-LocalCenter);
+	PlacementRoot->SetRelativeLocation(-LocalCenter);
+	SupportRoot->SetRelativeLocation(-LocalCenter);
+
+	RebuildCachedLocalEdges();
 }
 
 void ABaseBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -86,10 +111,29 @@ void ABaseBuilding::OnDeath()
 		return;
 	}
 
+	TArray<TWeakObjectPtr<ABaseBuilding>> Above;
+	Above.Reserve(SupportedBuildings.Num());
+	for (const auto& Building : SupportedBuildings)
+	{
+		Above.Add(Building);
+	}
+
 	Multicast_PlayDestruction(GetActorLocation());
 	bDead = true;
 	OnRep_Dead();
 	SetLifeSpan(DebrisLifeSeconds);
+
+	Server_UnregisterFromSupports();
+
+	SupportedBuildings.Reset();
+
+	for (const auto& Building : Above)
+	{
+		if (ABaseBuilding* B = Building.Get())
+		{
+			B->Server_ReevaluateSupportAndMaybeDie();
+		}
+	}
 }
 
 void ABaseBuilding::GetEdgesWorld(TArray<FBuildingEdge>& OutEdges) const
@@ -266,6 +310,200 @@ void ABaseBuilding::SetCanPlace(bool bInCanPlace)
 	const FLinearColor BlockColor(1.f, 0.f, 0.f, Opacity);
 
 	PreviewMID->SetVectorParameterValue(TEXT("ActorColor"), bInCanPlace ? CanColor : BlockColor);
+}
+
+void ABaseBuilding::GetSupportVolumes(TArray<UPrimitiveComponent*>& OutVolumes) const
+{
+	OutVolumes.Reset();
+	if (!SupportRoot) 
+	{
+		return;
+	}
+
+	TArray<USceneComponent*> SupportVol;
+	SupportRoot->GetChildrenComponents(true, SupportVol);
+
+	for (USceneComponent* Support : SupportVol)
+	{
+		if (UPrimitiveComponent* P = Cast<UPrimitiveComponent>(Support))
+		{
+			OutVolumes.Add(P);
+		}
+	}
+}
+
+bool ABaseBuilding::ComputeSupportCoverage(const FTransform& WorldT, float& OutCoverage, TSet<TWeakObjectPtr<ABaseBuilding>>& OutSupportBuildings) const
+{
+	OutSupportBuildings.Reset();
+	OutCoverage = 0.f;
+
+	UWorld* World = GetWorld();
+	if (!World) 
+	{
+		return false;
+	}
+
+	TArray<UPrimitiveComponent*> SupportVolumes;
+	GetSupportVolumes(SupportVolumes);
+
+	if (SupportVolumes.Num() == 0)
+	{
+		GetPlacementPrimitives(SupportVolumes);
+	}
+
+	if (SupportVolumes.Num() == 0)
+	{
+		return false;
+	}
+
+	FBox UnionBox(EForceInit::ForceInit);
+
+	for (UPrimitiveComponent* P : SupportVolumes)
+	{
+		if (!P) 
+		{
+			continue;
+		}
+
+		const FTransform CompWorldT = P->GetRelativeTransform() * WorldT;
+		const FBoxSphereBounds B = P->CalcBounds(CompWorldT);
+		UnionBox += B.GetBox();
+	}
+
+	if (!UnionBox.IsValid) 
+	{
+		return false;
+	}
+
+	const FVector Center = UnionBox.GetCenter();
+	const FVector Ext = UnionBox.GetExtent();
+
+	const float MinX = Center.X - Ext.X;
+	const float MaxX = Center.X + Ext.X;
+	const float MinY = Center.Y - Ext.Y;
+	const float MaxY = Center.Y + Ext.Y;
+
+	const float Step = FMath::Max(10.f, SupportSampleSpacing);
+
+	int32 Total = 0;
+	int32 Supported = 0;
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(SupportTrace), false);
+	Params.AddIgnoredActor(this);
+
+	FCollisionObjectQueryParams Obj;
+	Obj.AddObjectTypesToQuery(ECC_WorldStatic);
+	Obj.AddObjectTypesToQuery(ECC_GameTraceChannel1);
+
+	const FName GroundActorTag = TEXT("Ground");
+
+	const float SampleZ = UnionBox.Min.Z + 5.f;
+	for (float X = MinX; X <= MaxX; X += Step)
+	{
+		for (float Y = MinY; Y <= MaxY; Y += Step)
+		{
+			Total++;
+			const FVector Sample(X, Y, SampleZ);
+			const FVector Start = Sample + FVector(0, 0, SupportTraceUp);
+			const FVector End = Sample - FVector(0, 0, SupportTraceDown);
+
+			FHitResult Hit;
+			if (!World->LineTraceSingleByObjectType(Hit, Start, End, Obj, Params))
+			{
+				continue;
+			}
+
+			AActor* HitActor = Hit.GetActor();
+			UPrimitiveComponent* HitComp = Hit.GetComponent();
+			if (!HitActor || !HitComp) 
+			{
+				continue;
+			}
+
+			if (HitComp->GetCollisionObjectType() == ECC_WorldStatic || HitActor->ActorHasTag(GroundActorTag))
+			{
+				Supported++;
+				continue;
+			}
+
+			if (ABaseBuilding* Building = Cast<ABaseBuilding>(HitActor))
+			{
+				if (!Building->bDead)
+				{
+					Supported++;
+					OutSupportBuildings.Add(Building);
+				}
+			}
+		}
+	}
+
+	if (Total <= 0)
+	{
+		return false;
+	}
+	OutCoverage = (float)Supported / (float)Total;
+	return true;
+}
+
+void ABaseBuilding::Server_RegisterSupports(const TSet<TWeakObjectPtr<ABaseBuilding>>& Supporters)
+{
+	if (!HasAuthority() || bDead)
+	{
+		return;
+	}
+
+	Server_UnregisterFromSupports();
+
+	SupportingBuildings = Supporters;
+
+	for (const TWeakObjectPtr<ABaseBuilding>& Building : SupportingBuildings)
+	{
+		if (ABaseBuilding* Supporter = Building.Get())
+		{
+			Supporter->SupportedBuildings.Add(this);
+		}
+	}
+}
+
+void ABaseBuilding::Server_UnregisterFromSupports()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	for (const TWeakObjectPtr<ABaseBuilding>& Building : SupportingBuildings)
+	{
+		if (ABaseBuilding* Supporter = Building.Get())
+		{
+			Supporter->SupportedBuildings.Remove(this);
+		}
+	}
+	SupportingBuildings.Reset();
+}
+
+void ABaseBuilding::Server_ReevaluateSupportAndMaybeDie()
+{
+	if (!HasAuthority() || bDead)
+	{
+		return;
+	}
+
+	float Coverage = 0.f;
+	TSet<TWeakObjectPtr<ABaseBuilding>> SupportsNow;
+
+	if (!ComputeSupportCoverage(GetActorTransform(), Coverage, SupportsNow))
+	{
+		OnDeath();
+		return;
+	}
+
+	Server_RegisterSupports(SupportsNow);
+
+	if (Coverage < MinSupportCoverage)
+	{
+		OnDeath();
+	}
 }
 
 void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const

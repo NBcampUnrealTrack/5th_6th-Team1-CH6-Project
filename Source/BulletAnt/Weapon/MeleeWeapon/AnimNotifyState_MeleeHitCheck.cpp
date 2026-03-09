@@ -96,6 +96,7 @@ void UAnimNotifyState_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp
 				FGameplayEventData Payload;
 				Payload.Target = OverlapActor;
 				Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(OverlapActor);
+				
 				FGameplayTag EventTag = Data->HitEventTag;
 
 				ASC->HandleGameplayEvent(EventTag, &Payload);

@@ -50,12 +50,12 @@ void ABAGameState::Multicast_EditGround_Implementation(const FVoxelChunkEditPack
     GroundSubsystem->ApplyEditPacket(Packet);
 }
 
-void ABAGameState::SetOreCount(EVoxelType OreType, int32 Count)
+void ABAGameState::SetOreCount(EOreType OreType, int32 Count)
 {
 	Multicast_UpdateOreCount(OreType, Count);
 }
 
-int32 ABAGameState::GetOreCount(EVoxelType OreType)
+int32 ABAGameState::GetOreCount(EOreType OreType)
 {
 	const int32* OreCountPtr = OreInventory.Find(OreType);
 	return OreCountPtr != nullptr ? *OreCountPtr : 0;
@@ -71,7 +71,7 @@ void ABAGameState::UnbindOnOreChanged(const UObject* Object)
 	OnOreChanged.RemoveAll(Object);
 }
 
-void ABAGameState::Multicast_UpdateOreCount_Implementation(EVoxelType OreType, int32 Count)
+void ABAGameState::Multicast_UpdateOreCount_Implementation(EOreType OreType, int32 Count)
 {
 	OreInventory.FindOrAdd(OreType) = Count;
 	//UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));

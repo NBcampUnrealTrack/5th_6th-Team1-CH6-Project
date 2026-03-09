@@ -24,14 +24,32 @@ struct FBuildingRow : public FTableRowBase
 
 public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FName BuildingId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display")
+    FText DisplayName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TSubclassOf<ABaseBuilding> BuildingClass;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    TMap<EVoxelType, int32> BuildCost;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
+    TMap<EOreType, int32> BuildCost;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
     EBuildCategory Category = EBuildCategory::Turret;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
     int32 Order = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Support")
+    float MinSupportCoverage = 0.5f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Support")
+    float SupportSampleSpacing = 50.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
+    float Health = 100.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display")
+    TSoftObjectPtr<UTexture2D> IconTexture;
 };

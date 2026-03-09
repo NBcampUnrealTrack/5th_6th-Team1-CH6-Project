@@ -7,6 +7,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemInterface.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "NiagaraComponent.h"
 
 ABaseProjectile::ABaseProjectile()
 {
@@ -24,16 +25,22 @@ ABaseProjectile::ABaseProjectile()
 	BulletMesh->SetCollisionObjectType(ECC_GameTraceChannel8);
 
 	BulletMesh->SetupAttachment(CollisionComponent);
-	
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Projectile Movement"));
 
 	ProjectileMovement->bShouldBounce = false;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bRotationRemainsVertical = true;
+	ProjectileMovement->bInterpMovement = true;
+	ProjectileMovement->bAutoActivate = false;
+
+	Tracer = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Tracer"));
+	Tracer->SetupAttachment(RootComponent);
 
 	SetReplicateMovement(true);
 	bReplicates = true;
+
+	
 }
 
 void ABaseProjectile::InitProjectile(const FVector& Start, const FVector& Direction, const float Radius, float Speed, float Damage,URangedWeaponDataAsset* Data, AActor* InOwner)
