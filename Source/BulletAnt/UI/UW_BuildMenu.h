@@ -3,9 +3,13 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Building/BuildingRow.h"
 #include "UW_BuildMenu.generated.h"
 
 class UButton;
+class UWrapBox;
+class UDataTable;
+class UUW_BuildingIcon;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBuildMenuSelected, FName, BuildingRow);
 
@@ -25,10 +29,16 @@ private:
 	void OnTurretBtnClicked();
 
 	UFUNCTION()
-	void OnBoxBtnClicked();
+	void OnBuildingBtnClicked();
 
 	UFUNCTION()
-	void OnStairBtnClicked();
+	void OnEtcBtnClicked();
+
+	UFUNCTION()
+	void HandleBuildingIconClicked(FName BuildingRowName);
+
+	void SetCurrentCategory(EBuildCategory NewCategory);
+	void RefreshBuildingList();
 
 public:
 	FOnBuildMenuSelected OnBuildMenuSelected;
@@ -38,18 +48,20 @@ private:
 	TObjectPtr<UButton> TurretBtn;
 
 	UPROPERTY(Meta = (BindWidget))
-	TObjectPtr<UButton> BoxBtn;
+	TObjectPtr<UButton> BuildingBtn;
 
 	UPROPERTY(Meta = (BindWidget))
-	TObjectPtr<UButton> StairBtn;
+	TObjectPtr<UButton> EtcBtn;
 
-	// 임시 row 이름들(나중에 제거)
-	UPROPERTY(EditDefaultsOnly, Category = "Build")
-	FName TurretRow = TEXT("TestTurret");
-
-	UPROPERTY(EditDefaultsOnly, Category = "Build")
-	FName BoxRow = TEXT("TestBox");
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWrapBox> BuildingListWrapBox;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build")
-	FName StairRow = TEXT("TestStair");
+	TObjectPtr<UDataTable> BuildingDataTable;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build")
+	TSubclassOf<UUW_BuildingIcon> BuildingIconWidgetClass;
+
+	UPROPERTY()
+	EBuildCategory CurrentCategory = EBuildCategory::Turret;
 };

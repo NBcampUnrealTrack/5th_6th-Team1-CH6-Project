@@ -77,22 +77,22 @@ void UBuildManagerComponent::EnterBuildMode()
     SelectCategory(CurrentCategory);
     SetComponentTickEnabled(true);
 
-    //if (auto* PC = CachedPC.Get())
-    //{
-    //    if (auto* LP = PC->GetLocalPlayer())
-    //    {
-    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-    //        {
-    //            UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
-    //            if (IsValid(BuildMenuWidget))
-    //            {
-    //                BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-    //                BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-    //                PC->SetShowMouseCursor(true);
-    //            }
-    //        }
-    //    }
-    //}
+    if (auto* PC = CachedPC.Get())
+    {
+        if (auto* LP = PC->GetLocalPlayer())
+        {
+            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+            {
+                UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+                if (IsValid(BuildMenuWidget))
+                {
+                    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+                    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+                    PC->SetShowMouseCursor(true);
+                }
+            }
+        }
+    }
     
 }
 
@@ -100,17 +100,17 @@ void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
 
-    //if (auto* PC = CachedPC.Get())
-    //{
-    //    if (auto* LP = PC->GetLocalPlayer())
-    //    {
-    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-    //        {
-    //           UIS->HideUI(EUIType::BuildMenu);
-    //           PC->SetShowMouseCursor(false);
-    //        }
-    //    }
-    //}
+    if (auto* PC = CachedPC.Get())
+    {
+        if (auto* LP = PC->GetLocalPlayer())
+        {
+            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+            {
+               UIS->HideUI(EUIType::BuildMenu);
+               PC->SetShowMouseCursor(false);
+            }
+        }
+    }
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;
@@ -481,6 +481,22 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
     if (Spawned)
     {
         Spawned->DrawEdgesDebug(true, -1.f);
+        float Coverage = 0.f;
+        TSet<TWeakObjectPtr<ABaseBuilding>> Supporters;
+
+        const bool bOk = Spawned->ComputeSupportCoverage(Spawned->GetActorTransform(), Coverage, Supporters);
+        if (bOk)
+        {
+            Spawned->Server_RegisterSupports(Supporters);
+            if (Coverage < Spawned->MinSupportCoverage)
+            {
+                Spawned->OnDeath();
+            }
+        }
+        else
+        {
+            Spawned->OnDeath();
+        }
     }
 }
 
@@ -534,6 +550,15 @@ bool UBuildManagerComponent::CheckCanPlaceAt() const
 
             return false;
         }
+    }
+
+    float Coverage = 0.f;
+    TSet<TWeakObjectPtr<ABaseBuilding>> Dummy;
+    const bool bOk = PreviewActor->ComputeSupportCoverage(PreviewActor->GetActorTransform(), Coverage, Dummy);
+
+    if (!bOk || Coverage < PreviewActor->MinSupportCoverage)
+    {
+        return false;
     }
 
     return true;
