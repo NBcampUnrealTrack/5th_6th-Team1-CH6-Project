@@ -15,6 +15,7 @@
 class UCapsuleComponent;
 class USpringArmComponent;
 class UCameraComponent;
+class ABAPlayerController;
 class UMotionWarpingComponent;
 class UInputAction;
 class UHealthAttributeSet;
@@ -253,6 +254,8 @@ protected:
 
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
+
+    FVector ADSLineTrace(ABAPlayerController* PC);
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
@@ -379,8 +382,6 @@ public:
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
-    UCameraComponent* WeaponAdsCamera;
-
     UPROPERTY()
     UAmmoAttributeSet* AmmoAttributeSet;
 
@@ -393,7 +394,6 @@ public:
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
     FTransform SavedSpringArmTransform;
-    float SavedSpringArmLength();
 
 #pragma endregion
 

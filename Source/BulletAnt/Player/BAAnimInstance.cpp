@@ -62,24 +62,29 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
 	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
-	if (bIsAiming)
+	if (bIsAiming && !Character->bIsADS)
 	{
 		DeltaRot = CameraTargetOffset();
 	}
 	TargetPitch = (FMath::Abs(DeltaRot.Pitch) > 90.0f) ? 0.0f : DeltaRot.Pitch;
 	TargetYaw = (FMath::Abs(DeltaRot.Yaw) > 90.0f) ? 0.0f : DeltaRot.Yaw;
 
-	AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 15.0f);
-    AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 15.0f);
-	//if(ParkourComp&&!ParkourComp->bisParkour
-	HandIKAlpha = GetCurveValue(FName("HandIK_Alpha"));
-	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged))
+	if (Character->bIsADS)
 	{
-		if (Character->EquippedWeapon)
-		{
-			USkeletalMeshComponent* WeaponMesh = Character->EquippedWeapon->GetWeaponMesh();
-			LeftHandIKLoc = Character->EquippedWeapon->GetWeaponMesh()->GetSocketLocation(FName("LeftHandSocket"));
-		}
+		AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 0.f);
+		AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 0.f);
+	}
+	else
+	{
+		AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 15.f);
+		AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 15.f);
+	}
+	//if(ParkourComp&&!ParkourComp->bisParkour
+	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("LeftHandSocket"))
+	{
+		FTransform GunLeftHandSocket = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("LeftHandSocket");
+		FTransform Righthand = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("hand_r");
+		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
 	}
 	FVector RightDir = OwningActor->GetActorRightVector();
 
@@ -108,27 +113,38 @@ void UBAAnimInstance::SetIsFiring(bool InFiring)
 
 FRotator UBAAnimInstance::CameraTargetOffset()
 {
-	if (!Character || !Character->GetController())
+	if (!Character)
 		return FRotator::ZeroRotator;
-	FVector CamLoc; FRotator CamRot;
-	Character->GetController()->GetPlayerViewPoint(CamLoc, CamRot);
+	if (Character->IsLocallyControlled() && Character->GetController())
+	{
+		FVector CamLoc;
+		FRotator CamRot;
+		Character->GetController()->GetPlayerViewPoint(CamLoc, CamRot);
 
-	FVector TraceEnd = CamLoc + (CamRot.Vector() * 5000.0f);
+		FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.0f);
 
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(Character);
+		FHitResult Hit;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(Character);
+		if (Character->EquippedWeapon)
+			Params.AddIgnoredActor(Character->EquippedWeapon);
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
 
-	FVector TargetLocation = bHit ? Hit.ImpactPoint : TraceEnd;
+		FVector TargetLocation = bHit ? Hit.ImpactPoint : TraceEnd;
 
-	FVector StartLocation = Character->GetMesh()->GetSocketLocation("head");
+		FVector StartLocation = Character->GetActorLocation() + FVector(0.0f, 0.0f, Character->BaseEyeHeight);
 
-	FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
+		FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
 
-	FRotator ActorRot = Character->GetActorRotation();
-	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(LookAtRot, ActorRot);
+		FRotator ActorRot = Character->GetActorRotation();
+		return UKismetMathLibrary::NormalizedDeltaRotator(LookAtRot, ActorRot);
+	}
+	else
+	{
+		FRotator BaseAimRot = Character->GetBaseAimRotation();
+		FRotator ActorRot = Character->GetActorRotation();
 
-	return DeltaRot;
+		return UKismetMathLibrary::NormalizedDeltaRotator(BaseAimRot, ActorRot);
+	}
 }
