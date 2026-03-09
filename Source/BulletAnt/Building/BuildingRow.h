@@ -33,7 +33,7 @@ public:
     TSubclassOf<ABaseBuilding> BuildingClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
-    TMap<EVoxelType, int32> BuildCost;
+    TMap<EOreType, int32> BuildCost;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
     EBuildCategory Category = EBuildCategory::Turret;

@@ -5,7 +5,7 @@
 #include "UW_OreCount.generated.h"
 
 class UTextBlock;
-enum class EVoxelType : uint8;
+enum class EOreType;
 
 UCLASS()
 class BULLETANT_API UUW_OreCount : public UUserWidget
@@ -14,7 +14,7 @@ class BULLETANT_API UUW_OreCount : public UUserWidget
 	
 public:
 	UFUNCTION()
-	void SetOreCount(EVoxelType OreType, int32 OreCount);
+	void SetOreCount(EOreType OreType, int32 OreCount);
 
 protected:
 	// 추후 변경

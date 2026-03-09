@@ -10,6 +10,15 @@ enum class EVoxelType : uint8
 {
 	BedRock,
 	NormalRock,
+	Vein,
+	Pillar,
+
+	None				UMETA(Hidden)
+};
+
+UENUM()
+enum class EOreType
+{
 	Gold,
 	Mineral,
 
