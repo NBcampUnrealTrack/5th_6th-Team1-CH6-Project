@@ -3,7 +3,7 @@
 #include "UI/UW_BuildMenu.h"
 #include "UI/UW_BuildingIcon.h"
 #include "Components/Button.h"
-#include "Components/WrapBox.h"
+#include "Components/VerticalBox.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
 
@@ -68,12 +68,12 @@ void UUW_BuildMenu::SetCurrentCategory(EBuildCategory NewCategory)
 
 void UUW_BuildMenu::RefreshBuildingList()
 {
-	if (!IsValid(BuildingListWrapBox))
+	if (!IsValid(BuildingListVerticalBox))
 	{
 		return;
 	}
 
-	BuildingListWrapBox->ClearChildren();
+	BuildingListVerticalBox->ClearChildren();
 
 	if (!IsValid(BuildingDataTable) || !BuildingIconWidgetClass)
 	{
@@ -111,6 +111,6 @@ void UUW_BuildMenu::RefreshBuildingList()
 		IconWidget->SetupBuildingIcon(RowName, Row->DisplayName, IconTexture);
 		IconWidget->OnBuildingIconClicked.AddDynamic(this, &ThisClass::HandleBuildingIconClicked);
 
-		BuildingListWrapBox->AddChildToWrapBox(IconWidget);
+		BuildingListVerticalBox->AddChildToVerticalBox(IconWidget);
 	}
 }

@@ -7,7 +7,7 @@
 #include "UW_BuildMenu.generated.h"
 
 class UButton;
-class UWrapBox;
+class UVerticalBox;
 class UDataTable;
 class UUW_BuildingIcon;
 
@@ -54,7 +54,7 @@ private:
 	TObjectPtr<UButton> EtcBtn;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UWrapBox> BuildingListWrapBox;
+	TObjectPtr<UVerticalBox> BuildingListVerticalBox;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build")
 	TObjectPtr<UDataTable> BuildingDataTable;
