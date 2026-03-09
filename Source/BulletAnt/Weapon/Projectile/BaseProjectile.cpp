@@ -85,7 +85,7 @@ void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UP
 
 	if (!HasAuthority()) return;
 
-	if (!OtherActor || OtherActor == GetOwner()) return;
+	if (!OtherActor || OtherActor == CachedOwner) return;
 
 	IAbilitySystemInterface* SourceASCInterface = Cast<IAbilitySystemInterface>(CachedOwner);
 	if (!SourceASCInterface) return;
