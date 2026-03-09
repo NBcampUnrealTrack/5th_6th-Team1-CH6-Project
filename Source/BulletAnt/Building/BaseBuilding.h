@@ -46,8 +46,8 @@ class BULLETANT_API ABaseBuilding : public AActor
 public:	
 	ABaseBuilding();
 
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
@@ -66,6 +66,13 @@ public:
 	virtual void SetPreviewMode(bool bInPreview);
 	virtual void SetCanPlace(bool bInCanPlace);
 	bool IsPreviewMode() const { return bPreviewMode; }
+
+	void GetSupportVolumes(TArray<UPrimitiveComponent*>& OutVolumes) const;
+	bool ComputeSupportCoverage(const FTransform& WorldT, float& OutCoverage, TSet<TWeakObjectPtr<ABaseBuilding>>& OutSupportBuildings) const;
+
+	void Server_RegisterSupports(const TSet<TWeakObjectPtr<ABaseBuilding>>& Supporters);
+	void Server_UnregisterFromSupports();
+	void Server_ReevaluateSupportAndMaybeDie();
 
 protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
@@ -86,8 +93,23 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USceneComponent> PlacementRoot;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> SupportRoot;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStaticMeshComponent> StaticMeshComp;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Support")
+	float MinSupportCoverage = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Support")
+	float SupportSampleSpacing = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Support")
+	float SupportTraceUp = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Support")
+	float SupportTraceDown = 50.f;
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Build|Snap")
@@ -119,4 +141,12 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> PreviewMID;
+
+	// 아래 건물들
+	UPROPERTY(VisibleAnywhere, Category = "Build|Support")
+	TSet<TWeakObjectPtr<ABaseBuilding>> SupportingBuildings;
+
+	// 위 건물들
+	UPROPERTY(VisibleAnywhere, Category = "Build|Support")
+	TSet<TWeakObjectPtr<ABaseBuilding>> SupportedBuildings;
 };
