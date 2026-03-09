@@ -107,9 +107,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Parkour")
 	float HandIKAlpha;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
-	FVector LeftHandIKLoc;
 	TObjectPtr<ABaseWeapon> EquippedWeapon;
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
-	FVector AdsHandIk;;
+	FTransform LeftHandIK_Transform;
 };

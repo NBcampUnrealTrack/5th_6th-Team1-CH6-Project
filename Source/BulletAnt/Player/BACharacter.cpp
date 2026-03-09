@@ -194,7 +194,7 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	if (Speed > 1.f|| GetCharacterMovement()->IsFalling()||bIsAiming)
+	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming)&&!bIsADS)
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
 		GetCharacterMovement()->bUseControllerDesiredRotation = false;
@@ -208,7 +208,7 @@ void ABACharacter::Tick(float DeltaTime)
 			SyncAimYaw = ControlRot.Yaw;
 		}
 	}
-	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetControlRotation().Yaw - LastBodyYaw);
+	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
 
 	IdleTurning(DeltaTime);
 
@@ -606,14 +606,6 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	NewWeapon->EquipWeapon(AbilitySystemComponent);
 
 	EquippedWeapon = NewWeapon;
-	if (WeaponAdsCamera == nullptr)
-	{
-		WeaponAdsCamera = EquippedWeapon->FindComponentByClass<UCameraComponent>();
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("카메라 찾았다!!! 이름: %s"), *WeaponAdsCamera->GetName());
-	}
 }
 
 FVector ABACharacter::GetFireStartLocation_Implementation() const
@@ -707,7 +699,6 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	Server_SetAiming(true);
 }
 
@@ -715,10 +706,10 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
 	if (!bIsAiming) return;
+	if (bIsADS) return;
 	bIsAiming = false;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 
 	Server_SetAiming(false);
 }
@@ -727,23 +718,32 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 	bIsADS = !bIsADS;
-
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
+		FVector SavedTargetPoint = ADSLineTrace(PC);
+
 		if (bIsADS)
 		{
-			GetCharacterMovement()->bUseControllerDesiredRotation = true;
+			FVector SightLoc = EquippedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
+			FRotator SightRot = EquippedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
+
+			FRotator IdealLookAtRot = UKismetMathLibrary::FindLookAtRotation(SightLoc, SavedTargetPoint);
+			FRotator ErrorDelta = UKismetMathLibrary::NormalizedDeltaRotator(IdealLookAtRot, SightRot);
+
+			FRotator CurrentControlRot = PC->GetControlRotation();
+			FRotator NewControlRot = CurrentControlRot + ErrorDelta;
+
+			bUseControllerRotationYaw = true;
+			SpringArm->bUsePawnControlRotation = false;
+			CameraComponent->FieldOfView = 70.f;
 			PC->StartADSUI();
 			AimStart(1.f);
 
-			//SavedSpringArmTransform = SpringArm->GetRelativeTransform();
-
-			//SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-			CameraComponent->SetActive(false);
-			if(WeaponAdsCamera !=nullptr)
-				WeaponAdsCamera->SetActive(true);
-			//SpringArm->TargetArmLength = 0.f;
+			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
+			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
+			SpringArm->TargetArmLength = 0.f;
+			PC->SetControlRotation(NewControlRot);
 
 			if (IsLocallyControlled())
 			{
@@ -759,16 +759,18 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 		}
 		else
 		{
-			GetCharacterMovement()->bUseControllerDesiredRotation = false;
+			bUseControllerRotationYaw = false;
+			SpringArm->bUsePawnControlRotation = true;
+			CameraComponent->FieldOfView = 90.f;
 			PC->StopADSUI();
 			AimStop(1.f);
 
-			//SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-			if (WeaponAdsCamera != nullptr)
-				WeaponAdsCamera->SetActive(false);
-			CameraComponent->SetActive(true);
-			//SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-			//SpringArm->TargetArmLength = 223.f;
+			SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+			SpringArm->SetRelativeTransform(SavedSpringArmTransform);
+			SpringArm->TargetArmLength = 223.f;
+			FVector RestoredCamLoc = CameraComponent->GetComponentLocation();
+			FRotator NewLookAtRot = UKismetMathLibrary::FindLookAtRotation(RestoredCamLoc, SavedTargetPoint);
+			PC->SetControlRotation(NewLookAtRot);
 
 			if (IsLocallyControlled())
 			{
@@ -1087,6 +1089,23 @@ void ABACharacter::StopMontage()
 			ServerRPC_StopTurnMontage();
 		}
 	}
+}
+
+FVector ABACharacter::ADSLineTrace(ABAPlayerController* PC)
+{
+	FVector CamLoc;
+	FRotator CamRot;
+	PC->GetPlayerViewPoint(CamLoc, CamRot);
+	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.f);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	if (EquippedWeapon)
+		Params.AddIgnoredActor(EquippedWeapon);
+	GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+
+	return Hit.bBlockingHit ? Hit.ImpactPoint : TraceEnd;
 }
 
 void ABACharacter::RotateScannerParent(const FVector2D& Input)
