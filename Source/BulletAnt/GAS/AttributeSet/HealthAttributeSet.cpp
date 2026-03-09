@@ -40,6 +40,7 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 			FGameplayCueParameters Params;
 			Params.EffectContext = Data.EffectSpec.GetContext();
+			Params.RawMagnitude = GetIncomingDamage();
 			Data.Target.ExecuteGameplayCue(TAG_GameplayCue_Combat_Damaged,Params);
 
 			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
@@ -47,6 +48,24 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 				TAG_Event_Combat_Damaged,
 				Payload
 			);
+
+			/*FVector HitLocation;
+			if (Data.EffectSpec.GetContext().GetHitResult())
+			{
+				UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+					GetWorld(),
+					DamageNiagara,
+					HitLocation,
+					FRotator::ZeroRotator
+				);
+
+				if (NiagaraComp)
+				{
+					NiagaraComp->SetVariableFloat(TEXT("User_Damage"), LocalIncomingDamage);
+				}
+			}*/
+
+			
 
 			if (GetHealth() == 0.f)
 			{				
