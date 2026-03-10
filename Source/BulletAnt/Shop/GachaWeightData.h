@@ -4,9 +4,7 @@
 #include "Engine/DataTable.h"
 #include "GachaWeightData.generated.h"
 
-class ABaseWeapon;
-
-USTRUCT()
+USTRUCT(BlueprintType)
 struct BULLETANT_API FGachaWeightData : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -16,7 +14,7 @@ public:
 	int32 GachaID;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<ABaseWeapon> WeaponClass;
+	TSubclassOf<AActor> ActorClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Weight;

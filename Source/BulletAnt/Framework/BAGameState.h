@@ -42,6 +42,7 @@ private:
 public:
 	void SetOreCount(EOreType OreType, int32 Count);
 	int32 GetOreCount(EOreType OreType);
+	bool CanPurchase(const TMap<EOreType, int32>& Cost);
 	FORCEINLINE const TMap<EOreType, int32>& GetOreInventory() const { return OreInventory; }
 
 	void BindOnOreChanged(const FOnOreChanged::FDelegate& Delegate);

@@ -25,6 +25,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 //건축
 #include "Building/BuildManagerComponent.h"
+#include "Building/BaseShop.h"
 #include "Components/SceneCaptureComponent2D.h"
 
 // Sets default values

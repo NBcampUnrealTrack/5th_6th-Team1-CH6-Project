@@ -64,7 +64,7 @@ protected:
 	float CachedDamage;
 
 	UPROPERTY()
-	TWeakObjectPtr<AActor> CachedOwner;
+	AActor* CachedOwner;
 
 	UPROPERTY()
 	TObjectPtr<URangedWeaponDataAsset> CachedData;

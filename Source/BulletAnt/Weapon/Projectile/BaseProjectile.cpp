@@ -102,9 +102,11 @@ void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UP
 
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddHitResult(Hit);
+	Context.AddInstigator(CachedOwner,this);
 
 	FGameplayEffectSpecHandle Spec =
 		SourceASC->MakeOutgoingSpec(CachedData->OnUseStateHitEffect, 1.f, Context);
+	
 
 	if (!Spec.IsValid()) return;
 

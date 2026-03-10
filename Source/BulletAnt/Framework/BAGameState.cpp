@@ -61,6 +61,39 @@ int32 ABAGameState::GetOreCount(EOreType OreType)
 	return OreCountPtr != nullptr ? *OreCountPtr : 0;
 }
 
+bool ABAGameState::CanPurchase(const TMap<EOreType, int32>& Cost)
+{
+    if (!IsValid(this))
+    {
+        return false;
+    }
+
+    if (Cost.Num() == 0)
+    {
+        return true;
+    }
+
+    // 보유 광물 체크
+    for (const TPair<EOreType, int32>& Pair : Cost)
+    {
+        const EOreType Type = Pair.Key;
+        const int32 Need = Pair.Value;
+
+        if (Need <= 0)
+        {
+            continue;
+        }
+
+        const int32 CurrOreCount = GetOreCount(Type);
+        if (CurrOreCount < Need)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void ABAGameState::BindOnOreChanged(const FOnOreChanged::FDelegate& Delegate)
 {
 	OnOreChanged.Add(Delegate);
