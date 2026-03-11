@@ -335,6 +335,21 @@ UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
 	return nullptr;
 }
 
+float ABaseEnemyCharacter::GetWalkSpeed() const
+{
+	return WalkSpeed;
+}
+
+void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
+{
+	WalkSpeed = InWalkSpeed;
+}
+
+void ABaseEnemyCharacter::OnRep_WalkSpeed()
+{
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
 //void ABaseEnemyCharacter::Die()
 //{
 //	if (HasAuthority())
@@ -389,6 +404,8 @@ void ABaseEnemyCharacter::BeginPlay()
 		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health);
 		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health);
 
+		WalkSpeed = BaseEnemyDataAsset->MoveSpeed;
+		OnRep_WalkSpeed();
 
 		UWorld* World = GetWorld();
 		if (IsValid(World))
@@ -455,6 +472,7 @@ void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
+	DOREPLIFETIME(ABaseEnemyCharacter, WalkSpeed);
 }
 
 void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)

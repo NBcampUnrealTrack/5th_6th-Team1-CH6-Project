@@ -181,4 +181,19 @@ protected:
 
 #pragma endregion
 
+#pragma region Init
+
+public:
+	float GetWalkSpeed() const;
+	void SetWalkSpeed(float InWalkSpeed);
+
+protected:
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_WalkSpeed)
+	float WalkSpeed;
+
+	UFUNCTION()
+	void OnRep_WalkSpeed();
+
+#pragma endregion
+
 };
