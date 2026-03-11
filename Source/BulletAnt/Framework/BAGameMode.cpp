@@ -36,12 +36,10 @@ void ABAGameMode::Logout(AController* Exiting)
 	Super::Logout(Exiting);
 }
 
-void ABAGameMode::MineOre(EVoxelType OreType, int32 PointCount)
+void ABAGameMode::MineOre(EOreType OreType, int32 PointCount)
 {
-	if (OreType == EVoxelType::BedRock ||
-		OreType == EVoxelType::NormalRock ||
-		OreType == EVoxelType::None)
-		return;
+    if (OreType == EOreType::None)
+        return;
 
 	if (PointCount <= 0)
 		return;
@@ -59,7 +57,7 @@ void ABAGameMode::MineOre(EVoxelType OreType, int32 PointCount)
 	GS->SetOreCount(OreType, TotalOreCount);
 }
 
-bool ABAGameMode::TrySpendOre(const TMap<EVoxelType, int32>& Cost)
+bool ABAGameMode::TrySpendOre(const TMap<EOreType, int32>& Cost)
 {
     if (!HasAuthority())
     {
@@ -78,9 +76,9 @@ bool ABAGameMode::TrySpendOre(const TMap<EVoxelType, int32>& Cost)
     }
 
     // 보유 광물 체크
-    for (const TPair<EVoxelType, int32>& Pair : Cost)
+    for (const TPair<EOreType, int32>& Pair : Cost)
     {
-        const EVoxelType Type = Pair.Key;
+        const EOreType Type = Pair.Key;
         const int32 Need = Pair.Value;
 
         if (Need <= 0)
@@ -96,9 +94,9 @@ bool ABAGameMode::TrySpendOre(const TMap<EVoxelType, int32>& Cost)
     }
 
     // 광물 소모
-    for (const TPair<EVoxelType, int32>& Pair : Cost)
+    for (const TPair<EOreType, int32>& Pair : Cost)
     {
-        const EVoxelType Type = Pair.Key;
+        const EOreType Type = Pair.Key;
         const int32 Need = Pair.Value;
 
         if (Need <= 0)

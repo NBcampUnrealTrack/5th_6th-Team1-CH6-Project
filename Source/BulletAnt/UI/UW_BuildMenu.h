@@ -3,9 +3,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Building/BuildingRow.h"
 #include "UW_BuildMenu.generated.h"
 
 class UButton;
+class UVerticalBox;
+class UDataTable;
+class UUW_BuildingIcon;
+class UTextBlock;
+class UImage;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBuildMenuSelected, FName, BuildingRow);
 
@@ -25,10 +31,21 @@ private:
 	void OnTurretBtnClicked();
 
 	UFUNCTION()
-	void OnBoxBtnClicked();
+	void OnBuildingBtnClicked();
 
 	UFUNCTION()
-	void OnStairBtnClicked();
+	void OnEtcBtnClicked();
+
+	UFUNCTION()
+	void HandleBuildingIconClicked(FName BuildingRowName);
+
+	void SetCurrentCategory(EBuildCategory NewCategory);
+	void RefreshBuildingList();
+
+	void UpdateSelectedInfo(FName BuildingRowName);
+	void ClearSelectedInfo();
+	FText MakeBuildCostText(const TMap<EOreType, int32>& BuildCost) const;
+
 
 public:
 	FOnBuildMenuSelected OnBuildMenuSelected;
@@ -38,18 +55,35 @@ private:
 	TObjectPtr<UButton> TurretBtn;
 
 	UPROPERTY(Meta = (BindWidget))
-	TObjectPtr<UButton> BoxBtn;
+	TObjectPtr<UButton> BuildingBtn;
 
 	UPROPERTY(Meta = (BindWidget))
-	TObjectPtr<UButton> StairBtn;
+	TObjectPtr<UButton> EtcBtn;
 
-	// 임시 row 이름들(나중에 제거)
-	UPROPERTY(EditDefaultsOnly, Category = "Build")
-	FName TurretRow = TEXT("TestTurret");
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UVerticalBox> BuildingListVerticalBox;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> SelectedNameText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> SelectedIconImage;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> SelectedCostText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> SelectedInfoText;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build")
-	FName BoxRow = TEXT("TestBox");
+	TObjectPtr<UDataTable> BuildingDataTable;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build")
-	FName StairRow = TEXT("TestStair");
+	TSubclassOf<UUW_BuildingIcon> BuildingIconWidgetClass;
+
+	UPROPERTY()
+	EBuildCategory CurrentCategory = EBuildCategory::Turret;
+
+	UPROPERTY()
+	FName SelectedBuildingRowName = NAME_None;
 };

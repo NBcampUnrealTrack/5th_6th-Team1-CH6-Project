@@ -15,6 +15,7 @@
 class UCapsuleComponent;
 class USpringArmComponent;
 class UCameraComponent;
+class ABAPlayerController;
 class UMotionWarpingComponent;
 class UInputAction;
 class UHealthAttributeSet;
@@ -109,6 +110,10 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
     TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
 
+private:
+    UPROPERTY()
+    TArray<UPrimitiveComponent*> HiddenComp;
+
 
 #pragma region InputAction
 
@@ -177,6 +182,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* CycleNextAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* ToggleBuildInfoAction;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
     UInputAction* GroundScannerAction;
 
@@ -208,6 +216,7 @@ protected:
     void OnSelectCat3(const FInputActionValue& Value);
     void OnCyclePrev(const FInputActionValue& Value);
     void OnCycleNext(const FInputActionValue& Value);
+    void OnToggleBuildInfo(const FInputActionValue& Value);
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
 
@@ -249,6 +258,8 @@ protected:
 
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
+
+    FVector ADSLineTrace(ABAPlayerController* PC);
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
@@ -366,8 +377,13 @@ public:
     virtual FVector GetFireStartLocation_Implementation() const override;
     virtual FVector GetFireDirection_Implementation() const override;
 
+    UFUNCTION()
+    void OnRep_bIsFiring();
+
     UFUNCTION(Server,Reliable)
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
+
+    void SetbIsFiring(bool InIsFiring);
 
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
@@ -387,7 +403,9 @@ public:
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
     FTransform SavedSpringArmTransform;
-    float SavedSpringArmLength();
+    
+    UPROPERTY(ReplicatedUsing = OnRep_bIsFiring)
+    bool bIsFiring = false;
 
 #pragma endregion
 

@@ -11,6 +11,7 @@
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
 #include "Weapon/Projectile/BaseProjectile.h"
+#include "TimerManager.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -89,7 +90,6 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
-	
 
 	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(ActorInfo->AvatarActor.Get());
 	FVector Dir = IFireStartInterface::Execute_GetFireDirection(ActorInfo->AvatarActor.Get());
@@ -137,7 +137,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			RangedData,
 			SourceActor
 		);
-
 		Prj->ActivateProjectile();
 	}
 }
@@ -176,52 +175,6 @@ void UGA_Fire::StartAutoFireLoop()
 	);
 }
 
-void UGA_Fire::ApplyDamageEffect(
-	const FGameplayAbilityActorInfo* ActorInfo,
-	AActor* Target,
-	const URangedWeaponDataAsset* WeaponData,
-	FHitResult& InHitResult)
-{
-	if (!Target)
-	{
-		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!SourceASC)
-	{
-		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	UAbilitySystemComponent* TargetASC =
-		Target->FindComponentByClass<UAbilitySystemComponent>();
-	if (!TargetASC)
-	{
-		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	Context.AddHitResult(InHitResult);
-
-	FGameplayEffectSpecHandle Spec =
-		SourceASC->MakeOutgoingSpec(WeaponData->OnUseStateHitEffect, 1.f, Context);
-	
-	if (!Spec.IsValid())
-	{
-		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	Spec.Data->SetSetByCallerMagnitude(
-		TAG_Data_Combat_Damage,
-		RangedData->BaseDamage
-	);
-	
-	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);
-}
 
 FVector UGA_Fire::ApplySpread(const FVector& Dir, float Degree)
 {
@@ -230,4 +183,5 @@ FVector UGA_Fire::ApplySpread(const FVector& Dir, float Degree)
 	const float HalfRad = FMath::DegreesToRadians(Degree * 0.5f);
 	return FMath::VRandCone(Dir, HalfRad);
 }
+
 

@@ -170,6 +170,58 @@ void UBuildManagerComponent::ToggleSnapMode()
     bSnapMode = !bSnapMode;
 }
 
+void UBuildManagerComponent::ToggleBuildMenu()
+{
+    if (!bBuildMode)
+    {
+        return;
+    }
+
+    APlayerController* PC = CachedPC.Get();
+    if (!PC)
+    {
+        RefreshCachedRef();
+        PC = CachedPC.Get();
+    }
+
+    if (!PC)
+    {
+        return;
+    }
+
+    ULocalPlayer* LP = PC->GetLocalPlayer();
+    if (!LP)
+    {
+        return;
+    }
+
+    UUISubsystem* UIS = LP->GetSubsystem<UUISubsystem>();
+    if (!UIS)
+    {
+        return;
+    }
+
+    if (bBuildMenuOpen)
+    {
+        UIS->HideUI(EUIType::BuildMenu);
+        UIS->ApplyGameOnlyInputMode();
+        bBuildMenuOpen = false;
+        return;
+    }
+
+    UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+    if (!IsValid(BuildMenuWidget))
+    {
+        return;
+    }
+
+    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+
+    UIS->ApplyGameAndUIInputMode(BuildMenuWidget);
+    bBuildMenuOpen = true;
+}
+
 void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass)
 {
     UWorld* World = GetWorld();
@@ -481,6 +533,22 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
     if (Spawned)
     {
         Spawned->DrawEdgesDebug(true, -1.f);
+        float Coverage = 0.f;
+        TSet<TWeakObjectPtr<ABaseBuilding>> Supporters;
+
+        const bool bOk = Spawned->ComputeSupportCoverage(Spawned->GetActorTransform(), Coverage, Supporters);
+        if (bOk)
+        {
+            Spawned->Server_RegisterSupports(Supporters);
+            if (Coverage < Spawned->MinSupportCoverage)
+            {
+                Spawned->OnDeath();
+            }
+        }
+        else
+        {
+            Spawned->OnDeath();
+        }
     }
 }
 
@@ -534,6 +602,15 @@ bool UBuildManagerComponent::CheckCanPlaceAt() const
 
             return false;
         }
+    }
+
+    float Coverage = 0.f;
+    TSet<TWeakObjectPtr<ABaseBuilding>> Dummy;
+    const bool bOk = PreviewActor->ComputeSupportCoverage(PreviewActor->GetActorTransform(), Coverage, Dummy);
+
+    if (!bOk || Coverage < PreviewActor->MinSupportCoverage)
+    {
+        return false;
     }
 
     return true;

@@ -32,6 +32,13 @@ protected:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		bool bReplicateEndAbility,
 		bool bWasCancelled) override;
+	
+	virtual void PreActivate(const FGameplayAbilitySpecHandle Handle, 
+		const FGameplayAbilityActorInfo* ActorInfo, 
+		const FGameplayAbilityActivationInfo ActivationInfo, 
+		FOnGameplayAbilityEnded::FDelegate* OnGameplayAbilityEndedDelegate,
+		const FGameplayEventData* TriggerEventData = nullptr
+	) override;
 
 	void HandleRespawn();
 
@@ -51,10 +58,6 @@ protected:
 	UAbilitySystemComponent* ASC;
 
 	FGameplayTagContainer DeadTag;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayEffect> DeadStateEffect;
-
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UGameplayEffect> RespawnHealEffect;
 

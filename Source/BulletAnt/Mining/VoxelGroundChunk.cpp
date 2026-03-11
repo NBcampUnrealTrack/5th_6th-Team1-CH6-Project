@@ -219,8 +219,8 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 				FVector4f Color(
 					VoxelTypes[GroundVertex] == EVoxelType::BedRock,
 					VoxelTypes[GroundVertex] == EVoxelType::NormalRock,
-					VoxelTypes[GroundVertex] == EVoxelType::Gold,
-					VoxelTypes[GroundVertex] == EVoxelType::Mineral);
+					VoxelTypes[GroundVertex] == EVoxelType::Vein,
+					VoxelTypes[GroundVertex] == EVoxelType::Pillar);
 				Context.OutMeshData.VertexColor.Add(Color);
 			}
 		}
@@ -317,8 +317,8 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 				FVector4f Color(
 					VoxelTypes[GroundVertex] == EVoxelType::BedRock,
 					VoxelTypes[GroundVertex] == EVoxelType::NormalRock,
-					VoxelTypes[GroundVertex] == EVoxelType::Gold,
-					VoxelTypes[GroundVertex] == EVoxelType::Mineral);
+					VoxelTypes[GroundVertex] == EVoxelType::Vein,
+					VoxelTypes[GroundVertex] == EVoxelType::Pillar);
 				Context.OutMeshData.VertexColor.Add(Color);
 			}
 		}

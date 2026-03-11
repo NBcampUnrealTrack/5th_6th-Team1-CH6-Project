@@ -49,11 +49,7 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 		return;
 	}
 
-	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
-	if (Anim)
-	{
-		Anim->SetIsFiring(true);
-	}
+	PlayerCharacter->SetbIsFiring(true);
 	
 	if (IsLocallyControlled()) 
 	{
@@ -71,11 +67,7 @@ void UGA_PlayerFire::EndAbility(const FGameplayAbilitySpecHandle Handle, const F
 {
 	if (PlayerCharacter) 
 	{
-		UBAAnimInstance* Anim = Cast<UBAAnimInstance>(PlayerCharacter->GetMesh()->GetAnimInstance());
-		if (Anim)
-		{
-			Anim->SetIsFiring(false);
-		}
+		PlayerCharacter->SetbIsFiring(false);
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);

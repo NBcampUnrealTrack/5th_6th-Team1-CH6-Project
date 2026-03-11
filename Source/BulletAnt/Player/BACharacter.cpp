@@ -36,7 +36,7 @@ ABACharacter::ABACharacter()
 
 	// 캐릭터 회전 설정
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = true;
+	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
 
@@ -80,7 +80,7 @@ ABACharacter::ABACharacter()
 	//Test
 	//앉기 기능 활성화
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
-
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	bIsAiming = false;
 	bIsRunning = false;
 
@@ -144,7 +144,36 @@ void ABACharacter::BeginPlay()
 	{
 		SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
 		SceneCapture2D->TextureTarget = RT_GroundScanner;
+
+		TArray<USceneComponent*> MeshChildren;
+		GetMesh()->GetChildrenComponents(false, MeshChildren);
+
+		USceneComponent* FaceComp = nullptr;
+		for (USceneComponent* Child : MeshChildren)
+		{
+			if (Child->GetName().Contains(TEXT("Face")))
+			{
+				FaceComp = Child;
+				break;
+			}
+		}
+
+		if (FaceComp)
+		{
+			TArray<USceneComponent*> FaceAndHair;
+			FaceComp->GetChildrenComponents(true, FaceAndHair);
+			FaceAndHair.Add(FaceComp);
+
+			for (USceneComponent* Comp : FaceAndHair)
+			{
+				if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(Comp))
+				{
+					HiddenComp.Add(PrimComp);
+				}
+			}
+		}
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -165,10 +194,10 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	/*if (Speed > 1.f)
-		bUseControllerRotationYaw = true;
+	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming)&&!bIsADS)
+		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
-		bUseControllerRotationYaw = false;*/
+		GetCharacterMovement()->bUseControllerDesiredRotation = false;
 
 	if (HasAuthority())
 	{
@@ -179,7 +208,7 @@ void ABACharacter::Tick(float DeltaTime)
 			SyncAimYaw = ControlRot.Yaw;
 		}
 	}
-	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetControlRotation().Yaw - LastBodyYaw);
+	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
 
 	IdleTurning(DeltaTime);
 
@@ -319,6 +348,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(CycleNextAction, ETriggerEvent::Started, this, &ABACharacter::OnCycleNext);
 		}
+		if (ToggleBuildInfoAction)
+		{
+			EnhancedInputComponent->BindAction(ToggleBuildInfoAction, ETriggerEvent::Started, this, &ABACharacter::OnToggleBuildInfo);
+		}
+		
 
 		// 지하
 		if (GroundScannerAction)
@@ -602,7 +636,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		{
 			if (bIsADS)
 			{
-				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector();
+				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
 
 			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
@@ -616,7 +650,26 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		}
 	}
 
-	return GetActorRotation().Vector();
+	return GetActorRotation().Vector().GetSafeNormal();
+}
+
+void ABACharacter::OnRep_bIsFiring()
+{
+	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(GetMesh()->GetAnimInstance());
+	if (Anim)
+	{
+		Anim->SetIsFiring(bIsFiring);
+	}
+}
+
+void ABACharacter::SetbIsFiring(bool InIsFiring)
+{
+	bIsFiring = InIsFiring;
+	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(GetMesh()->GetAnimInstance());
+	if (Anim)
+	{
+		Anim->SetIsFiring(bIsFiring);
+	}
 }
 
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
@@ -651,7 +704,6 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	//bUseControllerRotationYaw = true;
 	Server_SetAiming(true);
 }
 
@@ -659,10 +711,11 @@ void ABACharacter::AimStart(const FInputActionValue& Value)
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
 	if (!bIsAiming) return;
+	if (bIsADS) return;
 	bIsAiming = false;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	//bUseControllerRotationYaw = false;
+
 	Server_SetAiming(false);
 }
 
@@ -670,28 +723,71 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 	bIsADS = !bIsADS;
-
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
+		FVector SavedTargetPoint = ADSLineTrace(PC);
+
 		if (bIsADS)
 		{
+			FVector SightLoc = EquippedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
+			FRotator SightRot = EquippedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
+
+			FRotator IdealLookAtRot = UKismetMathLibrary::FindLookAtRotation(SightLoc, SavedTargetPoint);
+			FRotator ErrorDelta = UKismetMathLibrary::NormalizedDeltaRotator(IdealLookAtRot, SightRot);
+
+			FRotator CurrentControlRot = PC->GetControlRotation();
+			FRotator NewControlRot = CurrentControlRot + ErrorDelta;
+
+			bUseControllerRotationYaw = true;
+			SpringArm->bUsePawnControlRotation = false;
+			CameraComponent->FieldOfView = 70.f;
 			PC->StartADSUI();
 			AimStart(1.f);
 
 			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
-
 			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
 			SpringArm->TargetArmLength = 0.f;
+			PC->SetControlRotation(NewControlRot);
+
+			if (IsLocallyControlled())
+			{
+				GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
+				for (UPrimitiveComponent* Comp : HiddenComp)
+				{
+					if (Comp)
+					{
+						Comp->SetOwnerNoSee(true);
+					}
+				}
+			}
 		}
 		else
 		{
+			bUseControllerRotationYaw = false;
+			SpringArm->bUsePawnControlRotation = true;
+			CameraComponent->FieldOfView = 90.f;
 			PC->StopADSUI();
 			AimStop(1.f);
 
 			SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 			SpringArm->SetRelativeTransform(SavedSpringArmTransform);
 			SpringArm->TargetArmLength = 223.f;
+			FVector RestoredCamLoc = CameraComponent->GetComponentLocation();
+			FRotator NewLookAtRot = UKismetMathLibrary::FindLookAtRotation(RestoredCamLoc, SavedTargetPoint);
+			PC->SetControlRotation(NewLookAtRot);
+
+			if (IsLocallyControlled())
+			{
+				GetMesh()->UnHideBoneByName(FName("head"));
+				for (UPrimitiveComponent* Comp : HiddenComp)
+				{
+					if (Comp)
+					{
+						Comp->SetOwnerNoSee(false);
+					}
+				}
+			}
 		}
 	}
 }
@@ -809,6 +905,11 @@ void ABACharacter::OnCyclePrev(const FInputActionValue& Value)
 void ABACharacter::OnCycleNext(const FInputActionValue& Value)
 {
 	BuildManager->OnCycleNext();
+}
+
+void ABACharacter::OnToggleBuildInfo(const FInputActionValue& Value)
+{
+	BuildManager->ToggleBuildMenu();
 }
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
@@ -998,6 +1099,23 @@ void ABACharacter::StopMontage()
 			ServerRPC_StopTurnMontage();
 		}
 	}
+}
+
+FVector ABACharacter::ADSLineTrace(ABAPlayerController* PC)
+{
+	FVector CamLoc;
+	FRotator CamRot;
+	PC->GetPlayerViewPoint(CamLoc, CamRot);
+	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.f);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	if (EquippedWeapon)
+		Params.AddIgnoredActor(EquippedWeapon);
+	GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+
+	return Hit.bBlockingHit ? Hit.ImpactPoint : TraceEnd;
 }
 
 void ABACharacter::RotateScannerParent(const FVector2D& Input)

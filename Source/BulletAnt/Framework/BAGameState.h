@@ -8,7 +8,7 @@
 class ABaseCore;
 class ABAPlayerController;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EVoxelType, OreType, int32, OreCount);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EOreType, OreType, int32, OreCount);
 
 DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
 
@@ -40,20 +40,20 @@ private:
 #pragma region Ore
 
 public:
-	void SetOreCount(EVoxelType OreType, int32 Count);
-	int32 GetOreCount(EVoxelType OreType);
-	FORCEINLINE const TMap<EVoxelType, int32>& GetOreInventory() const { return OreInventory; }
+	void SetOreCount(EOreType OreType, int32 Count);
+	int32 GetOreCount(EOreType OreType);
+	FORCEINLINE const TMap<EOreType, int32>& GetOreInventory() const { return OreInventory; }
 
 	void BindOnOreChanged(const FOnOreChanged::FDelegate& Delegate);
 	void UnbindOnOreChanged(const UObject* Object);
 
 private:
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_UpdateOreCount(EVoxelType OreType, int32 Count);
+	void Multicast_UpdateOreCount(EOreType OreType, int32 Count);
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TMap<EVoxelType, int32> OreInventory;
+	TMap<EOreType, int32> OreInventory;
 
 	UPROPERTY()
 	FOnOreChanged OnOreChanged;

@@ -101,9 +101,13 @@ protected:
 
 	FRotator PreviousRotation;
 
-	UPROPERTY(BlueprintReadOnly, Category = "TurnInPlace")
+	UPROPERTY(BlueprintReadOnly, Category = "Anim|TurnInPlace")
 	float RootYawOffset;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Parkour|IK")
+	UPROPERTY(BlueprintReadOnly, Category = "Anim|Parkour")
 	float HandIKAlpha;
+
+	TObjectPtr<ABaseWeapon> EquippedWeapon;
+	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
+	FTransform LeftHandIK_Transform;
 };

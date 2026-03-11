@@ -16,6 +16,7 @@ public class BulletAnt : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"GeometryFramework", "GeometryCore",
+			"Niagara",
 
 			//Character
 			"AnimGraphRuntime",

@@ -22,11 +22,11 @@ public:
 	uint8 IsoLevel = 100;				// 지표면 임계값
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
-	EVoxelType VeinVoxelType;
+	EOreType VeinOreType;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
 	int32 VeinCount = 32768;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
-	EVoxelType PillarVoxelType;
+	EOreType PillarOreType;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OreSetting")
 	int32 PillarCount = 8192;
 
