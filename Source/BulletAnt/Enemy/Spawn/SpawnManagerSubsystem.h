@@ -28,6 +28,7 @@ protected:
 	void UpdatePreparationTime();
 	void StartWave();
 	void SpawnEnemies();
+	bool CanSpawnEnemy(FVector& InSpawnLocation);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
