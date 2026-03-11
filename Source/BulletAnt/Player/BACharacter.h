@@ -182,6 +182,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* CycleNextAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
+    UInputAction* ToggleBuildInfoAction;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
     UInputAction* GroundScannerAction;
 
@@ -213,6 +216,7 @@ protected:
     void OnSelectCat3(const FInputActionValue& Value);
     void OnCyclePrev(const FInputActionValue& Value);
     void OnCycleNext(const FInputActionValue& Value);
+    void OnToggleBuildInfo(const FInputActionValue& Value);
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
 

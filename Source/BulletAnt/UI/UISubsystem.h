@@ -33,6 +33,11 @@ public:
 
 	void ResetAllUI();
 
+	// 입력 모드 제어
+	void ApplyGameOnlyInputMode();
+	void ApplyUIOnlyInputMode(UUserWidget* FocusWidget);
+	void ApplyGameAndUIInputMode(UUserWidget* FocusWidget);
+
 private:
 	void InitRootHUD();
 	void ApplyLayoutPreset(UCanvasPanelSlot* Slot, const FUILayoutPreset& Layout);

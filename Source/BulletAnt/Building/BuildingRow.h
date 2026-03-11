@@ -47,7 +47,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Support")
     float SupportSampleSpacing = 50.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stat")
     float Health = 100.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display")
