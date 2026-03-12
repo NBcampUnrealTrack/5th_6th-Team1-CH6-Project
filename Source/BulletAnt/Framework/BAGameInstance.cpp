@@ -5,9 +5,12 @@ void UBAGameInstance::OnStart()
 {
 	Super::OnStart();
 
-	UMultiplayerSubsystem* MultiplayerSubsystem = GetSubsystem<UMultiplayerSubsystem>();
-	if (IsValid(MultiplayerSubsystem) == true)
+	if (bLoginOnStart == true)
 	{
-		MultiplayerSubsystem->EpicLogin();
+		UMultiplayerSubsystem* MultiplayerSubsystem = GetSubsystem<UMultiplayerSubsystem>();
+		if (IsValid(MultiplayerSubsystem) == true)
+		{
+			MultiplayerSubsystem->EpicLogin();
+		}
 	}
 }

@@ -44,7 +44,12 @@ public class BulletAnt : ModuleRules
 			// EOS
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
-			"OnlineSubsystemEOS"
+			"OnlineSubsystemEOS",
+			"EOSSDK",
+
+			// EOS - VoiceChat
+			"EOSVoiceChat",
+			"VoiceChat"
 		});
 
 		PublicIncludePaths.AddRange(new string[] {

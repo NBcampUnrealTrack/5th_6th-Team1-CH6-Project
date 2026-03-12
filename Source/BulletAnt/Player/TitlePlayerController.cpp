@@ -55,6 +55,6 @@ void ATitlePlayerController::HandleOptionRequested()
 	UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
 	if (IsValid(MultiplayerSubSystem) == true)
 	{
-		MultiplayerSubSystem->CreateSession();
+		MultiplayerSubSystem->ServerTravelToLobby();
 	}
 }
