@@ -4,9 +4,9 @@
 #include "GameFramework/Actor.h"
 #include "BATransportShip.generated.h"
 
-class USplineComponent;
-class UTimelineComponent;
+class UProjectileMovementComponent;
 class ABAItemBox;
+class ABaseWeapon;
 
 UCLASS()
 class BULLETANT_API ABATransportShip : public AActor
@@ -20,7 +20,7 @@ class BULLETANT_API ABATransportShip : public AActor
 	UStaticMeshComponent* PlaneMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	USplineComponent* Spline;
+	UProjectileMovementComponent* ProjectileMovement;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<ABAItemBox> ItemBox;
@@ -29,7 +29,7 @@ public:
 	ABATransportShip();
 
 	UFUNCTION()
-	void InitPlane(FVector& InDropLocation, TSubclassOf<AActor> InItem);
+	void InitPlane(FVector& InDropLocation, TSubclassOf<ABaseWeapon> InItem);
 
 protected:
 	virtual void Tick(float DeltaTime) override;
@@ -37,15 +37,14 @@ protected:
 	void SpawnItemBox();
 	
 	UPROPERTY()
-	TSubclassOf<AActor> Item;
+	TSubclassOf<ABaseWeapon> Item;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Speed = 1000.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float TotalDistance = 20000.f;
+	float TotalDistance = 40000.f;
 
 	float CurrentDistance = 0.f;
-	float DropDistance = 0.f;
 	bool bIsDropped = false;
 };

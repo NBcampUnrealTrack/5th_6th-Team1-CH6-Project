@@ -2,11 +2,15 @@
 
 #include "Components/SplineComponent.h"
 #include "Shop/BAItemBox.h"
+#include "Net/UnrealNetwork.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "Weapon/BaseWeapon.h"
 
 ABATransportShip::ABATransportShip()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+	SetReplicateMovement(true);
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
@@ -15,64 +19,63 @@ ABATransportShip::ABATransportShip()
 	PlaneMesh->SetupAttachment(Root);
 	PlaneMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	Spline = CreateDefaultSubobject<USplineComponent>(TEXT("Spline"));
+	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Projectile Movement"));
+
+	ProjectileMovement->bShouldBounce = false;
+	ProjectileMovement->bRotationFollowsVelocity = true;
+	ProjectileMovement->bRotationRemainsVertical = true;
+	ProjectileMovement->bInterpMovement = true;
+	ProjectileMovement->bAutoActivate = false;
+	ProjectileMovement->ProjectileGravityScale = 0.f;
 }
 
-void ABATransportShip::InitPlane(FVector& InDropLocation, TSubclassOf<AActor> InItem)
+void ABATransportShip::InitPlane(FVector& InDropLocation, TSubclassOf<ABaseWeapon> InItem)
 {
+	if (!HasAuthority()) return;
 	if (!InItem) return;
 	Item = InItem;
 
 	float DirectionX = FMath::RandRange(-1.f, 1.f);
 	float DirectionY = FMath::RandRange(-1.f, 1.f);
 	FVector Direction = FVector(DirectionX, DirectionY, 0.f).GetSafeNormal();
-	SetActorRotation(Direction.Rotation());
-
+	
 	FVector DropLocation = InDropLocation;
 	DropLocation.X += FMath::RandRange(-1000.f, 1000.f);
 	DropLocation.Y += FMath::RandRange(-1000.f, 1000.f);
 
-	FVector Start = DropLocation - Direction * TotalDistance;
-	FVector End = DropLocation + Direction * TotalDistance;
+	FVector Start = DropLocation - Direction * TotalDistance / 2;
+	FVector End = DropLocation + Direction * TotalDistance / 2;
 
-	Spline->ClearSplinePoints();
-
-	Spline->AddSplinePoint(Start, ESplineCoordinateSpace::World);
-	Spline->AddSplinePoint(DropLocation, ESplineCoordinateSpace::World);
-	Spline->AddSplinePoint(End, ESplineCoordinateSpace::World);
-
-	Spline->UpdateSpline();
-
+	SetActorRotation(Direction.Rotation());
 	SetActorLocation(Start);
 
-	DropDistance = Spline->GetDistanceAlongSplineAtSplinePoint(1);
+	ProjectileMovement->InitialSpeed = Speed;
+	ProjectileMovement->MaxSpeed = Speed;
+	ProjectileMovement->Velocity = Direction * Speed;
 
+	bIsDropped = false;
+	CurrentDistance = 0.f;
+	ProjectileMovement->Activate();
 }
 
 void ABATransportShip::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!bIsDropped && CurrentDistance >= DropDistance)
+	if (HasAuthority())
 	{
-		bIsDropped = true;
-		SpawnItemBox();
-	}
+		CurrentDistance += DeltaTime * Speed;
 
-	CurrentDistance += Speed * DeltaTime;
+		if (!bIsDropped && CurrentDistance >= TotalDistance / 2)
+		{
+			bIsDropped = true;
+			SpawnItemBox();
+		}
 
-	float SplineLength = Spline->GetSplineLength();
-
-	FVector Location = Spline->GetLocationAtDistanceAlongSpline(
-		CurrentDistance,
-		ESplineCoordinateSpace::World
-	);
-
-	SetActorLocation(Location);
-
-	if (CurrentDistance >= SplineLength)
-	{
-		Destroy();
+		if (CurrentDistance >= TotalDistance)
+		{
+			Destroy();
+		}
 	}
 }
 
@@ -94,5 +97,6 @@ void ABATransportShip::SpawnItemBox()
 		Box->SetItem(Item);
 	}
 }
+
 
 

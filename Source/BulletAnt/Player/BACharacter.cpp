@@ -46,6 +46,8 @@ ABACharacter::ABACharacter()
 	//GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // 회전 속도
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+	GetCharacterMovement()->PushForceFactor = 0.f;
+	GetCharacterMovement()->InitialPushForceFactor = 0.f;
 
 	DetectedCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectedCapsule"));
 	DetectedCapsule->SetupAttachment(RootComponent);

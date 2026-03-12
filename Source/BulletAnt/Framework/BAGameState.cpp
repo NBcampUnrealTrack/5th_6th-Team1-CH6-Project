@@ -4,6 +4,7 @@
 #include "Player/BAPlayerController.h"
 #include "Mining/VoxelGroundSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Weapon/BaseWeapon.h"
 
 ABAGameState::ABAGameState()
 {
@@ -20,6 +21,14 @@ void ABAGameState::BeginPlay()
         GroundInitParams.GroundType = EGroundType::Default;
 
         OnRep_SetInitParams();
+
+        if (InitWeaponArray.Num() > 0)
+        {
+            for (TSubclassOf<ABaseWeapon> Weapon : InitWeaponArray)
+            {
+                AddHaveWeapon(Weapon);
+            }
+        }
     }
 }
 
@@ -29,6 +38,7 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 
     DOREPLIFETIME(ThisClass, GroundInitParams);
     DOREPLIFETIME(ThisClass, WavePreparationTime);
+    DOREPLIFETIME(ThisClass, HaveWeaponArray);
 }
 
 void ABAGameState::OnRep_SetInitParams()
@@ -180,4 +190,11 @@ void ABAGameState::SetWavePreparationTime(int32 InTime)
 void ABAGameState::OnRep_WavePreparationTime()
 {
     OnWaveTimeChanged.Broadcast();
+}
+
+void ABAGameState::AddHaveWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)
+{
+    if (!HasAuthority()) return;
+
+    HaveWeaponArray.Add(InWeaponClass);
 }

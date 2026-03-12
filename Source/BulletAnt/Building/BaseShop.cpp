@@ -6,58 +6,78 @@
 #include "Shop/GachaWeightData.h"
 #include "Shop/BATransportShip.h"
 #include "Mining/VoxelData.h"
+#include "Player/BAPlayerController.h"
+#include "GameFramework/Character.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_ShopWindow.h"
+#include "Weapon/BaseWeapon.h"
 
 ABaseShop::ABaseShop()
 {
 
 }
 
-void ABaseShop::CanBuyGacha(int32 InGachaID)
+bool ABaseShop::CanBuyGacha(ABAPlayerController* PC, int32 InGachaID, int32 Count)
 {
 	ABAGameState* GS = Cast<ABAGameState>(GetWorld()->GetGameState());
-	if (!GS) return;
+	if (!GS) return false;
 
-	if (!GachaCost) return;
-	if (!GachaWeight) return;
+	if (!GachaCost) return false;
+	if (!GachaWeight) return false;
 
-	if (GS->CanPurchase(CachedCostData[InGachaID]))
+	TMap<EOreType, int32> TotalCost;
+
+	const TMap<EOreType, int32>& BaseCost = CachedCostData[InGachaID];
+
+	for (const auto& Elem : BaseCost)
 	{
-		Server_BuyGacha(InGachaID);
+		TotalCost.Add(Elem.Key, Elem.Value * Count);
 	}
-	else
-	{
 
-		return;
+	if (GS->CanPurchase(TotalCost))
+	{
+		if (IsValid(PC))
+		{
+			PC->Server_RequestBuyGacha(this, InGachaID, Count);
+			return true;
+		}
 	}
+
+	return false;
 }
 
-void ABaseShop::Server_BuyGacha_Implementation(int32 InGachaID)
+
+void ABaseShop::BuyGacha(int32 InGachaID, int32 Count)
 {
+	if (!HasAuthority()) return;
 	ABAGameMode* GM = Cast<ABAGameMode>(GetWorld()->GetAuthGameMode());
 	if (!GM) return;
 
-	if (!GachaCost) return;
-	if (!GachaWeight) return;
+	TMap<EOreType, int32> TotalCost;
 
-	TSubclassOf<AActor> GachaOut = TryGacha(InGachaID);
+	const TMap<EOreType, int32>& BaseCost = CachedCostData[InGachaID];
 
-	if (GM->TrySpendOre(CachedCostData[InGachaID]))
+	for (const auto& Elem : BaseCost)
 	{
-		DropItem(GachaOut);
+		TotalCost.Add(Elem.Key, Elem.Value * Count);
+	}
+
+	if (GM->TrySpendOre(TotalCost))
+	{
+		for (int32 i = 0; i < Count; i++)
+		{
+			TSubclassOf<ABaseWeapon> GachaOut = TryGacha(InGachaID);
+			DropWeapon(GachaOut);
+		}
 	}
 	else
 	{
-		
+
 		return;
 	}
 }
 
-void ABaseShop::ShowGacha()
-{
-
-}
-
-void ABaseShop::DropItem(TSubclassOf<AActor> InActor)
+void ABaseShop::DropWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)
 {
 	if (!HasAuthority()) return;
 
@@ -72,18 +92,33 @@ void ABaseShop::DropItem(TSubclassOf<AActor> InActor)
 		Params
 	);
 
-	FVector DropLocation = GetActorLocation()+FVector(0.f, 0.f, 5000.f);
-	Ship->InitPlane(DropLocation, InActor);
+	FVector DropLocation = GetActorLocation() + FVector(0.f, 0.f, 5000.f);
+	Ship->InitPlane(DropLocation, InWeaponClass);
 }
 
-void ABaseShop::ShowWeapon()
+void ABaseShop::ShowShop(ABAPlayerController* PC)
 {
-	
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!LP) return;
+
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		ShopWindow = UISubsystem->ShowUI<UUW_ShopWindow>(EUIType::Shop);
+		ShopWindow->InitShopUI(this);
+
+		ShopWindow->SetIsFocusable(true);
+		PC->bShowMouseCursor = true;
+	}
 }
 
 void ABaseShop::Use_Implementation(AActor* User)
 {
-	CanBuyGacha(1);
+	ACharacter* Character = Cast<ACharacter>(User);
+	ABAPlayerController* PC = Cast<ABAPlayerController>(Character->GetController());
+	if (!PC) return;
+
+	ShowShop(PC);
 }
 
 void ABaseShop::BeginPlay()
@@ -99,17 +134,17 @@ void ABaseShop::BeginPlay()
 	{
 		CachedWeightData.FindOrAdd(Row->GachaID).Add(*Row);
 	}
-	
+
 	TArray<FGachaCostData*> CostRow;
 	GachaCost->GetAllRows(TEXT("GachaCost"), CostRow);
 
-	for (FGachaCostData *Row : CostRow)
+	for (FGachaCostData* Row : CostRow)
 	{
 		CachedCostData.FindOrAdd(Row->GachaID, Row->Cost);
 	}
 }
 
-TSubclassOf<AActor> ABaseShop::TryGacha(int32 InGachaID)
+TSubclassOf<ABaseWeapon> ABaseShop::TryGacha(int32 InGachaID)
 {
 	if (!GachaWeight) return nullptr;
 
@@ -135,7 +170,7 @@ TSubclassOf<AActor> ABaseShop::TryGacha(int32 InGachaID)
 			{
 				return Row.ActorClass;
 			}
-		}	
+		}
 	}
 
 	return nullptr;

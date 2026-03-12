@@ -189,6 +189,9 @@ public:
 #pragma region Action Function
 
     // --- 실제 동작 함수 ---
+public:
+    
+
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);

@@ -7,6 +7,9 @@
 #include "Common/BAItemInterface.h"
 #include "BAItemBox.generated.h"
 
+class UProjectileMovementComponent;
+class ABaseWeapon;
+
 UCLASS()
 class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
 {
@@ -18,19 +21,22 @@ class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* Mesh;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UProjectileMovementComponent* ProjectileMovement;
+
 public:	
 	ABAItemBox();
 
 	virtual void Use_Implementation(AActor* User) override;
 
 	UFUNCTION(BlueprintCallable)
-	void SetItem(TSubclassOf<AActor> InItem);
+	void SetItem(TSubclassOf<ABaseWeapon> InItem);
 
 protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY()
-	TSubclassOf<AActor> Item;
+	TSubclassOf<ABaseWeapon> Item;
 
 
 

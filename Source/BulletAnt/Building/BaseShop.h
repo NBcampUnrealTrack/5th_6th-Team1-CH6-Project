@@ -9,6 +9,9 @@
 
 class ABaseWeapon;
 class ABATransportShip;
+class ABAPlayerController;
+class UUW_ShopWindow;
+class UUISubsystem;
 
 UCLASS()
 class BULLETANT_API ABaseShop : public ABaseBuilding, public IBAItemInterface
@@ -19,26 +22,23 @@ public:
 	ABaseShop();
 
 	UFUNCTION()
-	void CanBuyGacha(int32 InGachaID);
-
-	UFUNCTION(Server, Reliable)
-	void Server_BuyGacha(int32 InGachaID);
+	bool CanBuyGacha(ABAPlayerController* PC, int32 InGachaID, int32 Count);
 
 	UFUNCTION()
-	void ShowGacha();
+	void BuyGacha(int32 InGachaID, int32 Count);
 
 	UFUNCTION()
-	void DropItem(TSubclassOf<AActor> InActor);
+	void DropWeapon(TSubclassOf<ABaseWeapon> InWeapon);
 
 	UFUNCTION()
-	void ShowWeapon();
+	void ShowShop(ABAPlayerController* PC);
 	
 	virtual void Use_Implementation(AActor* User) override;
 
 protected:
 	virtual void BeginPlay() override;
 
-	TSubclassOf<AActor> TryGacha(int32 InGachaID);
+	TSubclassOf<ABaseWeapon> TryGacha(int32 InGachaID);
 
 	UPROPERTY()
 	TArray<TSubclassOf<ABaseWeapon>> WeaponArray;
@@ -54,4 +54,11 @@ protected:
 
 	TMap<int32, TArray<FGachaWeightData>> CachedWeightData;
 	TMap<int32, TMap<EOreType, int32>> CachedCostData;
+
+	UPROPERTY()
+	UUW_ShopWindow* ShopWindow;
+
+	UPROPERTY()
+	UUISubsystem* UISubsystem;
+
 };
