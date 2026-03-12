@@ -348,6 +348,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(CycleNextAction, ETriggerEvent::Started, this, &ABACharacter::OnCycleNext);
 		}
+		if (ToggleBuildInfoAction)
+		{
+			EnhancedInputComponent->BindAction(ToggleBuildInfoAction, ETriggerEvent::Started, this, &ABACharacter::OnToggleBuildInfo);
+		}
+		
 
 		// 지하
 		if (GroundScannerAction)
@@ -900,6 +905,11 @@ void ABACharacter::OnCyclePrev(const FInputActionValue& Value)
 void ABACharacter::OnCycleNext(const FInputActionValue& Value)
 {
 	BuildManager->OnCycleNext();
+}
+
+void ABACharacter::OnToggleBuildInfo(const FInputActionValue& Value)
+{
+	BuildManager->ToggleBuildMenu();
 }
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)

@@ -9,6 +9,7 @@
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Components/SphereComponent.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
+#include "Engine/StaticMeshSocket.h"
 
 ABaseTurret::ABaseTurret()
 {
@@ -34,6 +35,8 @@ ABaseTurret::ABaseTurret()
 void ABaseTurret::BeginPlay()
 {
 	Super::BeginPlay();
+
+	CollectMuzzleSockets();
 
 	if (HasAuthority())
 	{
@@ -142,9 +145,17 @@ void ABaseTurret::SetPreviewMode(bool bInPreview)
 
 FVector ABaseTurret::GetFireStartLocation_Implementation() const
 {
-	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
+	if (BarrelMesh)
 	{
-		return BarrelMesh->GetSocketLocation(MuzzleSocketName);
+		if (MuzzleSocketNames.IsValidIndex(CurrentMuzzleIndex))
+		{
+			const FName SocketName = MuzzleSocketNames[CurrentMuzzleIndex];
+
+			if (BarrelMesh->DoesSocketExist(SocketName))
+			{
+				return BarrelMesh->GetSocketLocation(SocketName);
+			}
+		}
 	}
 
 	return GetActorLocation();
@@ -152,10 +163,18 @@ FVector ABaseTurret::GetFireStartLocation_Implementation() const
 
 FVector ABaseTurret::GetFireDirection_Implementation() const
 {
-	if (BarrelMesh && BarrelMesh->DoesSocketExist(MuzzleSocketName))
+	if (BarrelMesh)
 	{
-		const FTransform SocketTM = BarrelMesh->GetSocketTransform(MuzzleSocketName, RTS_World);
-		return SocketTM.GetUnitAxis(EAxis::X);
+		if (MuzzleSocketNames.IsValidIndex(CurrentMuzzleIndex))
+		{
+			const FName SocketName = MuzzleSocketNames[CurrentMuzzleIndex];
+
+			if (BarrelMesh->DoesSocketExist(SocketName))
+			{
+				const FTransform SocketTM = BarrelMesh->GetSocketTransform(SocketName, RTS_World);
+				return SocketTM.GetUnitAxis(EAxis::X);
+			}
+		}
 	}
 
 	return GetActorForwardVector();
@@ -191,6 +210,72 @@ void ABaseTurret::OnRep_Dead()
 	{
 		BarrelMesh->SetHiddenInGame(true);
 	}
+}
+
+void ABaseTurret::StartFireLoop()
+{
+	if (!HasAuthority() || !ASC || !TurretData)
+	{
+		return;
+	}
+
+	if (FireLoopTimerHandle.IsValid())
+	{
+		return;
+	}
+
+	const float RPM = TurretData->RoundPerMinute;
+
+	if (RPM <= 0.f)
+	{
+		return;
+	}
+
+	const float FireInterval = 60.f / RPM;
+
+	GetWorldTimerManager().SetTimer(
+		FireLoopTimerHandle,
+		this,
+		&ABaseTurret::HandleFireTick,
+		FireInterval,
+		true,
+		0.f
+	);
+}
+
+void ABaseTurret::StopFireLoop()
+{
+	if (FireLoopTimerHandle.IsValid())
+	{
+		GetWorldTimerManager().ClearTimer(FireLoopTimerHandle);
+		FireLoopTimerHandle.Invalidate();
+	}
+}
+
+void ABaseTurret::HandleFireTick()
+{
+	if (!HasAuthority() || bDead || !ASC || !CurrentTarget || !TurretData)
+	{
+		return;
+	}
+
+	CurrentMuzzleIndex = NextMuzzleIndex;
+
+	const int32 MuzzleCount = MuzzleSocketNames.Num();
+
+	if (MuzzleCount > 0)
+	{
+		NextMuzzleIndex = (NextMuzzleIndex + 1) % MuzzleCount;
+	}
+	else
+	{
+		NextMuzzleIndex = 0;
+	}
+
+	FGameplayTagContainer FireTags;
+	FireTags.AddTag(TurretData->WeaponTag);
+
+	ASC->TryActivateAbilitiesByTag(FireTags);
 }
 
 void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -253,17 +338,58 @@ void ABaseTurret::UpdateCurrentTarget()
 
 	CurrentTarget = BestTarget;
 
-	FGameplayTagContainer FireTags;
-	FireTags.AddTag(TurretData->WeaponTag);
-
 	// 타겟 생김
 	if (!IsValid(PrevTarget) && IsValid(CurrentTarget))
 	{
-		ASC->TryActivateAbilitiesByTag(FireTags);
+		StartFireLoop();
 	}
 	// 타겟 잃음
 	else if (!IsValid(CurrentTarget))
 	{
+		StopFireLoop();
+
+		FGameplayTagContainer FireTags;
+		FireTags.AddTag(TurretData->WeaponTag);
+
 		ASC->CancelAbilities(&FireTags);
 	}
+}
+
+void ABaseTurret::CollectMuzzleSockets()
+{
+	MuzzleSocketNames.Empty();
+
+	if (!BarrelMesh)
+	{
+		return;
+	}
+
+	const UStaticMesh* Mesh = BarrelMesh->GetStaticMesh();
+	if (!Mesh)
+	{
+		return;
+	}
+
+	const TArray<UStaticMeshSocket*>& Sockets = Mesh->Sockets;
+
+	for (const UStaticMeshSocket* Socket : Sockets)
+	{
+		if (!Socket)
+		{
+			continue;
+		}
+
+		const FString NameStr = Socket->SocketName.ToString();
+
+		if (NameStr.StartsWith(MuzzleSocketPrefix.ToString()))
+		{
+			MuzzleSocketNames.Add(Socket->SocketName);
+		}
+	}
+
+	// 정렬 (Muzzle_0, Muzzle_1 순서)
+	MuzzleSocketNames.Sort([](const FName& A, const FName& B)
+		{
+			return A.LexicalLess(B);
+		});
 }

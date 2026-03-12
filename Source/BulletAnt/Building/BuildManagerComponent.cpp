@@ -77,22 +77,22 @@ void UBuildManagerComponent::EnterBuildMode()
     SelectCategory(CurrentCategory);
     SetComponentTickEnabled(true);
 
-    if (auto* PC = CachedPC.Get())
-    {
-        if (auto* LP = PC->GetLocalPlayer())
-        {
-            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-            {
-                UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
-                if (IsValid(BuildMenuWidget))
-                {
-                    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-                    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-                    PC->SetShowMouseCursor(true);
-                }
-            }
-        }
-    }
+    //if (auto* PC = CachedPC.Get())
+    //{
+    //    if (auto* LP = PC->GetLocalPlayer())
+    //    {
+    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+    //        {
+    //            UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+    //            if (IsValid(BuildMenuWidget))
+    //            {
+    //                BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+    //                BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+    //                PC->SetShowMouseCursor(true);
+    //            }
+    //        }
+    //    }
+    //}
     
 }
 
@@ -100,17 +100,17 @@ void UBuildManagerComponent::ExitBuildMode()
 {
     bBuildMode = false;
 
-    if (auto* PC = CachedPC.Get())
-    {
-        if (auto* LP = PC->GetLocalPlayer())
-        {
-            if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-            {
-               UIS->HideUI(EUIType::BuildMenu);
-               PC->SetShowMouseCursor(false);
-            }
-        }
-    }
+    //if (auto* PC = CachedPC.Get())
+    //{
+    //    if (auto* LP = PC->GetLocalPlayer())
+    //    {
+    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
+    //        {
+    //           UIS->HideUI(EUIType::BuildMenu);
+    //           PC->SetShowMouseCursor(false);
+    //        }
+    //    }
+    //}
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;
@@ -168,6 +168,58 @@ void UBuildManagerComponent::RotatePreviewByWheel(const FInputActionValue& Value
 void UBuildManagerComponent::ToggleSnapMode()
 {
     bSnapMode = !bSnapMode;
+}
+
+void UBuildManagerComponent::ToggleBuildMenu()
+{
+    if (!bBuildMode)
+    {
+        return;
+    }
+
+    APlayerController* PC = CachedPC.Get();
+    if (!PC)
+    {
+        RefreshCachedRef();
+        PC = CachedPC.Get();
+    }
+
+    if (!PC)
+    {
+        return;
+    }
+
+    ULocalPlayer* LP = PC->GetLocalPlayer();
+    if (!LP)
+    {
+        return;
+    }
+
+    UUISubsystem* UIS = LP->GetSubsystem<UUISubsystem>();
+    if (!UIS)
+    {
+        return;
+    }
+
+    if (bBuildMenuOpen)
+    {
+        UIS->HideUI(EUIType::BuildMenu);
+        UIS->ApplyGameOnlyInputMode();
+        bBuildMenuOpen = false;
+        return;
+    }
+
+    UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
+    if (!IsValid(BuildMenuWidget))
+    {
+        return;
+    }
+
+    BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+    BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
+
+    UIS->ApplyGameAndUIInputMode(BuildMenuWidget);
+    bBuildMenuOpen = true;
 }
 
 void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass)

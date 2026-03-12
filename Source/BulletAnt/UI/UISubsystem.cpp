@@ -5,6 +5,7 @@
 #include "UI/UW_RootHUD.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "GameFramework/PlayerController.h"
 
 UUISubsystem::UUISubsystem()
 {
@@ -85,6 +86,53 @@ void UUISubsystem::ResetAllUI()
         }
     }
     SingleWidgets.Empty();
+}
+
+void UUISubsystem::ApplyGameOnlyInputMode()
+{
+    APlayerController* PC = GetLocalPlayer()->GetPlayerController(GetWorld());
+    if (!PC)
+    {
+        return;
+    }
+
+    FInputModeGameOnly InputMode;
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(false);
+    PC->SetIgnoreLookInput(false);
+}
+
+void UUISubsystem::ApplyUIOnlyInputMode(UUserWidget* FocusWidget)
+{
+    APlayerController* PC = GetLocalPlayer()->GetPlayerController(GetWorld());
+    if (!PC || !FocusWidget)
+    {
+        return;
+    }
+
+    FInputModeUIOnly InputMode;
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(true);
+    PC->SetIgnoreLookInput(true);
+}
+
+void UUISubsystem::ApplyGameAndUIInputMode(UUserWidget* FocusWidget)
+{
+    APlayerController* PC = GetLocalPlayer()->GetPlayerController(GetWorld());
+    if (!PC || !FocusWidget)
+    {
+        return;
+    }
+
+    FInputModeGameAndUI InputMode;
+    InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    InputMode.SetHideCursorDuringCapture(false);
+
+    PC->SetInputMode(InputMode);
+    PC->SetShowMouseCursor(true);
+    PC->SetIgnoreLookInput(true);
 }
 
 void UUISubsystem::InitRootHUD()
