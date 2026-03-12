@@ -104,14 +104,14 @@ void UBAParkourComponent::Multicast_ExecuteParkour_Implementation(EParkourType P
 		Character->SpringArmRot(false);*/
 
 
-		if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+		/*if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
 		{
 			FRotator NewRot = Character->GetActorRotation();
 			NewRot.Pitch = PC->GetControlRotation().Pitch;
 			NewRot.Roll = 0.0f;
 			PC->SetControlRotation(NewRot);
 			PC->SetIgnoreLookInput(true);
-		}
+		}*/
 
 		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
 			WarpTargetName,
@@ -283,10 +283,10 @@ void UBAParkourComponent::OnParkourMontageEnded(UAnimMontage* Montage, bool bInt
 
 	/*Character->bUseControllerRotationYaw = true;
 	Character->SpringArmRot(true);*/
-	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	/*if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
 	{
 		PC->SetIgnoreLookInput(false);
-	}
+	}*/
 	UE_LOG(LogTemp, Warning, TEXT("파쿠르 종료! 카메라 동기화 완료."));
 	bIsParkour = false;
 }

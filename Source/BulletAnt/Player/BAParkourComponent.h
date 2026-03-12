@@ -49,6 +49,7 @@ public:
 	UAnimMontage* VaultMontage;
 	FVector WarpTargetLocation;
 	FRotator WarpTargetRotation;
+	bool bIsParkour;
 private:
 
 	UPROPERTY()
@@ -75,5 +76,4 @@ private:
 	float WallHeight;
 	float WallThickness;
 
-	bool bIsParkour;
 };
