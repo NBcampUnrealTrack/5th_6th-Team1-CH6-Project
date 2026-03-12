@@ -52,7 +52,10 @@ void ABaseCore::FindAnchors()
         FHitResult Hit;
         if (GetWorld()->LineTraceSingleByObjectType(Hit, End, Start, ObjectParams))
         {
-            Anchors.Add(Hit.Location);
+            FVector HitLocation = Hit.Location;
+            HitLocation += Direction * 30;
+            DrawDebugPoint(GetWorld(), HitLocation, 10, FColor::Red, true);
+            Anchors.Add(HitLocation);
         }
     }
 }
