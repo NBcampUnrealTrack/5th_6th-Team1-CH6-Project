@@ -106,10 +106,10 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	{
 		Priority = TribeType->Player;
 	}
-	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
-	//{
-	//	Priority = TribeType->Core;
-	//}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel9)	// Core
+	{
+		Priority = TribeType->Core;
+	}
 	else
 	{
 		return;
@@ -140,10 +140,10 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	{
 		Priority = TribeType->Player;
 	}
-	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
-	//{
-	//	Priority = TribeType->Core;
-	//}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel9)	// Core
+	{
+		Priority = TribeType->Core;
+	}
 	else
 	{
 		return;
