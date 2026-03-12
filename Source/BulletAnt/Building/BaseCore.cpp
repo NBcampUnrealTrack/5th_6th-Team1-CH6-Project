@@ -9,6 +9,12 @@ const TArray<FVector>& ABaseCore::GetAnchors() const
 	return Anchors;
 }
 
+ABaseCore::ABaseCore()
+{
+    StaticMeshComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+    StaticMeshComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel6, ECollisionResponse::ECR_Block); // Enemy
+}
+
 void ABaseCore::BeginPlay()
 {
 	Super::BeginPlay();

@@ -18,6 +18,8 @@ public:
 	const TArray<FVector>& GetAnchors() const;
 	
 protected:
+	ABaseCore();
+
 	virtual void BeginPlay() override;
 
 	void FindAnchors();
