@@ -7,48 +7,53 @@
 #include "Blueprint/StateTreeTaskBlueprintBase.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Enemy/StateTree/MoveRequestResult.h"
-#include "MoveToTargetActorTask.generated.h"
+#include "MoveToLoc.generated.h"
 
 class AAIController;
 class ABaseEnemyCharacter;
 
-UCLASS(meta = (DisplayName = "Move To Target Actor Task"))
-class BULLETANT_API UMoveToTargetActorTask : public UStateTreeTaskBlueprintBase
+UCLASS()
+class BULLETANT_API UMoveToLoc : public UStateTreeTaskBlueprintBase
 {
 	GENERATED_BODY()
-	
+
 protected:
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
-	
-private:	
+
+private:
 	UFUNCTION()
 	void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
-	
+
 	void StartMoveToTarget();
 
 	void SetTargetCore();
-	
-public:	
+
+	const FVector GetAnchor() const;
+
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	TObjectPtr<ABaseEnemyCharacter> ContextActor;
-	
+	TObjectPtr<ABaseEnemyCharacter> ContextEnemy;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	TObjectPtr<AActor> TargetActor;
-	
+	TObjectPtr<AActor> TargetCore;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	float AcceptanceRadius = 100.f;
-	
+	float AcceptanceRadius = 50.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FStateTreeEvent ToAttack;
-	
+
+
 protected:
 	TWeakObjectPtr<AAIController> CachedAIController;
 
 	FAIRequestID CurrentRequestID;
 	EMoveRequestResult MoveRequestResult;
-	
+
 	FActiveGameplayEffectHandle ActiveGEHandle;
-	
+
 	FTimerHandle RetryTimer;
+
+	
 };

@@ -37,6 +37,8 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 		CharacterMovementComponent->bUseControllerDesiredRotation = true;
 	}
 
+	GetCapsuleComponent()->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
+
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
@@ -54,14 +56,9 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	DetectionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
 	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Overlap);	// Character
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel9, ECollisionResponse::ECR_Overlap);	// Core
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereEndOverlap);
-
-	DetectedSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectedSphere"));
-	DetectedSphere->SetupAttachment(RootComponent);
-	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
-	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
 
 	TargetActor = nullptr;
 	TargetActorPriority = ETargetPriorityType::Max;
@@ -70,11 +67,6 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
 {
 	return DetectionSphere;
-}
-
-USphereComponent* ABaseEnemyCharacter::GetDetectedSphere() const
-{
-	return DetectedSphere;
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -106,10 +98,10 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	{
 		Priority = TribeType->Player;
 	}
-	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
-	//{
-	//	Priority = TribeType->Core;
-	//}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel9)	// Core
+	{
+		Priority = TribeType->Core;
+	}
 	else
 	{
 		return;
@@ -140,10 +132,10 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	{
 		Priority = TribeType->Player;
 	}
-	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
-	//{
-	//	Priority = TribeType->Core;
-	//}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel9)	// Core
+	{
+		Priority = TribeType->Core;
+	}
 	else
 	{
 		return;
@@ -335,6 +327,21 @@ UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
 	return nullptr;
 }
 
+float ABaseEnemyCharacter::GetWalkSpeed() const
+{
+	return WalkSpeed;
+}
+
+void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
+{
+	WalkSpeed = InWalkSpeed;
+}
+
+void ABaseEnemyCharacter::OnRep_WalkSpeed()
+{
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
 //void ABaseEnemyCharacter::Die()
 //{
 //	if (HasAuthority())
@@ -389,6 +396,8 @@ void ABaseEnemyCharacter::BeginPlay()
 		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health);
 		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health);
 
+		WalkSpeed = BaseEnemyDataAsset->MoveSpeed;
+		OnRep_WalkSpeed();
 
 		UWorld* World = GetWorld();
 		if (IsValid(World))
@@ -455,6 +464,7 @@ void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
+	DOREPLIFETIME(ABaseEnemyCharacter, WalkSpeed);
 }
 
 void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -510,11 +520,5 @@ void ABaseEnemyCharacter::Multicast_SetNoCollision_Implementation()
 	{
 		DetectionSphere->SetSimulatePhysics(false);
 		DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	}
-
-	if (DetectedSphere)
-	{
-		DetectedSphere->SetSimulatePhysics(false);
-		DetectedSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	}
 }

@@ -32,6 +32,8 @@ public:
 #pragma endregion
 
 #pragma region Move
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Move")
+	float MoveSpeed = 600.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Move")
 	TSubclassOf<UGameplayEffect> MoveEffect;
