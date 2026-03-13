@@ -252,6 +252,22 @@ void ABaseEnemyCharacter::ApplyTribe()
 {
 	Multicast_ApplyTribeMaterial();
 	ApplyTribePriority();
+	if (HasAuthority())
+	{
+		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter ApplyTribe : DataAsset Missing")))
+		{
+			return;
+		}
+		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribe : TribeType Missing")))
+		{
+			return;
+		}
+		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
+		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
+
+		WalkSpeed = BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul;
+		OnRep_WalkSpeed();
+	}
 }
 
 void ABaseEnemyCharacter::Multicast_ApplyTribeMaterial_Implementation()
@@ -389,12 +405,6 @@ void ABaseEnemyCharacter::BeginPlay()
 		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
-
-		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health);
-		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health);
-
-		WalkSpeed = BaseEnemyDataAsset->MoveSpeed;
-		OnRep_WalkSpeed();
 
 		UWorld* World = GetWorld();
 		if (IsValid(World))
