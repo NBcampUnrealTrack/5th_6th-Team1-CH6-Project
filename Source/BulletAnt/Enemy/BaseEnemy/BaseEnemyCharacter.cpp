@@ -493,7 +493,7 @@ void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
-	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
+	return BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray[0].AttackDataAsset;
 }
 
 bool ABaseEnemyCharacter::ShouldCallAfterAttack()

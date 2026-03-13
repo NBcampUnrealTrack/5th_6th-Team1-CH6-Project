@@ -12,6 +12,18 @@
 
 struct FGameplayTagContainer;
 
+USTRUCT()
+struct FAttackDataAsset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly)
+	int32 Distance = 0;
+
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UWeaponDataAsset> AttackDataAsset;
+};
+
 UCLASS()
 class BULLETANT_API UBaseEnemyDataAsset : public UPrimaryDataAsset
 {
@@ -55,8 +67,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	FGameplayTag AttackStateTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
-	TObjectPtr<UWeaponDataAsset> BaseEnemyAttackDataAsset;
+	UPROPERTY(EditDefaultsOnly, Category = "Attack")
+	TArray<FAttackDataAsset> BaseEnemyAttackDataAssetArray;
 
 #pragma endregion
 
