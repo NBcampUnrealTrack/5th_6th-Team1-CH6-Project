@@ -75,8 +75,6 @@ public:
 public:
 	USphereComponent* GetDetectionSphere() const;
 
-	USphereComponent* GetDetectedSphere() const;
-
 protected:
 	UFUNCTION()
 	virtual void OnDetectionSphereBeginOverlap(
@@ -101,12 +99,6 @@ protected:
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TObjectPtr<USphereComponent> DetectionSphere;
-
-	UPROPERTY(VisibleAnywhere, Category = "Perception")
-	TObjectPtr<USphereComponent> DetectedSphere;
-
-	//UPROPERTY(VisibleAnywhere, Category = "Perception")
-	//TArray<TObjectPtr<AActor>> NearbyActors;
 
 	ETargetPriorityType TargetActorPriority;
 
@@ -178,6 +170,21 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UTribeDataAsset> TribeType;
+
+#pragma endregion
+
+#pragma region Init
+
+public:
+	float GetWalkSpeed() const;
+	void SetWalkSpeed(float InWalkSpeed);
+
+protected:
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_WalkSpeed)
+	float WalkSpeed;
+
+	UFUNCTION()
+	void OnRep_WalkSpeed();
 
 #pragma endregion
 

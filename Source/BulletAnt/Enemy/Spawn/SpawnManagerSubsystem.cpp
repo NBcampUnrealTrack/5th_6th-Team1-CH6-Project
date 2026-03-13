@@ -161,22 +161,22 @@ void USpawnManagerSubsystem::StartWave()
 	{
 		SetSpawnDataTable();
 	}
-	
+
 	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), WaveIndex + 1));
 	EnemySpawnHandle.RowName = RowName;
-	
+
 	SpawnEnemies();
 }
 
 void USpawnManagerSubsystem::SpawnEnemies()
-{	
+{
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
 		return;
 	}
-	
-	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(SpawnContextString); 
+
+	FEnemySpawnerEntry* Row = EnemySpawnHandle.GetRow<FEnemySpawnerEntry>(SpawnContextString);
 	if (Row == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem-SpawnEnemies : GetRow Error"));
@@ -194,43 +194,48 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		}
 		return;
 	}
-	
+
 	TSubclassOf<ABaseEnemyCharacter> EnemyClass = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].EnemyClass;
 	if (EnemyClass == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem-SpawnEnemies : EnemyClass Error"));
 		return;
 	}
-	
+
 	const int32 Count = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].Count;
 	const int32 MinDistance = Row->SpawnMinDistance;
 	const int32 MaxDistance = Row->SpawnMaxDistance;
 	UTribeDataAsset* TribeDataAsset = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].TribeType;
 	ensureMsgf(TribeDataAsset, TEXT("SpawnTable Tribe Missing"));
-		
+
 	for (int32 j = 0; j < Count; j++)
 	{
 		FVector RandomDirection = FMath::VRand();
-		RandomDirection.Z = 0.0f; 
+		RandomDirection.Z = 0.0f;
 		RandomDirection.Normalize();
 		float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
-		
 		FVector SpawnLocation = TargetCore->GetActorLocation() + (RandomDirection * RandomDistance);
-		SpawnLocation.Z += 50.f;
 
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-		ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
-			EnemyClass,
-			SpawnLocation,
-			FRotator::ZeroRotator,
-			SpawnParams
-		);
-		if (IsValid(Enemy))
+		if (CanSpawnEnemy(SpawnLocation))
 		{
-			AliveEnemyCount++;
-			Enemy->SetTribeType(TribeDataAsset);
-			Enemy->ApplyTribe();
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
+				EnemyClass,
+				SpawnLocation,
+				FRotator::ZeroRotator,
+				SpawnParams
+			);
+			if (IsValid(Enemy))
+			{
+				AliveEnemyCount++;
+				Enemy->SetTribeType(TribeDataAsset);
+				Enemy->ApplyTribe();
+			}
+		}
+		else
+		{
+			j--;
 		}
 	}
 
@@ -250,4 +255,54 @@ void USpawnManagerSubsystem::SpawnEnemies()
 			false
 		);
 	}
+}
+
+bool USpawnManagerSubsystem::CanSpawnEnemy(FVector& InSpawnLocation)
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return false;
+	}
+
+	FVector TraceStart = InSpawnLocation + FVector(0, 0, 500.f);
+	FVector TraceEnd = InSpawnLocation - FVector(0, 0, 500.f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams;
+	bool bHit = World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams);
+
+	if (bHit)
+	{
+		FVector FinalSpawnLocation = HitResult.ImpactPoint;
+		if (FinalSpawnLocation.Z > TargetCore->GetActorLocation().Z + 100)
+		{
+			return false;
+		}
+
+		float CapsuleRadius = 40.f;
+		float CapsuleHalfHeight = 1000.f;
+		FCollisionShape Capsule = FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight);
+		FHitResult SweepHit;
+		bool bIsBlocked = World->SweepSingleByChannel(
+			SweepHit,
+			FinalSpawnLocation + FVector(0, 0, CapsuleHalfHeight + 50), 
+			FinalSpawnLocation + FVector(0, 0, CapsuleHalfHeight + 50),
+			FQuat::Identity,
+			ECC_Pawn, 
+			Capsule
+		);
+
+		if (!bIsBlocked)
+		{
+			InSpawnLocation = FinalSpawnLocation + FVector(0, 0, CapsuleHalfHeight);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	return false;
 }

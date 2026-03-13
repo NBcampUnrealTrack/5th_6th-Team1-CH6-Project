@@ -44,15 +44,7 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 	
 	if (TargetActor == nullptr)
 	{
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-			if (IsValid(BAGameState))
-			{
-				TargetActor = BAGameState->GetTargetCore();
-			}
-		}
+		SetTargetCore();
 	}
 	if (!IsValid(TargetActor))
 	{
@@ -140,6 +132,22 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("else"))
 		MoveRequestResult = EMoveRequestResult::Failed;
+	}
+}
+
+void UMoveToTargetActorTask::SetTargetCore()
+{
+	if (TargetActor == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+			if (IsValid(BAGameState))
+			{
+				TargetActor = BAGameState->GetTargetCore();
+			}
+		}
 	}
 }
 

@@ -35,10 +35,12 @@ public:
 
 protected:
 	FRotator CameraTargetOffset();
+	void IsGrabLeftHand(float DeltaSeconds);
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	EEquipmentType CurrentEquipmentType;
+
 
 protected:
 
@@ -56,6 +58,9 @@ protected:
 	FGameplayTag Tag_Ranged;
 	FGameplayTag Tag_Mining;
     FGameplayTag Tag_Melee;
+
+	UAbilitySystemComponent* ASC;
+	AActor* OwningActor;
 
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GroundSpeed;
@@ -94,6 +99,9 @@ protected:
 	//수직 이동 속도
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float VerticalVelocity;
+
+	bool bIsParkour;
+
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	FVector LeftTargetLocation;
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
@@ -101,15 +109,15 @@ protected:
 
 	FRotator PreviousRotation;
 
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	float GrabLeftHand;
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|TurnInPlace")
 	float RootYawOffset;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Parkour")
 	float HandIKAlpha;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
-	FVector LeftHandIKLoc;
 	TObjectPtr<ABaseWeapon> EquippedWeapon;
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
-	FVector AdsHandIk;;
+	FTransform LeftHandIK_Transform;
 };

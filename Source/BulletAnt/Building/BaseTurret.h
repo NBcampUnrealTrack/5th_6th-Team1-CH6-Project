@@ -42,6 +42,10 @@ protected:
 	virtual void OnDeath() override;
 	virtual void OnRep_Dead() override;
 
+	void StartFireLoop();
+	void StopFireLoop();
+	void HandleFireTick();
+
 private:
 	UFUNCTION()
 	void OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -51,6 +55,8 @@ private:
 
 	UFUNCTION()
 	void UpdateCurrentTarget();
+
+	void CollectMuzzleSockets();
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
@@ -62,10 +68,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
 	TObjectPtr<URangedWeaponDataAsset> TurretData;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Socket")
-	FName MuzzleSocketName = TEXT("Muzzle");
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
+	TArray<FName> MuzzleSocketNames;
 
-	FTimerHandle FireTimerHandle;
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
+	FName MuzzleSocketPrefix = TEXT("Muzzle");
+
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
+	int32 CurrentMuzzleIndex = 0;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
+	int32 NextMuzzleIndex = 0;
+
+	FTimerHandle FireLoopTimerHandle;
 
 	UPROPERTY(VisibleAnywhere, Category = "Turret|Targeting")
 	TObjectPtr<USphereComponent> TargetSerchingSphere;

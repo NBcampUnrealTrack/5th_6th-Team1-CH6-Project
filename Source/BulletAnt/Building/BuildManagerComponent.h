@@ -44,6 +44,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ToggleSnapMode();
 
+	UFUNCTION(BlueprintCallable)
+	void ToggleBuildMenu();
+
+	bool IsBuildMenuOpen() const { return bBuildMenuOpen; }
+
 	bool IsBuildMode() const { return bBuildMode; }
 
 	void OnSelectCat1() { SelectCategory(EBuildCategory::Turret); }
@@ -135,4 +140,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	FName GroundActorTag = TEXT("Ground");
+
+	bool bBuildMenuOpen = false;
 };
