@@ -103,6 +103,16 @@ void USpawnManagerSubsystem::SetSpawnDataTable()
 
 bool USpawnManagerSubsystem::CanStartWave()
 {
+	if (WaveIndex == 0)
+	{
+		return true;
+	}
+
+	if (!IsValid(CachedGameState->GetTargetCore()))
+	{
+		return false;
+	}
+
 	if (WaveIndex >= MaxWaveIndex)
 	{
 		// Game Win Logic (적 모두 처치 시 게임엔딩)
@@ -170,6 +180,11 @@ void USpawnManagerSubsystem::StartWave()
 
 void USpawnManagerSubsystem::SpawnEnemies()
 {
+	if (!IsValid(CachedGameState->GetTargetCore()))
+	{
+		return;
+	}
+
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));

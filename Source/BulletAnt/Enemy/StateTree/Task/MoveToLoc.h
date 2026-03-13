@@ -27,9 +27,7 @@ private:
 
 	void StartMoveToTarget();
 
-	void SetTargetCore();
-
-	const FVector GetAnchor() const;
+	const std::optional<FVector> GetAnchor() const;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
