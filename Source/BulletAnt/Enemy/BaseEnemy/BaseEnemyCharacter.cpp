@@ -250,42 +250,39 @@ void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
 
 void ABaseEnemyCharacter::ApplyTribe()
 {
-	ApplyTribeMaterial();
+	Multicast_ApplyTribeMaterial();
 	ApplyTribePriority();
 }
 
-void ABaseEnemyCharacter::ApplyTribeMaterial()
+void ABaseEnemyCharacter::Multicast_ApplyTribeMaterial_Implementation()
 {
-	if (HasAuthority())
+	if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : TribeDataAsset Missing")))
 	{
-		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeDataAsset Missing")))
-		{
-			return;
-		}
-		if (!ensureMsgf(IsValid(GetMesh()), TEXT("BaseEnemyCharacter ApplyTribeMaterial : Mesh Missing")))
+		return;
+	}
+	if (!ensureMsgf(IsValid(GetMesh()), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : Mesh Missing")))
+	{
+		return;
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		UTribeMaterialManagerSubsystem* TribeMaterialManagerSubsystem = GameInstance->GetSubsystem<UTribeMaterialManagerSubsystem>();
+		if (!ensureMsgf(IsValid(TribeMaterialManagerSubsystem), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : TribeMaterialManagerSubsystem Error")))
 		{
 			return;
 		}
 
-		if (UGameInstance* GameInstance = GetGameInstance())
+		UMaterialInterface* BaseMat = GetMesh()->GetMaterial(0);
+		if (!IsValid(BaseMat))
 		{
-			UTribeMaterialManagerSubsystem* TribeMaterialManagerSubsystem = GameInstance->GetSubsystem<UTribeMaterialManagerSubsystem>();
-			if (!ensureMsgf(IsValid(TribeMaterialManagerSubsystem), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeMaterialManagerSubsystem Error")))
-			{
-				return;
-			}
+			return;
+		}
 
-			UMaterialInterface* BaseMat = GetMesh()->GetMaterial(0);
-			if (!IsValid(BaseMat))
-			{
-				return;
-			}
-			
-			UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
-			if (SharedMID)
-			{
-				GetMesh()->SetMaterial(0, SharedMID);
-			}
+		UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
+		if (SharedMID)
+		{
+			GetMesh()->SetMaterial(0, SharedMID);
 		}
 	}
 }
@@ -474,6 +471,7 @@ void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
 	DOREPLIFETIME(ABaseEnemyCharacter, WalkSpeed);
+	DOREPLIFETIME(ABaseEnemyCharacter, TribeType);
 }
 
 void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
