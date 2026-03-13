@@ -31,8 +31,6 @@ protected:
 
 	void TransitionState();
 
-	AActor* GetCore();
-
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<ABaseEnemyCharacter> ContextActor;

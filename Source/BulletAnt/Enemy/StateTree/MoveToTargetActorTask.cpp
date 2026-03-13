@@ -42,9 +42,19 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 		return EStateTreeRunStatus::Failed;
 	}
 	
-	if (TargetActor == nullptr)
+	if (!IsValid(TargetActor))
 	{
-		SetTargetCore();
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+		if (!IsValid(BAGameState))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		TargetActor = BAGameState->GetTargetCore();
 	}
 	if (!IsValid(TargetActor))
 	{
@@ -109,11 +119,33 @@ void UMoveToTargetActorTask::ExitState(FStateTreeExecutionContext& Context,
 
 void UMoveToTargetActorTask::StartMoveToTarget()
 {
-	if (!CachedAIController.IsValid() || !IsValid(TargetActor))
+	if (!CachedAIController.IsValid())
 	{
 		MoveRequestResult = EMoveRequestResult::Failed;
 		return;
 	}
+	if (!IsValid(TargetActor))
+	{
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			MoveRequestResult = EMoveRequestResult::Failed;
+			return;
+		}
+		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+		if (!IsValid(BAGameState))
+		{
+			MoveRequestResult = EMoveRequestResult::Failed;
+			return;
+		}
+		TargetActor = BAGameState->GetTargetCore();
+	}
+	if (!IsValid(TargetActor))
+	{
+		MoveRequestResult = EMoveRequestResult::Failed;
+		return;
+	}
+
 
 	// 이동을 요청한 결과
 	EPathFollowingRequestResult::Type Result = CachedAIController->MoveToActor(TargetActor, AcceptanceRadius);
@@ -132,22 +164,6 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("else"))
 		MoveRequestResult = EMoveRequestResult::Failed;
-	}
-}
-
-void UMoveToTargetActorTask::SetTargetCore()
-{
-	if (TargetActor == nullptr)
-	{
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-			if (IsValid(BAGameState))
-			{
-				TargetActor = BAGameState->GetTargetCore();
-			}
-		}
 	}
 }
 
