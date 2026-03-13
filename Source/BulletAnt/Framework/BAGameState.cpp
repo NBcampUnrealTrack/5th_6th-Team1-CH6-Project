@@ -4,6 +4,7 @@
 #include "Player/BAPlayerController.h"
 #include "Mining/VoxelGroundSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Weapon/BaseWeapon.h"
 
 ABAGameState::ABAGameState()
 {
@@ -20,6 +21,14 @@ void ABAGameState::BeginPlay()
         GroundInitParams.GroundType = EGroundType::Default;
 
         OnRep_SetInitParams();
+
+        if (InitWeaponArray.Num() > 0)
+        {
+            for (TSubclassOf<ABaseWeapon> Weapon : InitWeaponArray)
+            {
+                AddHaveWeapon(Weapon);
+            }
+        }
     }
 }
 
@@ -29,6 +38,7 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 
     DOREPLIFETIME(ThisClass, GroundInitParams);
     DOREPLIFETIME(ThisClass, WavePreparationTime);
+    DOREPLIFETIME(ThisClass, HaveWeaponArray);
 }
 
 void ABAGameState::OnRep_SetInitParams()
@@ -59,6 +69,39 @@ int32 ABAGameState::GetOreCount(EOreType OreType)
 {
 	const int32* OreCountPtr = OreInventory.Find(OreType);
 	return OreCountPtr != nullptr ? *OreCountPtr : 0;
+}
+
+bool ABAGameState::CanPurchase(const TMap<EOreType, int32>& Cost)
+{
+    if (!IsValid(this))
+    {
+        return false;
+    }
+
+    if (Cost.Num() == 0)
+    {
+        return true;
+    }
+
+    // 보유 광물 체크
+    for (const TPair<EOreType, int32>& Pair : Cost)
+    {
+        const EOreType Type = Pair.Key;
+        const int32 Need = Pair.Value;
+
+        if (Need <= 0)
+        {
+            continue;
+        }
+
+        const int32 CurrOreCount = GetOreCount(Type);
+        if (CurrOreCount < Need)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void ABAGameState::BindOnOreChanged(const FOnOreChanged::FDelegate& Delegate)
@@ -147,4 +190,14 @@ void ABAGameState::SetWavePreparationTime(int32 InTime)
 void ABAGameState::OnRep_WavePreparationTime()
 {
     OnWaveTimeChanged.Broadcast();
+}
+
+void ABAGameState::AddHaveWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)
+{
+    if (!HasAuthority()) return;
+
+    if (!HaveWeaponArray.Contains(InWeaponClass))
+    {
+        HaveWeaponArray.Add(InWeaponClass);
+    }
 }

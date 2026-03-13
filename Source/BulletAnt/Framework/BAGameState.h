@@ -7,9 +7,9 @@
 
 class ABaseCore;
 class ABAPlayerController;
+class ABaseWeapon;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EOreType, OreType, int32, OreCount);
-
 DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
 
 UCLASS()
@@ -42,6 +42,7 @@ private:
 public:
 	void SetOreCount(EOreType OreType, int32 Count);
 	int32 GetOreCount(EOreType OreType);
+	bool CanPurchase(const TMap<EOreType, int32>& Cost);
 	FORCEINLINE const TMap<EOreType, int32>& GetOreInventory() const { return OreInventory; }
 
 	void BindOnOreChanged(const FOnOreChanged::FDelegate& Delegate);
@@ -103,6 +104,23 @@ protected:
 
 public:
 	FOnWaveTimeChanged OnWaveTimeChanged;
+
+#pragma endregion
+
+#pragma region Weapon
+
+public:
+	UFUNCTION()
+	void AddHaveWeapon(TSubclassOf<ABaseWeapon> InWeaponClass);
+
+	FORCEINLINE const TArray<TSubclassOf<ABaseWeapon>>& GetHaveWeaponArray() { return HaveWeaponArray; };	
+
+protected:
+	UPROPERTY(Replicated)
+	TArray<TSubclassOf<ABaseWeapon>> HaveWeaponArray;
+
+	UPROPERTY(EditDefaultsOnly)
+	TArray<TSubclassOf<ABaseWeapon>> InitWeaponArray;
 
 #pragma endregion
 };

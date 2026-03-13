@@ -36,7 +36,7 @@ void UGA_Fire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
+	SourceActor = Cast<AActor>(ActorInfo->AvatarActor.Get());
 	if (!SourceActor)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
