@@ -196,5 +196,8 @@ void ABAGameState::AddHaveWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)
 {
     if (!HasAuthority()) return;
 
-    HaveWeaponArray.Add(InWeaponClass);
+    if (!HaveWeaponArray.Contains(InWeaponClass))
+    {
+        HaveWeaponArray.Add(InWeaponClass);
+    }
 }
