@@ -7,6 +7,7 @@
 #include "GameplayEffectTypes.h"	
 #include "GameplayEffect.h"
 #include "Weapon/Data/MeleeWeaponDataAsset.h"
+#include "NiagaraFunctionLibrary.h"
 #include "BaseEnemyDataAsset.generated.h"
 
 struct FGameplayTagContainer;
@@ -92,6 +93,14 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	TObjectPtr<UAnimMontage> DieAnimMontage;
+
+#pragma endregion
+
+#pragma region Spawn
+
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spawn")
+	TObjectPtr<UNiagaraSystem> SpawnEffect;
 
 #pragma endregion
 };

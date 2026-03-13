@@ -25,7 +25,7 @@ protected:
 	void FindAnchors();
 
 	UPROPERTY(EditDefaultsOnly)
-	int32 ScanCount = 40;
+	int32 ScanCount = 72;
 
 	UPROPERTY(VisibleAnywhere)
 	TArray<FVector> Anchors;

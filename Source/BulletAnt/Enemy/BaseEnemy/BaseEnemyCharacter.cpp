@@ -405,6 +405,15 @@ void ABaseEnemyCharacter::BeginPlay()
 			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
 		}
 	}
+
+	if (IsValid(BaseEnemyDataAsset->SpawnEffect))
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			BaseEnemyDataAsset->SpawnEffect,
+			GetActorLocation()
+		);
+	}
 }
 
 void ABaseEnemyCharacter::InitGAS()
