@@ -17,6 +17,8 @@ public:
 	void StartSpit();
 	void CheckContinousSpit();
 	void StopSpit();
+
+	virtual UDataAsset* GetDataAsset() const override;
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Spitter")
