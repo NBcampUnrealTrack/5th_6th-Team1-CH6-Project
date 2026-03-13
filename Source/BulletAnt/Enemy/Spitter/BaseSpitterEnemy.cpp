@@ -4,7 +4,10 @@
 #include "Enemy/Spitter/BaseSpitterEnemy.h"
 #include "Enemy/DataAsset/SpitterDataAsset.h"
 #include "Weapon/Data/MeleeWeaponDataAsset.h"
+#include "Enemy/DataAsset/BaseEnemyDataAsset.h"
 #include "AbilitySystemComponent.h"
+#include "FrameWork/BAGameState.h"
+#include "Building/BaseCore.h"
 
 void ABaseSpitterEnemy::StartSpit()
 {
@@ -102,4 +105,40 @@ void ABaseSpitterEnemy::StopSpit()
 		return;
 	}
 	World->GetTimerManager().ClearTimer(DamageChecker);
+}
+
+UDataAsset* ABaseSpitterEnemy::GetDataAsset() const
+{
+	AActor* CurrentTarget = TargetActor;
+	if (!IsValid(CurrentTarget))
+	{
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			UE_LOG(LogTemp, Error, TEXT("ABaseSpitterEnemy GetDataAsset : World Error"));
+			return nullptr;
+		}
+
+		ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+		if (!IsValid(GS))
+		{
+			UE_LOG(LogTemp, Error, TEXT("ABaseSpitterEnemy GetDataAsset : GameState Error"));
+			return nullptr;
+		}
+		CurrentTarget = GS->GetTargetCore();
+	}
+
+	float TargetDistance = FVector::DistSquaredXY(GetActorLocation(), CurrentTarget->GetActorLocation());
+	float AssetDistance = 0;
+	for (int i = BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray.Num() - 1; i >= 0; i--)
+	{
+		AssetDistance = BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray[i].Distance;
+		AssetDistance *= AssetDistance;
+		if (TargetDistance >= AssetDistance)
+		{
+			return BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray[i].AttackDataAsset;
+		}
+	}
+
+	return BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray[0].AttackDataAsset;
 }

@@ -174,7 +174,14 @@ const FVector UMoveToLoc::GetAnchor() const
 	}
 
 	const TArray<FVector>& Anchors = Core->GetAnchors();
+	if (!ensureMsgf(Anchors.Num() != 0, TEXT("UMoveToLoc GetAnchor : Anchors Num is Zero")))
+	{
+		return FVector::ZeroVector;
+	}
 	int32 AnchorIndex = FMath::RoundToInt(Degrees / (360.f / Anchors.Num())) % Anchors.Num();
+
+	DrawDebugPoint(GetWorld(), Anchors[AnchorIndex], 10, FColor::Red, true);
+
 	return Anchors[AnchorIndex];
 }
 

@@ -38,7 +38,7 @@ void ABaseCore::FindAnchors()
 {
     Anchors.Reserve(ScanCount);
 
-    const float ScanRadius = 1000.f; 
+    const float ScanRadius = 2000.f; 
     FVector Start = GetActorLocation();
     Start.Z = 0;
 
@@ -53,8 +53,7 @@ void ABaseCore::FindAnchors()
         if (GetWorld()->LineTraceSingleByObjectType(Hit, End, Start, ObjectParams))
         {
             FVector HitLocation = Hit.Location;
-            HitLocation += Direction * 30;
-            DrawDebugPoint(GetWorld(), HitLocation, 10, FColor::Red, true);
+            HitLocation += Direction * 50;
             Anchors.Add(HitLocation);
         }
     }

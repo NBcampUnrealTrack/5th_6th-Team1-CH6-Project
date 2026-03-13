@@ -275,7 +275,7 @@ bool USpawnManagerSubsystem::CanSpawnEnemy(FVector& InSpawnLocation)
 	if (bHit)
 	{
 		FVector FinalSpawnLocation = HitResult.ImpactPoint;
-		if (FinalSpawnLocation.Z > TargetCore->GetActorLocation().Z + 100)
+		if (FinalSpawnLocation.Z > 100)
 		{
 			return false;
 		}
