@@ -13,6 +13,9 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "Building/BaseShop.h"
 #include "UI/UW_ShopWindow.h"
+#include "Shop/BAItemBox.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GAS/BAGameplayTags.h"
 
 
 
@@ -179,6 +182,22 @@ void ABAPlayerController::Server_RequestAddWeapon_Implementation(TSubclassOf<ABa
 	if (!GS) return;
 
 	GS->AddHaveWeapon(InWeaponClass);
+}
+
+void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InItemBox)
+{
+	if (!InItemBox) return;
+	if (InItemBox->GetbIsUsed()) return;
+
+	InItemBox->SetbIsUsed(true);
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetPawn());
+	if (ASC)
+	{
+		FGameplayCueParameters Params;
+		Params.SourceObject = InItemBox;
+		ASC->ExecuteGameplayCue(TAG_GameplayCue_Shop_UseItemBox, Params);
+	}
 }
 
 void ABAPlayerController::ShowShopUI()

@@ -527,9 +527,11 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
+	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
+	IgnoreTags.AddTag(TAG_Ability_Active_Reload);
 
-	AbilitySystemComponent->CancelAbilities(&CancelTags);
+	AbilitySystemComponent->CancelAbilities(&CancelTags,&IgnoreTags);
 }
 
 UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const

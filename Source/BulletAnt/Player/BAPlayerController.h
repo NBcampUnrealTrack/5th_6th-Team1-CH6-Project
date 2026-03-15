@@ -17,6 +17,7 @@ class UUW_WaveTimer;
 class ABaseShop;
 class ABaseWeapon;
 class UUW_ShopWindow;
+class ABAItemBox;
 
 UCLASS()
 class BULLETANT_API ABAPlayerController : public APlayerController
@@ -87,6 +88,9 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestAddWeapon(TSubclassOf<ABaseWeapon> InWeaponClass);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDeleteBox(ABAItemBox* InItemBox);
 
 	UFUNCTION()
 	void ShowShopUI();

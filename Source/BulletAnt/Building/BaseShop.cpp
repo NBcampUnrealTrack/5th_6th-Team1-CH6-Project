@@ -105,10 +105,8 @@ void ABaseShop::ShowShop(ABAPlayerController* PC)
 	if (IsValid(UISubsystem))
 	{
 		ShopWindow = UISubsystem->ShowUI<UUW_ShopWindow>(EUIType::Shop);
+		UISubsystem->ApplyUIOnlyInputMode(ShopWindow);
 		ShopWindow->InitShopUI(this);
-
-		ShopWindow->SetIsFocusable(true);
-		PC->bShowMouseCursor = true;
 	}
 }
 

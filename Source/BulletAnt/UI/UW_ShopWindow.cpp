@@ -38,9 +38,7 @@ void UUW_ShopWindow::OnClickGachaButton(int32 Count)
 
 void UUW_ShopWindow::OnClickEndButton()
 {
-	SetIsFocusable(false);
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetOwningPlayer());
-	PC->bShowMouseCursor = false;
 	ULocalPlayer* LP = GetOwningLocalPlayer();
 	if (LP)
 	{
@@ -48,6 +46,7 @@ void UUW_ShopWindow::OnClickEndButton()
 		if (UISubsystem) 
 		{
 			UISubsystem->HideUI(EUIType::Shop);
+			UISubsystem->ApplyGameOnlyInputMode();
 		}
 	}
 }

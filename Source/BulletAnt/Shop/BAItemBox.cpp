@@ -11,9 +11,6 @@ ABAItemBox::ABAItemBox()
 	bReplicates = true;
 	SetReplicateMovement(true);
 
-	/*Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-	SetRootComponent(Root);*/
-
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	SetRootComponent(Mesh);
 	Mesh->SetSimulatePhysics(false);
@@ -21,26 +18,42 @@ ABAItemBox::ABAItemBox()
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Movement"));
 
 	ProjectileMovement->bAutoActivate = false;
-	ProjectileMovement->bInterpMovement = true;
+	ProjectileMovement->bInterpMovement = false;
 	ProjectileMovement->bInterpRotation = true;
-	ProjectileMovement->bShouldBounce = false;
-	ProjectileMovement->bRotationFollowsVelocity = true;
-	ProjectileMovement->bRotationRemainsVertical = true;
+	ProjectileMovement->bShouldBounce = true;
+	ProjectileMovement->Bounciness = 0.03f;
+	ProjectileMovement->Friction = 0.6f;
+	ProjectileMovement->bBounceAngleAffectsFriction = true;
+	ProjectileMovement->bRotationFollowsVelocity = false;
+	ProjectileMovement->bRotationRemainsVertical = false;
+	ProjectileMovement->bInitialVelocityInLocalSpace = false;
 
 	ProjectileMovement->UpdatedComponent = Mesh;
 }
 
+void ABAItemBox::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ThisClass, bIsUsed);
+}
+
 void ABAItemBox::Use_Implementation(AActor* User)
 {
+	if (bIsUsed) return;
+
 	ABACharacter* Player = Cast<ABACharacter>(User);
 	if (!Player) return;
 
 	ABAPlayerController* PC = Cast<ABAPlayerController>(Player->GetController());
 	if (!PC) return;
 
+	if (bIsUsed) return;
+	
 	if (Item)
 	{
 		PC->Server_RequestAddWeapon(Item);
+		PC->Server_RequestDeleteBox(this);
 	}
 }
 
@@ -60,8 +73,16 @@ void ABAItemBox::BeginPlay()
 		ProjectileMovement->InitialSpeed = 0.f;
 		ProjectileMovement->MaxSpeed = 0.f;
 		ProjectileMovement->Velocity = FVector::ZeroVector;	
+
+		ProjectileMovement->Activate();
 	}
-	ProjectileMovement->Activate();
+	
+}
+
+void ABAItemBox::DestroyItemBox()
+{
+	if (!HasAuthority()) return;
+	Destroy();
 }
 
 
