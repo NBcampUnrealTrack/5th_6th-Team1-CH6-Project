@@ -20,6 +20,17 @@ UMaterialInstanceDynamic* UTribeMaterialManagerSubsystem::GetTribeMaterial(UMate
 	if (IsValid(MID))
 	{
 		MID->SetVectorParameterValue(TEXT("AdditiveColor"), InColor);
+		
+		float Alpha;
+		if (InColor == FLinearColor(0, 0, 0, 1))
+		{
+			Alpha = 0.9f;
+		}
+		else
+		{
+			Alpha = 0.3f;
+		}
+		MID->SetScalarParameterValue(TEXT("Alpha"), Alpha);
 		TribeMaterialCache.Add(key, MID);
 		return MID;
 	}
