@@ -11,6 +11,7 @@
 #include "Framework/BAGameState.h"
 #include "Building/BaseCore.h"
 #include <optional>
+#include "Building/BaseBuilding.h"
 #include "NavigationSystem.h"
 #include "Components/CapsuleComponent.h"
 
@@ -46,7 +47,8 @@ EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 		return EStateTreeRunStatus::Failed;
 	}
 
-	if (!IsValid(TargetCore))
+	Target = Cast<ABaseBuilding>(Target);
+	if (!IsValid(Target))
 	{
 		UWorld* World = GetWorld();
 		if (!IsValid(World))
@@ -58,9 +60,9 @@ EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 		{
 			return EStateTreeRunStatus::Failed;
 		}
-		TargetCore = BAGameState->GetTargetCore();
+		Target = BAGameState->GetTargetCore();
 	}
-	if (!IsValid(TargetCore))
+	if (!IsValid(Target))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
@@ -128,7 +130,7 @@ void UMoveToLoc::StartMoveToTarget()
 		MoveRequestResult = EMoveRequestResult::Failed;
 		return;
 	}
-	if (!IsValid(TargetCore))
+	if (!IsValid(Target))
 	{
 		UWorld* World = GetWorld();
 		if (!IsValid(World))
@@ -142,36 +144,52 @@ void UMoveToLoc::StartMoveToTarget()
 			MoveRequestResult = EMoveRequestResult::Failed;
 			return;
 		}
-		TargetCore = BAGameState->GetTargetCore();
+		Target = BAGameState->GetTargetCore();
 	}
-	if (!IsValid(TargetCore))
+	if (!IsValid(Target))
 	{
 		MoveRequestResult = EMoveRequestResult::Failed;
 		return;
 	}
 
-	// 이동을 요청한 결과
-	auto TargetLocation = GetAnchor();
+	//FVector TargetLocation;
+	//if (Target->IsA(ABaseCore::StaticClass()))
+	//{
+	//	auto CoreLocation = GetAnchor();
+	//	if (CoreLocation.has_value())
+	//	{
+	//		TargetLocation = *CoreLocation;
+	//	}
+	//	else
+	//	{
+	//		TargetLocation = GetClosestLocation();
+	//	}
+	//}
+	//else
+	//{
+	//	TargetLocation = Target->GetActorLocation();
+	//}
+	
+	FVector TargetLocation = GetClosestLocation();
+	DrawDebugPoint(GetWorld(), TargetLocation, 10, FColor::Green, true);
 	EPathFollowingRequestResult::Type Result;
-	if (TargetLocation.has_value())
+	FNavLocation ProjectedLocation;
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (IsValid(NavSys))
 	{
-		FNavLocation ProjectedLocation;
-		UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-		if (IsValid(NavSys))
+		float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
+		float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		const FNavAgentProperties& AgentProps = ContextEnemy->GetNavAgentPropertiesRef();
+		bool bCanProject = NavSys->ProjectPointToNavigation(TargetLocation, ProjectedLocation, FVector(Radius * 1.5f, Radius * 1.5f, HalfHeight * 2.5), &AgentProps);
+		if (bCanProject)
 		{
-			float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
-			float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-			const FNavAgentProperties& AgentProps = ContextEnemy->GetNavAgentPropertiesRef();
-			bool bCanProject = NavSys->ProjectPointToNavigation(*TargetLocation, ProjectedLocation, FVector(Radius, Radius, 10), &AgentProps);
-			if (bCanProject)
-			{
-				Result = CachedAIController->MoveToLocation(ProjectedLocation, AcceptanceRadius);
-				DrawDebugPoint(GetWorld(), ProjectedLocation, 10, FColor::Red, true);
-			}
-			else
-			{
-				Result = CachedAIController->MoveToLocation(*TargetLocation, AcceptanceRadius);
-			}
+			Result = CachedAIController->MoveToLocation(ProjectedLocation, AcceptanceRadius);
+			DrawDebugPoint(GetWorld(), ProjectedLocation, 10, FColor::Red, true);
+		}
+		else
+		{
+			MoveRequestResult = EMoveRequestResult::Failed;
+			return;
 		}
 	}
 	else
@@ -180,7 +198,6 @@ void UMoveToLoc::StartMoveToTarget()
 		return;
 	}
 	
-
 	if (Result == EPathFollowingRequestResult::RequestSuccessful)
 	{
 		MoveRequestResult = EMoveRequestResult::RequestAccepted;
@@ -199,7 +216,7 @@ void UMoveToLoc::StartMoveToTarget()
 
 const std::optional<FVector> UMoveToLoc::GetAnchor() const
 {
-	ABaseCore* Core = Cast<ABaseCore>(TargetCore);
+	ABaseCore* Core = Cast<ABaseCore>(Target);
 	if (!IsValid(Core))
 	{
 		UE_LOG(LogTemp, Error, TEXT("UMoveToLoc GetAnchor : Anchor Miss"));
@@ -222,6 +239,37 @@ const std::optional<FVector> UMoveToLoc::GetAnchor() const
 	int32 AnchorIndex = FMath::RoundToInt(Degrees / (360.f / Anchors.Num())) % Anchors.Num();
 
 	return Anchors[AnchorIndex];
+}
+
+FVector UMoveToLoc::GetClosestLocation()
+{
+	FVector StartLocation = ContextEnemy->GetActorLocation();
+	FVector ForwardVector = ContextEnemy->GetActorForwardVector();
+	float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	float TraceDistance = FVector::DistSquared2D(StartLocation, Target->GetActorLocation());
+	FVector EndLocation = StartLocation + (ForwardVector * TraceDistance);
+
+	FCollisionShape CollisionShape = FCollisionShape::MakeCapsule(Radius, HalfHeight);
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel1);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel9);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(ContextEnemy);
+
+	FHitResult HitResult;
+	bool bHit = GetWorld()->SweepSingleByObjectType(
+		HitResult,
+		StartLocation,
+		EndLocation,
+		FQuat::Identity,
+		ObjectQueryParams,
+		CollisionShape,
+		QueryParams
+	);
+
+	return bHit ? HitResult.Location : StartLocation + (ForwardVector * TraceDistance);
 }
 
 // 도착 또는 멈췄을 시의 콜백함수
@@ -250,7 +298,7 @@ void UMoveToLoc::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::T
 	if (Result == EPathFollowingResult::Success)
 	{
 		// Attack State로 전환
-		if (IsValid(TargetCore))
+		if (IsValid(Target))
 		{
 			ContextEnemy->GetStateTreeComponent()->SendStateTreeEvent(ToAttack);
 		}
@@ -258,7 +306,7 @@ void UMoveToLoc::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::T
 	// 경로 문제일 경우 (1초 뒤 재시도)
 	else if (Result == EPathFollowingResult::Blocked || Result == EPathFollowingResult::OffPath)
 	{
-		if (IsValid(TargetCore) && CachedAIController.IsValid())
+		if (IsValid(Target) && CachedAIController.IsValid())
 		{
 			TWeakObjectPtr<UMoveToLoc> WeakSelf(this);
 			GetWorld()->GetTimerManager().SetTimer(RetryTimer, [WeakSelf]()

@@ -28,13 +28,14 @@ private:
 	void StartMoveToTarget();
 
 	const std::optional<FVector> GetAnchor() const;
+	FVector GetClosestLocation();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<ABaseEnemyCharacter> ContextEnemy;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	TObjectPtr<AActor> TargetCore;
+	TObjectPtr<AActor> Target;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	float AcceptanceRadius = 50.f;
@@ -52,6 +53,4 @@ protected:
 	FActiveGameplayEffectHandle ActiveGEHandle;
 
 	FTimerHandle RetryTimer;
-
-	
 };
