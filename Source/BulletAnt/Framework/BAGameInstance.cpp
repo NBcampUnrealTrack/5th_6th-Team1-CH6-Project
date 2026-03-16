@@ -1,5 +1,6 @@
 ﻿#include "Framework/BAGameInstance.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
+#include "Framework/MapConfig.h"
 
 void UBAGameInstance::OnStart()
 {

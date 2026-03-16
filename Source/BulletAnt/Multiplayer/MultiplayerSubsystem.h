@@ -3,6 +3,9 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
+THIRD_PARTY_INCLUDES_START
+#include "steam/steam_api.h"
+THIRD_PARTY_INCLUDES_END
 #include "MultiplayerSubsystem.generated.h"
 
 class FOnlineSessionSearch;
@@ -22,7 +25,11 @@ class BULLETANT_API UMultiplayerSubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
+public:
 	void EpicLogin();
+	void SteamLogin();
+
+	void ProcessEOSLogin(FString CredentialType, FString CredentialId, FString AuthToken);
 
 	void CreateSession(const FString& RoomName = TEXT("DefaultRoom"), int32 MaxPlayers = 4);
 	void SearchSessions(int32 MaxSearchCount = 16);
@@ -65,12 +72,23 @@ private:
 
 	FName CurrentSessionName;
 
-	UPROPERTY()
-	TObjectPtr<class UMapConfig> MapConfig;
-
 	static const FName SETTING_ROOMNAME;
 	static const FName SETTING_MAXPLAYERS;
 	static const FName SEARCH_PRESENCE;
 	
 	static const FName NAME_GAMESESSION;
+
+#pragma region Steam
+
+public:
+	void OnGetAuthTicketForWebApiCompleted(struct GetTicketForWebApiResponse_t* Response);
+
+private:
+	FTimerHandle SteamAuthTimer;
+
+	HAuthTicket AuthTicketHandle;
+	CCallbackManual<UMultiplayerSubsystem, GetTicketForWebApiResponse_t> CallbackGetTicketForWebApi;
+
+#pragma endregion
+
 };

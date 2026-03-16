@@ -1,5 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
+using System.IO;
 using UnrealBuildTool;
 
 public class BulletAnt : ModuleRules
@@ -46,14 +47,22 @@ public class BulletAnt : ModuleRules
 			"OnlineSubsystemUtils",
 			"OnlineSubsystemEOS",
 			"EOSSDK",
+			"OnlineSubsystemSteam",
+			"Steamworks",
 
 			// EOS - VoiceChat
 			"EOSVoiceChat",
 			"VoiceChat"
 		});
 
-		PublicIncludePaths.AddRange(new string[] {
-            "BulletAnt" });
+		string SteamVersion = "v161";
+		string SteamDir = Path.Combine(Target.UEThirdPartySourceDirectory, "Steamworks", SteamVersion, "sdk");
+
+		PublicIncludePaths.AddRange(new string[]
+		{
+			"BulletAnt",
+			Path.Combine(SteamDir, "public")
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

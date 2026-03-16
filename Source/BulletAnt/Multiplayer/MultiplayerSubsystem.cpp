@@ -13,6 +13,9 @@
 #include "EOSVoiceChatUser.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/MapConfig.h"
+#include "EOSSettings.h"
+#include "steam/steam_api.h"
+#include "Framework/BAGameInstance.h"
 
 const FName UMultiplayerSubsystem::SETTING_ROOMNAME(TEXT("ROOMNAME"));
 const FName UMultiplayerSubsystem::SETTING_MAXPLAYERS(TEXT("MAXPLAYERS"));
@@ -22,14 +25,75 @@ const FName UMultiplayerSubsystem::NAME_GAMESESSION(TEXT("GameSession"));
 void UMultiplayerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
-	FString MapConfigPath = TEXT("/Game/BulletAnt/Framework/DA_MapConfig.DA_MapConfig");
-	MapConfig = LoadObject<UMapConfig>(nullptr, *MapConfigPath);
 }
 
 void UMultiplayerSubsystem::EpicLogin()
 {
-	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+	ProcessEOSLogin(TEXT("accountportal"), TEXT(""), TEXT(""));
+}
+
+void UMultiplayerSubsystem::SteamLogin()
+{
+	if (SteamAPI_Init() == false || SteamAPI_IsSteamRunning() == false)
+	{
+		if (SteamAPI_RestartAppIfNecessary(480) == true)
+		{
+			FPlatformMisc::RequestExit(false);
+		}
+
+		FTimerHandle Timer;
+		GetWorld()->GetTimerManager().SetTimer(
+			Timer,
+			[this]()
+			{
+				SteamLogin();
+			},
+			2.0f,
+			false);
+		return;
+	}
+
+	CallbackGetTicketForWebApi.Register(this, &ThisClass::OnGetAuthTicketForWebApiCompleted);
+
+	constexpr char ApiTarget[] = "epiconlineservices";
+	AuthTicketHandle = SteamUser()->GetAuthTicketForWebApi(ApiTarget);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		SteamAuthTimer,
+		[this]()
+		{
+			SteamAPI_RunCallbacks();
+		},
+		0.5f,
+		true);
+
+	//uint8 Ticket[1024];
+	//uint32 TicketSize = 0;
+
+	//HAuthTicket AuthTicket =
+	//	SteamUser()->GetAuthSessionTicket(Ticket, sizeof(Ticket), &TicketSize, nullptr);
+	//FString Base64Ticket = FBase64::Encode(Ticket, TicketSize); //FString::FromHexBlob(Ticket, TicketSize);
+	//if (TicketSize > 0)
+	//{
+	//	FString HexTicket;
+
+	//	for (uint32 i = 0; i < TicketSize; i++)
+	//	{
+	//		HexTicket += FString::Printf(TEXT("%02x"), Ticket[i]);
+	//	}
+
+	//	UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("HexTicket: %s"), *HexTicket));
+
+	//	ProcessEOSLogin(
+	//		TEXT("externalauth:SteamSessionTicket"),
+	//		TEXT(""),
+	//		Base64Ticket);
+	//}
+}
+
+void UMultiplayerSubsystem::ProcessEOSLogin(FString CredentialType, FString CredentialId, FString AuthToken)
+{
+	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld(), EOS_SUBSYSTEM);
 	if (Subsystem)
 	{
 		IOnlineIdentityPtr Identity = Subsystem->GetIdentityInterface();
@@ -40,15 +104,27 @@ void UMultiplayerSubsystem::EpicLogin()
 				Identity->ClearOnLoginCompleteDelegate_Handle(0, LoginHandle);
 			}
 
-			/*LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateLambda([this, Identity](int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+			/*LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateLambda(
+				[this, Identity](int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
 				{
-					UKismetSystemLibrary::PrintString(GetWorld(), bWasSuccessful == true ? TEXT("LoginTrue") : TEXT("LoginFalse"));
+					FString StrSuccess = bWasSuccessful == true ? TEXT("Login Success") : TEXT("Login Failed");
+					UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
 				}));*/
 
 			FOnlineAccountCredentials Credentials;
-			Credentials.Type = TEXT("accountportal");
+			Credentials.Type = CredentialType;
+			Credentials.Id = CredentialId;
+			Credentials.Token = AuthToken;
 			Identity->Login(0, Credentials);
 		}
+		else
+		{
+			//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Identity not valid"));
+		}
+	}
+	else
+	{
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("EOS Subsystem not valid"));
 	}
 }
 
@@ -115,16 +191,26 @@ void UMultiplayerSubsystem::ServerTravelToLobby()
 {
 	UWorld* World = GetWorld();
 	if (IsValid(World) == false || World->GetNetMode() == NM_Client)
+	{
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel Failed 0"));
 		return;
+	}
 
+	UBAGameInstance* GameInstance = Cast<UBAGameInstance>(GetGameInstance());
+	UMapConfig* MapConfig = IsValid(GameInstance) == true ? GameInstance->GetMapConfig() : nullptr;
 	if (IsValid(MapConfig) == false)
+	{
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel Failed 1"));
 		return;
+	}
 
+	//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel 0"));
 	FString Path = MapConfig->LobbyLevel.ToSoftObjectPath().ToString();
 	FString MapName = FPackageName::ObjectPathToPackageName(Path);
 	// 로비로 갈 때에는 non-seamless로 가야 문제가 안 생김. 게스트 모두 접속 후에는 ServerTravelToLevel로 seamless travel.
 	FString TravelURL = FString::Printf(TEXT("%s?listen"), *MapName);
 	//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("ServerTravel => %s"), *TravelURL));
+	//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel 1"));
 	World->ServerTravel(TravelURL);
 }
 
@@ -268,6 +354,33 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 			TravelHandle.Reset();
 		}
 	}
+}
+
+void UMultiplayerSubsystem::OnGetAuthTicketForWebApiCompleted(GetTicketForWebApiResponse_t* Response)
+{
+	if (Response->m_hAuthTicket != AuthTicketHandle)
+	{
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("WebAPI failed 0"));
+		return;
+	}
+
+	AuthTicketHandle = 0;
+
+	if (Response->m_eResult != k_EResultOK)
+	{
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("WebAPI failed 1"));
+		return;
+	}
+
+	GetWorld()->GetTimerManager().ClearTimer(SteamAuthTimer);
+
+	FString TokenString = FString::FromHexBlob(Response->m_rgubTicket, Response->m_cubTicket);
+
+	//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Start Login"));
+	ProcessEOSLogin(
+		TEXT("externalauth:SteamSessionTicket"),
+		TEXT(""),
+		TokenString);
 }
 
 void UMultiplayerSubsystem::SetVolume(int32 LocalUserNum, float InVolume)
