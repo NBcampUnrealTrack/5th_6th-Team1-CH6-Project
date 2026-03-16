@@ -11,6 +11,8 @@
 #include "Framework/BAGameState.h"
 #include "Building/BaseCore.h"
 #include <optional>
+#include "NavigationSystem.h"
+#include "Components/CapsuleComponent.h"
 
 EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
@@ -151,9 +153,26 @@ void UMoveToLoc::StartMoveToTarget()
 	// 이동을 요청한 결과
 	auto TargetLocation = GetAnchor();
 	EPathFollowingRequestResult::Type Result;
-	if (TargetLocation.has_value()) 
+	if (TargetLocation.has_value())
 	{
-		Result = CachedAIController->MoveToLocation(*TargetLocation, AcceptanceRadius);
+		FNavLocation ProjectedLocation;
+		UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+		if (IsValid(NavSys))
+		{
+			float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
+			float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+			const FNavAgentProperties& AgentProps = ContextEnemy->GetNavAgentPropertiesRef();
+			bool bCanProject = NavSys->ProjectPointToNavigation(*TargetLocation, ProjectedLocation, FVector(Radius, Radius, 10), &AgentProps);
+			if (bCanProject)
+			{
+				Result = CachedAIController->MoveToLocation(ProjectedLocation, AcceptanceRadius);
+				DrawDebugPoint(GetWorld(), ProjectedLocation, 10, FColor::Red, true);
+			}
+			else
+			{
+				Result = CachedAIController->MoveToLocation(*TargetLocation, AcceptanceRadius);
+			}
+		}
 	}
 	else
 	{
@@ -174,7 +193,6 @@ void UMoveToLoc::StartMoveToTarget()
 	}
 	else	// Failed
 	{
-		UE_LOG(LogTemp, Warning, TEXT("else"));
 		MoveRequestResult = EMoveRequestResult::Failed;
 	}
 }
@@ -202,8 +220,6 @@ const std::optional<FVector> UMoveToLoc::GetAnchor() const
 		return std::nullopt;
 	}
 	int32 AnchorIndex = FMath::RoundToInt(Degrees / (360.f / Anchors.Num())) % Anchors.Num();
-
-	DrawDebugPoint(GetWorld(), Anchors[AnchorIndex], 10, FColor::Red, true);
 
 	return Anchors[AnchorIndex];
 }
