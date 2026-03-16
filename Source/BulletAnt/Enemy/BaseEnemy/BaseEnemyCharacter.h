@@ -16,6 +16,7 @@ class UBaseEnemyDataAsset;
 class UHealthAttributeSet;
 class USphereComponent;
 class UTribeDataAsset;
+class ABaseBuilding;
 
 USTRUCT()
 struct FActorArrayWrapper
@@ -75,6 +76,10 @@ public:
 public:
 	USphereComponent* GetDetectionSphere() const;
 
+	void SetTargetPrioriy(ETargetPriorityType InTargetPriority);
+
+	void InitTarget();
+
 protected:
 	UFUNCTION()
 	virtual void OnDetectionSphereBeginOverlap(
@@ -95,6 +100,13 @@ protected:
 	void SenseNearbyActors();
 
 	bool IsInFieldOfView(AActor* Target, float FOVAngle);
+
+	void OnTargetBuildingDestroy();
+
+	void BindOnTargetDestroy(AActor* Target);
+	void RemoveOnTargetDestroy(AActor* Target);
+
+	void TransitionToRotate();
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")

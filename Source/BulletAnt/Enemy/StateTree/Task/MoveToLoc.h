@@ -30,6 +30,9 @@ private:
 	const std::optional<FVector> GetAnchor() const;
 	FVector GetClosestLocation();
 
+	void ToAttackState();
+	void ToMoveToLocState();
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<ABaseEnemyCharacter> ContextEnemy;

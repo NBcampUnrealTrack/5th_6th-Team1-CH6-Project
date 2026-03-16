@@ -69,6 +69,11 @@ USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
 	return DetectionSphere;
 }
 
+void ABaseEnemyCharacter::SetTargetPrioriy(ETargetPriorityType InTargetPriority)
+{
+	TargetActorPriority = InTargetPriority;
+}
+
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!HasAuthority())
@@ -141,10 +146,14 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 		return;
 	}
 
-
 	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
 	{
 		Value->Actors.Remove(OtherActor);
+		if (TargetActor == OtherActor)
+		{
+			InitTarget();
+			TransitionToRotate();
+		}
 	}
 }
 
@@ -184,6 +193,9 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 
 			if (IsValid(NewTarget) && TargetActor != NewTarget)
 			{
+				//RemoveOnTargetDestroy(TargetActor);
+				//BindOnTargetDestroy(NewTarget);
+
 				TargetActor = NewTarget;
 				TargetActorPriority = NewTargetPriority;
 				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
@@ -195,17 +207,8 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 
 	if (!IsValid(TargetActor))
 	{
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-			if (IsValid(BAGameState))
-			{
-				TargetActor = BAGameState->GetTargetCore();
-				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
-				StateTreeComponent->SendStateTreeEvent(ToRotate);
-			}
-		}
+		InitTarget();
+		TransitionToRotate();
 	}
 }
 
@@ -217,6 +220,80 @@ bool ABaseEnemyCharacter::IsInFieldOfView(AActor* Target, float FOVAngle)
 	float DotProduct = FVector::DotProduct(Forward, DirectionToTarget);
 
 	return DotProduct >= FMath::Cos(FMath::DegreesToRadians(FOVAngle / 2));
+}
+
+void ABaseEnemyCharacter::InitTarget()
+{
+	UWorld* World = GetWorld();
+	if (!ensureMsgf(IsValid(World), TEXT("ABaseEnemyCharacter InitTarget : World Error")))
+	{
+		return;
+	}
+	ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+	if (!ensureMsgf(IsValid(BAGameState), TEXT("ABaseEnemyCharacter InitTarget : BAGameState Error")))
+	{
+		return;
+	}
+
+	TargetActor = BAGameState->GetTargetCore();
+	TargetActorPriority = ETargetPriorityType::Max;		
+}
+
+//void ABaseEnemyCharacter::OnTargetBuildingDestroy()
+//{
+//	if (!HasAuthority())
+//	{
+//		return;
+//	}
+//
+//	UWorld* World = GetWorld();
+//	if (!ensureMsgf(IsValid(World), TEXT("ABaseEnemyCharacter OnTargetBuildingDestroy : World Error")))
+//	{
+//		return;
+//	}
+//	ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+//	if (!ensureMsgf(IsValid(BAGameState), TEXT("ABaseEnemyCharacter OnTargetBuildingDestroy : BAGameState Error")))
+//	{
+//		return;
+//	}
+//	//TargetActor = BAGameState->GetTargetCore();
+//	//TargetActorPriority = ETargetPriorityType::High;
+//	//FStateTreeEvent ToRotateForIntrude(FGameplayTag::RequestGameplayTag(TEXT("State.Intrude.Rotate")));
+//	//StateTreeComponent->SendStateTreeEvent(ToRotateForIntrude);
+//}
+//
+//void ABaseEnemyCharacter::BindOnTargetDestroy(AActor* Target)
+//{
+//	if (!IsValid(Target))
+//	{
+//		return;
+//	}
+//
+//	ABaseBuilding* Building = Cast<ABaseBuilding>(Target);
+//	if (IsValid(Building))
+//	{
+//		Building->OnDestroyed.AddUObject(this, &ABaseEnemyCharacter::OnTargetBuildingDestroy);
+//	}
+//}
+//
+//void ABaseEnemyCharacter::RemoveOnTargetDestroy(AActor* Target)
+//{
+//	if (!IsValid(Target))
+//	{
+//		return;
+//	}
+//
+//	ABaseBuilding* BaseBuilding = Cast<ABaseBuilding>(Target);
+//	if (IsValid(BaseBuilding))
+//	{
+//		BaseBuilding->OnDestroyed.RemoveAll(this);
+//	}
+//}
+
+void ABaseEnemyCharacter::TransitionToRotate()
+{
+	FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+	StateTreeComponent->SendStateTreeEvent(ToRotate);
 }
 
 UAbilitySystemComponent* ABaseEnemyCharacter::GetAbilitySystemComponent() const
@@ -469,6 +546,7 @@ void ABaseEnemyCharacter::PossessedBy(AController* NewController)
 	{
 		if (IsValid(StateTreeComponent))
 		{
+			InitTarget();
 			StateTreeComponent->StartLogic();
 		}
 	}

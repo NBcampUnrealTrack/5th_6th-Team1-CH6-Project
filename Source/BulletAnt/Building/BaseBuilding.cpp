@@ -12,6 +12,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SplineComponent.h"
+#include "Components/BoxComponent.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -523,6 +524,13 @@ void ABaseBuilding::OnRep_Dead()
 		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		StaticMeshComp->SetHiddenInGame(true);
 	}
+
+	UBoxComponent* Box = FindComponentByClass<UBoxComponent>();
+	if (IsValid(Box))
+	{
+		Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	OnDestroyed.Broadcast();
 }
 
 void ABaseBuilding::Multicast_PlayDestruction_Implementation(const FVector& ImpulseOrigin)

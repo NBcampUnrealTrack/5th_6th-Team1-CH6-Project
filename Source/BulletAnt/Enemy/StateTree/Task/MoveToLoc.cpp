@@ -67,14 +67,13 @@ EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 		return EStateTreeRunStatus::Failed;
 	}
 
-	// 적의 이동 완료시 콜백함수 바인딩
-	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToLoc::OnMoveCompleted);
-	StartMoveToTarget();
-
 	if (!CachedAIController.IsValid())
 	{
 		return EStateTreeRunStatus::Failed;
 	}
+	// 적의 이동 완료시 콜백함수 바인딩
+	CachedAIController->ReceiveMoveCompleted.AddDynamic(this, &UMoveToLoc::OnMoveCompleted);
+	StartMoveToTarget();	
 
 	// AI의 이동 요청이 받아들여졌을 경우
 	if (MoveRequestResult == EMoveRequestResult::RequestAccepted)
@@ -91,7 +90,8 @@ EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 	else // 요청이 거절당한 경우
 	{
 		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToLoc::OnMoveCompleted);
-		return EStateTreeRunStatus::Failed;
+		ToAttackState();
+		return EStateTreeRunStatus::Running;
 	}
 }
 
@@ -272,17 +272,8 @@ FVector UMoveToLoc::GetClosestLocation()
 	return bHit ? HitResult.Location : StartLocation + (ForwardVector * TraceDistance);
 }
 
-// 도착 또는 멈췄을 시의 콜백함수
-void UMoveToLoc::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
+void UMoveToLoc::ToAttackState()
 {
-	// 이 Task가 요청한 움직일 때만 처리
-	if (RequestID != CurrentRequestID)
-	{
-		return;
-	}
-
-	MoveRequestResult = EMoveRequestResult::Failed;
-
 	if (!IsValid(ContextEnemy))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UMoveToLoc-OnMoveCompleted : ContextActor"));
@@ -294,17 +285,51 @@ void UMoveToLoc::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::T
 		return;
 	}
 
+	if (IsValid(Target))
+	{
+		ContextEnemy->GetStateTreeComponent()->SendStateTreeEvent(ToAttack);
+	}
+}
+
+void UMoveToLoc::ToMoveToLocState()
+{
+	if (!IsValid(ContextEnemy))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UMoveToLoc-OnMoveCompleted : ContextActor"));
+		return;
+	}
+	if (!IsValid(ContextEnemy->GetStateTreeComponent()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UMoveToLoc-OnMoveCompleted : StateTree"));
+		return;
+	}
+
+	if (IsValid(Target))
+	{
+		FStateTreeEvent ToMove(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Moving")));
+		ContextEnemy->GetStateTreeComponent()->SendStateTreeEvent(ToMove);
+	}
+}
+
+// 도착 또는 멈췄을 시의 콜백함수
+void UMoveToLoc::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
+{
+	// 이 Task가 요청한 움직일 때만 처리
+	if (RequestID != CurrentRequestID)
+	{
+		return;
+	}
+
+	MoveRequestResult = EMoveRequestResult::Failed;
+
 	// 목표 도착
-	if (Result == EPathFollowingResult::Success)
+	if (Result == EPathFollowingResult::Success || Result == EPathFollowingResult::Blocked)
 	{
 		// Attack State로 전환
-		if (IsValid(Target))
-		{
-			ContextEnemy->GetStateTreeComponent()->SendStateTreeEvent(ToAttack);
-		}
+		ToAttackState();
 	}
 	// 경로 문제일 경우 (1초 뒤 재시도)
-	else if (Result == EPathFollowingResult::Blocked || Result == EPathFollowingResult::OffPath)
+	else
 	{
 		if (IsValid(Target) && CachedAIController.IsValid())
 		{
@@ -313,7 +338,7 @@ void UMoveToLoc::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::T
 				{
 					if (WeakSelf.IsValid() && (WeakSelf->CachedAIController).IsValid())
 					{
-						WeakSelf->StartMoveToTarget();
+						WeakSelf->ToMoveToLocState();
 					}
 				}, 1.f, false);
 		}
