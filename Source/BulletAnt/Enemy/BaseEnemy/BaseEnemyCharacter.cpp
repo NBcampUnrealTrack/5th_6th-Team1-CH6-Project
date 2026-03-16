@@ -33,7 +33,7 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	UCharacterMovementComponent* CharacterMovementComponent = GetCharacterMovement();
 	if (IsValid(CharacterMovementComponent))
 	{
-		CharacterMovementComponent->bOrientRotationToMovement = false;
+		CharacterMovementComponent->bOrientRotationToMovement = true;
 		CharacterMovementComponent->bUseControllerDesiredRotation = true;
 	}
 

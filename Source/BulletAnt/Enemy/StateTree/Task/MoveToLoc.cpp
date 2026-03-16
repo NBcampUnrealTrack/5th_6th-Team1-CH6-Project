@@ -171,7 +171,7 @@ void UMoveToLoc::StartMoveToTarget()
 	//}
 	
 	FVector TargetLocation = GetClosestLocation();
-	DrawDebugPoint(GetWorld(), TargetLocation, 10, FColor::Green, true);
+	// DrawDebugPoint(GetWorld(), TargetLocation, 10, FColor::Green, true);
 	EPathFollowingRequestResult::Type Result;
 	FNavLocation ProjectedLocation;
 	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
@@ -184,7 +184,7 @@ void UMoveToLoc::StartMoveToTarget()
 		if (bCanProject)
 		{
 			Result = CachedAIController->MoveToLocation(ProjectedLocation, AcceptanceRadius);
-			DrawDebugPoint(GetWorld(), ProjectedLocation, 10, FColor::Red, true);
+			// DrawDebugPoint(GetWorld(), ProjectedLocation, 10, FColor::Red, true);
 		}
 		else
 		{

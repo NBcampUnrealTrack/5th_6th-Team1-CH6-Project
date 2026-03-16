@@ -10,6 +10,7 @@
 #include "AbilitySystemComponent.h"
 #include "Framework/BAGameState.h"
 #include "Building/BaseCore.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 URotateToTargetTask::URotateToTargetTask(const FObjectInitializer& ObjectInitializer) : 
 	Super(ObjectInitializer)
@@ -68,6 +69,11 @@ EStateTreeRunStatus URotateToTargetTask::EnterState(FStateTreeExecutionContext& 
 	{
 		return EStateTreeRunStatus::Failed;
 	}
+	UCharacterMovementComponent* CharacterMovement = ContextActor->GetCharacterMovement();
+	if (IsValid(CharacterMovement))
+	{
+		CharacterMovement->bOrientRotationToMovement = false;
+	}
 	CachedAIController->SetFocus(TargetActor);
 
 	bool ShouldTickStart = ShouldRotateStart();
@@ -102,7 +108,16 @@ EStateTreeRunStatus URotateToTargetTask::Tick(FStateTreeExecutionContext& Contex
 
 void URotateToTargetTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {
-	CachedAIController.Reset();
+	if (CachedAIController.IsValid())
+	{
+		CachedAIController->ClearFocus(EAIFocusPriority::Gameplay);
+		CachedAIController.Reset();
+	}
+	UCharacterMovementComponent* CharacterMovement = ContextActor->GetCharacterMovement();
+	if (IsValid(CharacterMovement))
+	{
+		CharacterMovement->bOrientRotationToMovement = true;
+	}
 
 	// 적용했던 GE_Rotate 제거
 	if (ActiveGEHandle.IsValid() && IsValid(ContextActor))
