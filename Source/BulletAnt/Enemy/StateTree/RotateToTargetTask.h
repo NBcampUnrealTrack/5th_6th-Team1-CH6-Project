@@ -9,6 +9,7 @@
 
 class ABaseEnemyCharacter;
 class AAIController;
+class UCharacterMovementComponent;
 
 UCLASS()
 class BULLETANT_API URotateToTargetTask : public UStateTreeTaskBlueprintBase
@@ -46,6 +47,8 @@ public:
 
 protected:
 	TWeakObjectPtr<AAIController> CachedAIController;
+
+	TWeakObjectPtr<UCharacterMovementComponent> CachedCharacterMovement;
 
 	FActiveGameplayEffectHandle ActiveGEHandle;
 };

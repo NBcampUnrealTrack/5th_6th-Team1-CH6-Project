@@ -69,15 +69,15 @@ EStateTreeRunStatus URotateToTargetTask::EnterState(FStateTreeExecutionContext& 
 	{
 		return EStateTreeRunStatus::Failed;
 	}
-	UCharacterMovementComponent* CharacterMovement = ContextActor->GetCharacterMovement();
-	if (IsValid(CharacterMovement))
+	CachedCharacterMovement = ContextActor->GetCharacterMovement();
+	if (CachedCharacterMovement.IsValid())
 	{
-		CharacterMovement->bOrientRotationToMovement = false;
+		CachedCharacterMovement->bOrientRotationToMovement = false;
 	}
 	CachedAIController->SetFocus(TargetActor);
 
 	bool ShouldTickStart = ShouldRotateStart();
-	if (!ShouldTickStart)
+	if (!ShouldTickStart && !CachedCharacterMovement->IsFalling())
 	{
 		TransitionState();
 		return EStateTreeRunStatus::Succeeded;
@@ -90,7 +90,7 @@ EStateTreeRunStatus URotateToTargetTask::Tick(FStateTreeExecutionContext& Contex
 {
 	Super::Tick(Context, DeltaTime);
 
-	if (IsFacingTarget())
+	if (IsFacingTarget() && !CachedCharacterMovement->IsFalling())
 	{
 		TransitionState();
 		return EStateTreeRunStatus::Succeeded;
@@ -113,10 +113,10 @@ void URotateToTargetTask::ExitState(FStateTreeExecutionContext& Context, const F
 		CachedAIController->ClearFocus(EAIFocusPriority::Gameplay);
 		CachedAIController.Reset();
 	}
-	UCharacterMovementComponent* CharacterMovement = ContextActor->GetCharacterMovement();
-	if (IsValid(CharacterMovement))
+	if (CachedCharacterMovement.IsValid())
 	{
-		CharacterMovement->bOrientRotationToMovement = true;
+		CachedCharacterMovement->bOrientRotationToMovement = true;
+		CachedCharacterMovement.Reset();
 	}
 
 	// 적용했던 GE_Rotate 제거
