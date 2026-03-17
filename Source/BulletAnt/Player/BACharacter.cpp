@@ -696,10 +696,6 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 	{
 		PC->StartRespawnBar(RespawnTime);
 	}
-	else if (NewCount == 0)
-	{
-		PC->StopRespawnBar();
-	}
 }
 
 //조준 시작

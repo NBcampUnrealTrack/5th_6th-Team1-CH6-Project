@@ -116,10 +116,15 @@ void ABAPlayerController::HandleRespawnBar()
 {
 	if (!IsValid(this)) return;
 	if (!IsValid(RespawnBarUI)) return;
+	if (CurrentTime > TotalTime)
+	{
+		StopRespawnBar();
+	}
 
 	CurrentTime += 0.1f;
 
 	RespawnBarUI->UpdateRespawnBar(CurrentTime, TotalTime);
+	
 }
 
 void ABAPlayerController::StartRespawnBar(float InTotalTime)
