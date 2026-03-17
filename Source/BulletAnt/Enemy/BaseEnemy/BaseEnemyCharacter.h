@@ -9,6 +9,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Enemy/DataAsset/TargetPriority.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayEffect.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
@@ -201,4 +202,13 @@ protected:
 
 #pragma endregion
 
+#pragma region Intrude
+
+protected:
+	void StartIntrudeAction();
+
+	void FinishIntrudeAction(const FGameplayEffectRemovalInfo& InGERemovalInfo);
+
+	FActiveGameplayEffectHandle GEIntrudeHandle;
+#pragma endregion
 };

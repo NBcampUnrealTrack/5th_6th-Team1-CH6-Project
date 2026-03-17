@@ -95,6 +95,16 @@ public:
 
 #pragma endregion
 
+#pragma region Intrude
+
+	UPROPERTY(EditDefaultsOnly, Category = "Intrude")
+	float IntrudeTime = 2.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intrude")
+	TSubclassOf<UGameplayEffect> IntrudeEffect;
+
+#pragma endregion
+
 #pragma region Death
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death")

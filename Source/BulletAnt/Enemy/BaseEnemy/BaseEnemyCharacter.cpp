@@ -152,6 +152,7 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 		if (TargetActor == OtherActor)
 		{
 			InitTarget();
+			StartIntrudeAction();
 			TransitionToRotate();
 		}
 	}
@@ -430,6 +431,39 @@ void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
 void ABaseEnemyCharacter::OnRep_WalkSpeed()
 {
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void ABaseEnemyCharacter::StartIntrudeAction()
+{
+	TargetActorPriority = ETargetPriorityType::High;
+
+	if (!ensureMsgf(IsValid(AbilitySystemComponent), TEXT("BaseEnemyCharacter StartIntrudeAction : AbilitySystemComponent Missing")))
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter StartIntrudeAction : DataAsset Missing")))
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset->IntrudeEffect), TEXT("BaseEnemyCharacter StartIntrudeAction : IntrudeEffect Missing")))
+	{
+		return;
+	}
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(BaseEnemyDataAsset->IntrudeEffect, 1.0f, EffectContext);
+
+	if (SpecHandle.IsValid())
+	{
+		SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Intrude")), BaseEnemyDataAsset->IntrudeTime);
+		GEIntrudeHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		AbilitySystemComponent->OnGameplayEffectRemoved_InfoDelegate(GEIntrudeHandle)->AddUObject(this, &ABaseEnemyCharacter::FinishIntrudeAction);
+	}
+}
+
+void ABaseEnemyCharacter::FinishIntrudeAction(const FGameplayEffectRemovalInfo& InGERemovalInfo)
+{
+	TargetActorPriority = ETargetPriorityType::Max;
 }
 
 //void ABaseEnemyCharacter::Die()
