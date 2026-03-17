@@ -6,10 +6,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
-#include "AbilitySystemBlueprintLibrary.h"
-#include "Enemy/DataAsset/TargetPriority.h"
-#include "Net/UnrealNetwork.h"
-#include "GameplayEffect.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
@@ -18,6 +15,9 @@ class UHealthAttributeSet;
 class USphereComponent;
 class UTribeDataAsset;
 class ABaseBuilding;
+enum class ETargetPriorityType : uint8;
+struct FGameplayEventData;
+struct FGameplayEffectRemovalInfo;
 
 USTRUCT()
 struct FActorArrayWrapper
@@ -165,7 +165,7 @@ public:
 
 	void SetTribeType(UTribeDataAsset* InTribeType);
 
-	void ApplyTribe();
+	virtual void ApplyTribe();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ApplyTribeMaterial();

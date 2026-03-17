@@ -15,8 +15,6 @@
 #include "NavigationSystem.h"
 #include "Components/CapsuleComponent.h"
 
-#include "NavigationPath.h"
-
 EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
 {

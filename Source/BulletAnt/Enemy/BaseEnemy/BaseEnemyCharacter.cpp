@@ -20,6 +20,9 @@
 #include "Enemy/DataAsset/TribeDataAsset.h"
 #include "Enemy/Spawn/TribeMaterialManagerSubsystem.h"
 #include "Components/CapsuleComponent.h"
+#include "Enemy/DataAsset/TargetPriority.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayEffect.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
