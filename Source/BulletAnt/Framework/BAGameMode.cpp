@@ -6,6 +6,8 @@
 ABAGameMode::ABAGameMode()
 {
 	GameStateClass = ABAGameState::StaticClass();
+
+    bUseSeamlessTravel = true;
 }
 
 void ABAGameMode::PostLogin(APlayerController* NewPlayer)

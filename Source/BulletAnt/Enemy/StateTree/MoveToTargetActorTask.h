@@ -26,8 +26,6 @@ private:
 	void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
 	
 	void StartMoveToTarget();
-
-	void SetTargetCore();
 	
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")

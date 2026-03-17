@@ -40,7 +40,17 @@ EStateTreeRunStatus URotateToTargetTask::EnterState(FStateTreeExecutionContext& 
 
 	if (TargetActor == nullptr)
 	{
-		TargetActor = GetCore();
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+		if (!IsValid(BAGameState))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		TargetActor = BAGameState->GetTargetCore();
 	}
 	if (!IsValid(TargetActor))
 	{
@@ -78,6 +88,13 @@ EStateTreeRunStatus URotateToTargetTask::Tick(FStateTreeExecutionContext& Contex
 	{
 		TransitionState();
 		return EStateTreeRunStatus::Succeeded;
+	}
+	else
+	{
+		if (!IsValid(TargetActor))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
 	}
 
 	return EStateTreeRunStatus::Running;
@@ -140,7 +157,21 @@ bool URotateToTargetTask::IsFacingTarget()
 	}
 	if (!IsValid(TargetActor))
 	{
-		TargetActor = GetCore();
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return false;
+		}
+		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+		if (!IsValid(BAGameState))
+		{
+			return false;
+		}
+		TargetActor = BAGameState->GetTargetCore();
+		if (!IsValid(TargetActor))
+		{
+			return false;
+		}
 	}
 
 	FVector ForwardDirection = ContextActor->GetActorForwardVector();
@@ -159,18 +190,4 @@ void URotateToTargetTask::TransitionState()
 	{
 		ContextActor->GetStateTreeComponent()->SendStateTreeEvent(ToMove);
 	}
-}
-
-AActor* URotateToTargetTask::GetCore()
-{
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-		if (IsValid(BAGameState))
-		{
-			TargetActor = BAGameState->GetTargetCore();
-		}
-	}
-	return TargetActor;
 }

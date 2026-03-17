@@ -10,6 +10,7 @@
 #include "Enemy/DataAsset/BaseEnemyDataAsset.h"
 #include "Framework/BAGameState.h"
 #include "Building/BaseCore.h"
+#include <optional>
 
 EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
@@ -43,9 +44,19 @@ EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 		return EStateTreeRunStatus::Failed;
 	}
 
-	if (TargetCore == nullptr)
+	if (!IsValid(TargetCore))
 	{
-		SetTargetCore();
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+		if (!IsValid(BAGameState))
+		{
+			return EStateTreeRunStatus::Failed;
+		}
+		TargetCore = BAGameState->GetTargetCore();
 	}
 	if (!IsValid(TargetCore))
 	{
@@ -115,13 +126,41 @@ void UMoveToLoc::StartMoveToTarget()
 		MoveRequestResult = EMoveRequestResult::Failed;
 		return;
 	}
-	if (TargetCore == nullptr)
+	if (!IsValid(TargetCore))
 	{
-		SetTargetCore();
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			MoveRequestResult = EMoveRequestResult::Failed;
+			return;
+		}
+		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+		if (!IsValid(BAGameState))
+		{
+			MoveRequestResult = EMoveRequestResult::Failed;
+			return;
+		}
+		TargetCore = BAGameState->GetTargetCore();
+	}
+	if (!IsValid(TargetCore))
+	{
+		MoveRequestResult = EMoveRequestResult::Failed;
+		return;
 	}
 
 	// 이동을 요청한 결과
-	EPathFollowingRequestResult::Type Result = CachedAIController->MoveToLocation(GetAnchor(), AcceptanceRadius);
+	auto TargetLocation = GetAnchor();
+	EPathFollowingRequestResult::Type Result;
+	if (TargetLocation.has_value()) 
+	{
+		Result = CachedAIController->MoveToLocation(*TargetLocation, AcceptanceRadius);
+	}
+	else
+	{
+		MoveRequestResult = EMoveRequestResult::Failed;
+		return;
+	}
+	
 
 	if (Result == EPathFollowingRequestResult::RequestSuccessful)
 	{
@@ -140,29 +179,13 @@ void UMoveToLoc::StartMoveToTarget()
 	}
 }
 
-void UMoveToLoc::SetTargetCore()
-{
-	if (TargetCore == nullptr)
-	{
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-			if (IsValid(BAGameState))
-			{
-				TargetCore = BAGameState->GetTargetCore();
-			}
-		}
-	}
-}
-
-const FVector UMoveToLoc::GetAnchor() const
+const std::optional<FVector> UMoveToLoc::GetAnchor() const
 {
 	ABaseCore* Core = Cast<ABaseCore>(TargetCore);
 	if (!IsValid(Core))
 	{
 		UE_LOG(LogTemp, Error, TEXT("UMoveToLoc GetAnchor : Anchor Miss"));
-		return FVector::ZeroVector;
+		return std::nullopt;
 	}
 
 	FVector Direction = (ContextEnemy->GetActorLocation() - Core->GetActorLocation()).GetSafeNormal2D();
@@ -176,7 +199,7 @@ const FVector UMoveToLoc::GetAnchor() const
 	const TArray<FVector>& Anchors = Core->GetAnchors();
 	if (!ensureMsgf(Anchors.Num() != 0, TEXT("UMoveToLoc GetAnchor : Anchors Num is Zero")))
 	{
-		return FVector::ZeroVector;
+		return std::nullopt;
 	}
 	int32 AnchorIndex = FMath::RoundToInt(Degrees / (360.f / Anchors.Num())) % Anchors.Num();
 
