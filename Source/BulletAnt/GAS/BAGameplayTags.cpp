@@ -30,6 +30,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Dead, "GameplayCue.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Weapon_Fire, "GameplayCue.Weapon.Fire");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Damaged, "GameplayCue.Combat.Damaged");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Shop_UseItemBox, "GameplayCue.Shop.UseItemBox");
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Mining_Hit, "GameplayCue.Mining.Hit");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Ammo_Reload, "Data.Ammo.Reload");
 

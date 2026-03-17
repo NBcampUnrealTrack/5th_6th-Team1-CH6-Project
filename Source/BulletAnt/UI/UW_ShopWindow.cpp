@@ -84,8 +84,10 @@ void UUW_ShopWindow::SetupWeaponButton()
 
 void UUW_ShopWindow::InitShopUI(ABaseShop* InShop)
 {
-	GachaUI->ResetGachaCount();
 	CachedShop = InShop;
+	TMap<int32, TMap<EOreType, int32>> Cost = CachedShop->GetCachedCostData();
+	GachaUI->InitGachaUI(Cost[0]);
+	
 	SetupWeaponButton();
 	WeaponInfoUI->SetVisibility(ESlateVisibility::Hidden);
 }

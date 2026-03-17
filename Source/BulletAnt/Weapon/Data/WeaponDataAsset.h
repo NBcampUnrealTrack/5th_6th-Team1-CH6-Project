@@ -8,6 +8,14 @@
 class UGameplayEffect;
 
 UENUM(BlueprintType)
+enum class ERarity : uint8
+{
+	Common		UMETA(DisplayName = "Common"),
+	Rare		UMETA(DisplayName = "Rare"),
+	SuperRare	UMETA(DisplayName = "SuperRare")
+};
+
+UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
 	Rifle	UMETA(DisplayName = "Rifle"),
@@ -26,6 +34,9 @@ class BULLETANT_API UWeaponDataAsset : public UDataAsset
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FText WeaponName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	ERarity Rarity = ERarity::Common;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	EWeaponType WeaponType;

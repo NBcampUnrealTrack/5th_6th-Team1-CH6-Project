@@ -9,6 +9,7 @@
 
 class UProjectileMovementComponent;
 class ABaseWeapon;
+class USoundBase;
 
 UCLASS()
 class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
@@ -40,10 +41,16 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY()
+	UFUNCTION()
+	void PlayDropSound(const FHitResult& ImpactPoint);
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	TSubclassOf<ABaseWeapon> Item;
 
 	UPROPERTY(Replicated)
 	bool bIsUsed = false;
+
+	UPROPERTY(EditDefaultsOnly)
+	USoundBase* DropSound;
 
 };

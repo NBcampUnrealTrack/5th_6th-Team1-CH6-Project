@@ -15,7 +15,7 @@
 #include "UI/UW_ShopWindow.h"
 #include "Shop/BAItemBox.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "GAS/BAGameplayTags.h"
+#include "UI/UW_WeaponLog.h"
 
 
 
@@ -46,7 +46,7 @@ void ABAPlayerController::BeginPlay()
 			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
 
 			HUD->OwnerCharacter = PlayerCharacter;
-			HUD->AddToViewport();
+			HUD->AddToViewport(0);
 		}
 	}
 
@@ -64,7 +64,7 @@ void ABAPlayerController::BeginPlay()
 			{
 				FOnOreChanged::FDelegate Delegate;
 				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
-				GS->BindOnOreChanged(Delegate);
+				GS->BindOnOreChanged(Delegate); 
 
 				const auto& OreInventory = GS->GetOreInventory();
 				for (const auto& OrePair : OreInventory)
@@ -197,6 +197,19 @@ void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InI
 		FGameplayCueParameters Params;
 		Params.SourceObject = InItemBox;
 		ASC->ExecuteGameplayCue(TAG_GameplayCue_Shop_UseItemBox, Params);
+	}
+}
+
+void ABAPlayerController::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	Multicast_ShowWeaponLog(InData);
+}
+
+void ABAPlayerController::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	if (HUD)
+	{
+		HUD->AddWeaponLog(InData);
 	}
 }
 

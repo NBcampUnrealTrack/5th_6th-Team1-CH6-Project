@@ -4,6 +4,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Player/BAPlayerController.h"
 #include "Weapon/BaseWeapon.h"
+#include "Kismet/GameplayStatics.h"
 
 ABAItemBox::ABAItemBox()
 {
@@ -54,6 +55,9 @@ void ABAItemBox::Use_Implementation(AActor* User)
 	{
 		PC->Server_RequestAddWeapon(Item);
 		PC->Server_RequestDeleteBox(this);
+
+		ABaseWeapon* WeaponCDO = Cast<ABaseWeapon>(Item->GetDefaultObject());
+		PC->Server_RequestWeaponLog(WeaponCDO->GetWeaponData());
 	}
 }
 
@@ -76,7 +80,19 @@ void ABAItemBox::BeginPlay()
 
 		ProjectileMovement->Activate();
 	}
-	
+	ProjectileMovement->OnProjectileStop.AddDynamic(this, &ABAItemBox::PlayDropSound);
+}
+
+void ABAItemBox::PlayDropSound(const FHitResult& ImpactPoint)
+{
+	if (DropSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			DropSound,
+			GetActorLocation()
+		);
+	}
 }
 
 void ABAItemBox::DestroyItemBox()

@@ -18,6 +18,7 @@ class ABaseShop;
 class ABaseWeapon;
 class UUW_ShopWindow;
 class ABAItemBox;
+class UWeaponDataAsset;
 
 UCLASS()
 class BULLETANT_API ABAPlayerController : public APlayerController
@@ -91,6 +92,12 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDeleteBox(ABAItemBox* InItemBox);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestWeaponLog(UWeaponDataAsset* InData);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);
 
 	UFUNCTION()
 	void ShowShopUI();
