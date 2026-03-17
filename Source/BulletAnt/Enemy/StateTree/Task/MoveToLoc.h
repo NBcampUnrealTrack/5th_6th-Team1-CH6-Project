@@ -27,6 +27,8 @@ private:
 
 	void StartMoveToTarget();
 
+	FVector GetProjectedTargetLoc();
+	bool CanTargetLocProject(const FVector& Point, FNavLocation& OutLocation);
 	const std::optional<FVector> GetAnchor() const;
 	FVector GetClosestLocation();
 

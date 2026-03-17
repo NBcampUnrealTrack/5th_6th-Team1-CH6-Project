@@ -15,6 +15,8 @@
 #include "NavigationSystem.h"
 #include "Components/CapsuleComponent.h"
 
+#include "NavigationPath.h"
+
 EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
 {
@@ -152,52 +154,11 @@ void UMoveToLoc::StartMoveToTarget()
 		return;
 	}
 
-	//FVector TargetLocation;
-	//if (Target->IsA(ABaseCore::StaticClass()))
-	//{
-	//	auto CoreLocation = GetAnchor();
-	//	if (CoreLocation.has_value())
-	//	{
-	//		TargetLocation = *CoreLocation;
-	//	}
-	//	else
-	//	{
-	//		TargetLocation = GetClosestLocation();
-	//	}
-	//}
-	//else
-	//{
-	//	TargetLocation = Target->GetActorLocation();
-	//}
-	
-	FVector TargetLocation = GetClosestLocation();
-	// DrawDebugPoint(GetWorld(), TargetLocation, 10, FColor::Green, true);
+	FVector ProjectedTargetLocation = GetProjectedTargetLoc();
+	// DrawDebugPoint(GetWorld(), ProjectedTargetLocation, 10, FColor::Green, false, 1.f);
 	EPathFollowingRequestResult::Type Result;
-	FNavLocation ProjectedLocation;
-	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	if (IsValid(NavSys))
-	{
-		float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
-		float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-		const FNavAgentProperties& AgentProps = ContextEnemy->GetNavAgentPropertiesRef();
-		bool bCanProject = NavSys->ProjectPointToNavigation(TargetLocation, ProjectedLocation, FVector(Radius * 1.5f, Radius * 1.5f, HalfHeight * 2.5), &AgentProps);
-		if (bCanProject)
-		{
-			Result = CachedAIController->MoveToLocation(ProjectedLocation, AcceptanceRadius);
-			// DrawDebugPoint(GetWorld(), ProjectedLocation, 10, FColor::Red, true);
-		}
-		else
-		{
-			MoveRequestResult = EMoveRequestResult::Failed;
-			return;
-		}
-	}
-	else
-	{
-		MoveRequestResult = EMoveRequestResult::Failed;
-		return;
-	}
-	
+	Result = CachedAIController->MoveToLocation(ProjectedTargetLocation, AcceptanceRadius);
+
 	if (Result == EPathFollowingRequestResult::RequestSuccessful)
 	{
 		MoveRequestResult = EMoveRequestResult::RequestAccepted;
@@ -212,6 +173,57 @@ void UMoveToLoc::StartMoveToTarget()
 	{
 		MoveRequestResult = EMoveRequestResult::Failed;
 	}
+}
+
+FVector UMoveToLoc::GetProjectedTargetLoc()
+{
+	std::optional<FVector> CoreLocation;
+	FVector TargetLocation;
+	if (Target->IsA(ABaseCore::StaticClass()))
+	{
+		CoreLocation = GetAnchor();
+	}
+	if (CoreLocation.has_value())
+	{
+		TargetLocation = *CoreLocation;
+	}
+	else
+	{
+		TargetLocation = GetClosestLocation();
+	}
+
+	FNavLocation ProjectedLocation;
+	bool bCanProject = CanTargetLocProject(TargetLocation, ProjectedLocation);
+	if (bCanProject)
+	{
+		return ProjectedLocation.Location;
+	}
+	else
+	{
+		TargetLocation = GetClosestLocation();
+		if (CanTargetLocProject(TargetLocation, ProjectedLocation))
+		{
+			return ProjectedLocation.Location;
+		}
+		else
+		{
+			FVector StartLocation = ContextEnemy->GetActorLocation();
+			return StartLocation + 0.5 * (TargetLocation - StartLocation);
+		}
+	}
+}
+
+bool UMoveToLoc::CanTargetLocProject(const FVector& Point, FNavLocation& OutLocation)
+{
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (IsValid(NavSys))
+	{
+		float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
+		float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		const FNavAgentProperties& AgentProps = ContextEnemy->GetNavAgentPropertiesRef();
+		return NavSys->ProjectPointToNavigation(Point, OutLocation, FVector(Radius * 1.5f, Radius * 1.5f, HalfHeight * 2.5), &AgentProps);
+	}
+	return false;
 }
 
 const std::optional<FVector> UMoveToLoc::GetAnchor() const
