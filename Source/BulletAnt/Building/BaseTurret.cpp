@@ -212,6 +212,45 @@ void ABaseTurret::OnRep_Dead()
 	}
 }
 
+bool ABaseTurret::CanStartAttack() const
+{
+	return HasAuthority() && !bDead && IsValid(CurrentTarget);
+}
+
+float ABaseTurret::GetAttackInterval() const
+{
+	if (!TurretData || TurretData->RoundPerMinute <= 0.f)
+	{
+		return 0.f;
+	}
+
+	return 60.f / TurretData->RoundPerMinute;
+}
+
+void ABaseTurret::ExecuteAttack()
+{
+	if (!HasAuthority() || bDead || !ASC || !CurrentTarget || !TurretData)
+	{
+		return;
+	}
+
+	CurrentMuzzleIndex = NextMuzzleIndex;
+
+	const int32 MuzzleCount = MuzzleSocketNames.Num();
+	if (MuzzleCount > 0)
+	{
+		NextMuzzleIndex = (NextMuzzleIndex + 1) % MuzzleCount;
+	}
+	else
+	{
+		NextMuzzleIndex = 0;
+	}
+
+	FGameplayTagContainer FireTags;
+	FireTags.AddTag(TurretData->WeaponTag);
+	ASC->TryActivateAbilitiesByTag(FireTags);
+}
+
 void ABaseTurret::StartFireLoop()
 {
 	if (!HasAuthority() || !ASC || !TurretData)
@@ -224,20 +263,17 @@ void ABaseTurret::StartFireLoop()
 		return;
 	}
 
-	const float RPM = TurretData->RoundPerMinute;
-
-	if (RPM <= 0.f)
+	const float AttackInterval = GetAttackInterval();
+	if (AttackInterval <= 0.f)
 	{
 		return;
 	}
 
-	const float FireInterval = 60.f / RPM;
-
 	GetWorldTimerManager().SetTimer(
 		FireLoopTimerHandle,
 		this,
-		&ABaseTurret::HandleFireTick,
-		FireInterval,
+		&ABaseTurret::HandleAttackTick,
+		AttackInterval,
 		true,
 		0.f
 	);
@@ -252,7 +288,7 @@ void ABaseTurret::StopFireLoop()
 	}
 }
 
-void ABaseTurret::HandleFireTick()
+void ABaseTurret::HandleAttackTick()
 {
 	if (!HasAuthority() || bDead || !ASC || !CurrentTarget || !TurretData)
 	{

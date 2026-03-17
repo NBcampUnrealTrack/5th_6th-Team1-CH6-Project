@@ -42,9 +42,13 @@ protected:
 	virtual void OnDeath() override;
 	virtual void OnRep_Dead() override;
 
+	virtual bool CanStartAttack() const;
+	virtual float GetAttackInterval() const;
+	virtual void ExecuteAttack();
+
 	void StartFireLoop();
 	void StopFireLoop();
-	void HandleFireTick();
+	void HandleAttackTick();
 
 private:
 	UFUNCTION()
