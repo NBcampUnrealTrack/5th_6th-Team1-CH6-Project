@@ -37,6 +37,8 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 		CharacterMovementComponent->bUseControllerDesiredRotation = true;
 	}
 
+	GetCapsuleComponent()->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
+
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
@@ -54,14 +56,9 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	DetectionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
 	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Overlap);	// Character
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel9, ECollisionResponse::ECR_Overlap);	// Core
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseEnemyCharacter::OnDetectionSphereEndOverlap);
-
-	DetectedSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectedSphere"));
-	DetectedSphere->SetupAttachment(RootComponent);
-	DetectedSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	DetectedSphere->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel6);	// Enemy ObjectType
-	DetectedSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Overlap);	// Building
 
 	TargetActor = nullptr;
 	TargetActorPriority = ETargetPriorityType::Max;
@@ -70,11 +67,6 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
 {
 	return DetectionSphere;
-}
-
-USphereComponent* ABaseEnemyCharacter::GetDetectedSphere() const
-{
-	return DetectedSphere;
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -106,10 +98,10 @@ void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* Ove
 	{
 		Priority = TribeType->Player;
 	}
-	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
-	//{
-	//	Priority = TribeType->Core;
-	//}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel9)	// Core
+	{
+		Priority = TribeType->Core;
+	}
 	else
 	{
 		return;
@@ -140,10 +132,10 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 	{
 		Priority = TribeType->Player;
 	}
-	//else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel3)	// Core
-	//{
-	//	Priority = TribeType->Core;
-	//}
+	else if (OtherComp->GetCollisionObjectType() == ECollisionChannel::ECC_GameTraceChannel9)	// Core
+	{
+		Priority = TribeType->Core;
+	}
 	else
 	{
 		return;
@@ -258,42 +250,55 @@ void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
 
 void ABaseEnemyCharacter::ApplyTribe()
 {
-	ApplyTribeMaterial();
+	Multicast_ApplyTribeMaterial();
 	ApplyTribePriority();
-}
-
-void ABaseEnemyCharacter::ApplyTribeMaterial()
-{
 	if (HasAuthority())
 	{
-		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeDataAsset Missing")))
+		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter ApplyTribe : DataAsset Missing")))
 		{
 			return;
 		}
-		if (!ensureMsgf(IsValid(GetMesh()), TEXT("BaseEnemyCharacter ApplyTribeMaterial : Mesh Missing")))
+		if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter ApplyTribe : TribeType Missing")))
+		{
+			return;
+		}
+		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
+		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
+
+		WalkSpeed = BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul;
+		OnRep_WalkSpeed();
+	}
+}
+
+void ABaseEnemyCharacter::Multicast_ApplyTribeMaterial_Implementation()
+{
+	if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : TribeDataAsset Missing")))
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(GetMesh()), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : Mesh Missing")))
+	{
+		return;
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		UTribeMaterialManagerSubsystem* TribeMaterialManagerSubsystem = GameInstance->GetSubsystem<UTribeMaterialManagerSubsystem>();
+		if (!ensureMsgf(IsValid(TribeMaterialManagerSubsystem), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : TribeMaterialManagerSubsystem Error")))
 		{
 			return;
 		}
 
-		if (UGameInstance* GameInstance = GetGameInstance())
+		UMaterialInterface* BaseMat = GetMesh()->GetMaterial(0);
+		if (!IsValid(BaseMat))
 		{
-			UTribeMaterialManagerSubsystem* TribeMaterialManagerSubsystem = GameInstance->GetSubsystem<UTribeMaterialManagerSubsystem>();
-			if (!ensureMsgf(IsValid(TribeMaterialManagerSubsystem), TEXT("BaseEnemyCharacter ApplyTribeMaterial : TribeMaterialManagerSubsystem Error")))
-			{
-				return;
-			}
+			return;
+		}
 
-			UMaterialInterface* BaseMat = GetMesh()->GetMaterial(0);
-			if (!IsValid(BaseMat))
-			{
-				return;
-			}
-			
-			UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
-			if (SharedMID)
-			{
-				GetMesh()->SetMaterial(0, SharedMID);
-			}
+		UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
+		if (SharedMID)
+		{
+			GetMesh()->SetMaterial(0, SharedMID);
 		}
 	}
 }
@@ -333,6 +338,21 @@ UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
 	}
 
 	return nullptr;
+}
+
+float ABaseEnemyCharacter::GetWalkSpeed() const
+{
+	return WalkSpeed;
+}
+
+void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
+{
+	WalkSpeed = InWalkSpeed;
+}
+
+void ABaseEnemyCharacter::OnRep_WalkSpeed()
+{
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
 //void ABaseEnemyCharacter::Die()
@@ -386,15 +406,20 @@ void ABaseEnemyCharacter::BeginPlay()
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
 
-		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health);
-		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health);
-
-
 		UWorld* World = GetWorld();
 		if (IsValid(World))
 		{
 			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
 		}
+	}
+
+	if (IsValid(BaseEnemyDataAsset->SpawnEffect))
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			BaseEnemyDataAsset->SpawnEffect,
+			GetActorLocation()
+		);
 	}
 }
 
@@ -455,6 +480,8 @@ void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
+	DOREPLIFETIME(ABaseEnemyCharacter, WalkSpeed);
+	DOREPLIFETIME(ABaseEnemyCharacter, TribeType);
 }
 
 void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -474,7 +501,7 @@ void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
-	return BaseEnemyDataAsset->BaseEnemyAttackDataAsset;
+	return BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray[0].AttackDataAsset;
 }
 
 bool ABaseEnemyCharacter::ShouldCallAfterAttack()
@@ -510,11 +537,5 @@ void ABaseEnemyCharacter::Multicast_SetNoCollision_Implementation()
 	{
 		DetectionSphere->SetSimulatePhysics(false);
 		DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	}
-
-	if (DetectedSphere)
-	{
-		DetectedSphere->SetSimulatePhysics(false);
-		DetectedSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	}
 }

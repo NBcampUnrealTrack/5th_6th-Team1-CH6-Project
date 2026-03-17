@@ -6,19 +6,13 @@
 #include "GameplayEffect.h"
 #include "Blueprint/StateTreeTaskBlueprintBase.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "Enemy/StateTree/MoveRequestResult.h"
 #include "MoveToTargetActorTask.generated.h"
 
 class AAIController;
 class ABaseEnemyCharacter;
 
-enum class EMoveRequestResult : uint8
-{
-	RequestAccepted,
-	AlreadyArrived,
-	Failed            
-};
-
-UCLASS()
+UCLASS(meta = (DisplayName = "Move To Target Actor Task"))
 class BULLETANT_API UMoveToTargetActorTask : public UStateTreeTaskBlueprintBase
 {
 	GENERATED_BODY()

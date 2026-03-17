@@ -11,6 +11,9 @@
 #include "Framework/BAGameState.h"
 #include "UI/UW_WaveTimer.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
+#include "Building/BaseShop.h"
+#include "UI/UW_ShopWindow.h"
+
 
 
 void ABAPlayerController::BeginPlay()
@@ -159,6 +162,31 @@ void ABAPlayerController::StartADSUI()
 void ABAPlayerController::StopADSUI()
 {
 
+}
+
+void ABAPlayerController::Server_RequestBuyGacha_Implementation(ABaseShop* InShop, int32 GachaID,int32 Count)
+{
+	if (!InShop) return;
+
+	InShop->BuyGacha(GachaID, Count);
+}
+
+void ABAPlayerController::Server_RequestAddWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeaponClass)
+{
+	if (!HasAuthority()) return;
+	
+	ABAGameState* GS = Cast<ABAGameState>(GetWorld()->GetGameState());
+	if (!GS) return;
+
+	GS->AddHaveWeapon(InWeaponClass);
+}
+
+void ABAPlayerController::ShowShopUI()
+{
+	if (IsValid(UISubsystem))
+	{
+		RespawnBarUI = UISubsystem->ShowUI<UUW_RespawnBar>(EUIType::RespawnBar);
+	}
 }
 
 void ABAPlayerController::SwitchGroundScanner()

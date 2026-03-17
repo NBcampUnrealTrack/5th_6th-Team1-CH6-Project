@@ -14,6 +14,9 @@ class UUW_RespawnBar;
 class ABACharacter;
 class UUISubsystem;
 class UUW_WaveTimer;
+class ABaseShop;
+class ABaseWeapon;
+class UUW_ShopWindow;
 
 UCLASS()
 class BULLETANT_API ABAPlayerController : public APlayerController
@@ -73,6 +76,20 @@ public:
 	UFUNCTION()
 	void StopADSUI();
 protected:
+
+#pragma endregion
+
+#pragma region Shop
+
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_RequestBuyGacha(ABaseShop* InShop, int32 GachaID, int32 Count);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestAddWeapon(TSubclassOf<ABaseWeapon> InWeaponClass);
+
+	UFUNCTION()
+	void ShowShopUI();
 
 #pragma endregion
 	

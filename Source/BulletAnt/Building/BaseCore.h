@@ -14,7 +14,19 @@ class BULLETANT_API ABaseCore : public ABaseBuilding
 {
 	GENERATED_BODY()
 	
+public:
+	const TArray<FVector>& GetAnchors() const;
+	
 protected:
+	ABaseCore();
+
 	virtual void BeginPlay() override;
 
+	void FindAnchors();
+
+	UPROPERTY(EditDefaultsOnly)
+	int32 ScanCount = 72;
+
+	UPROPERTY(VisibleAnywhere)
+	TArray<FVector> Anchors;
 };

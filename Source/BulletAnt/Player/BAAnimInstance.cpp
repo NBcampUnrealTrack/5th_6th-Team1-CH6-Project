@@ -20,6 +20,9 @@ void UBAAnimInstance::NativeInitializeAnimation()
 		{
 			Movement = Character->GetCharacterMovement();
 			ParkourComp = Character->FindComponentByClass<UBAParkourComponent>();
+			GrabLeftHand = 1.f;
+			OwningActor = GetOwningActor();
+			ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor);
 		}
 	}
 
@@ -32,9 +35,6 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (Character == nullptr || Movement == nullptr) return;
 
 	CurrentEquipmentType = Character->CurrentEquipmentType;
-	AActor* OwningActor = GetOwningActor();
-
-	UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor);
 
 	if (ASC)
 	{
@@ -93,7 +93,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	RightTargetLocation = ParkourComp->WarpTargetLocation + (RightDir * ShoulderWidth);
 	bIsAiming = Character->bIsAiming;
 	bIsTurning = Character->bIsTurning;
-	
+	bIsParkour = ParkourComp->bIsParkour;
 	bIsFalling = Movement->IsFalling();
 	bIsCrouch = Character->bIsCrouched;
 	bIsRunning = Character->bIsRunning;
@@ -101,6 +101,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	RootYawOffset = Character->RootYawOffset * -1;
 
+	IsGrabLeftHand(DeltaSeconds);
 	//Test
 	
 
@@ -147,4 +148,11 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 
 		return UKismetMathLibrary::NormalizedDeltaRotator(BaseAimRot, ActorRot);
 	}
+}
+
+void UBAAnimInstance::IsGrabLeftHand(float DeltaSeconds)
+{
+	float TargetAlpha = (bIsParkour|| ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) ? 0.f : 1.f;
+
+	GrabLeftHand = FMath::FInterpTo(GrabLeftHand, TargetAlpha, DeltaSeconds, 15.f);
 }

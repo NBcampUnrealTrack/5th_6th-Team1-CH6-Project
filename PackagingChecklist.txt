@@ -1,0 +1,14 @@
+[Steam 버전]
+( DefaultEngine.ini )
+- OnlineSubsystemSteam > bEnabled = true
+- bUseEAS = true (여러 곳임)
+( MultiplayerSubsystem )
+- SteamLogin() 함수 호출
+
+
+[EAS(Epic Account Services 버전]
+( DefaultEngine.ini )
+- OnlineSubsystemSteam > bEnabled = true
+- bUseEAS = true (여러 곳임)
+( MultiplayerSubsystem )
+- Epiclogin() 함수 호출

@@ -20,8 +20,6 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void JoinServer(const FString& InIPAddress);
-
 private:
 	UFUNCTION()
 	void HandleJoinRequested(const FText& InIpPort);

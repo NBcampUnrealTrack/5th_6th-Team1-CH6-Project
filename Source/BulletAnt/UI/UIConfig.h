@@ -16,6 +16,7 @@ enum class EUIType : uint8
     GroundScanner,
     OreCount,
     WaveTimer,
+    Shop
 };
 
 USTRUCT()
