@@ -19,6 +19,7 @@ public:
 	ASlowPulseTurret();
 
 protected:
+	virtual void BeginPlay() override;
 	virtual bool CanStartAttack() const override;
 	virtual float GetAttackInterval() const override;
 	virtual void ExecuteAttack() override;

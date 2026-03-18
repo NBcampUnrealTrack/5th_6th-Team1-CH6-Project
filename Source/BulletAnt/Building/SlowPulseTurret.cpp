@@ -14,7 +14,12 @@
 
 ASlowPulseTurret::ASlowPulseTurret()
 {
+}
+
+void ASlowPulseTurret::BeginPlay()
+{
 	TurretData = PulseTurretData;
+	Super::BeginPlay();
 }
 
 bool ASlowPulseTurret::CanStartAttack() const

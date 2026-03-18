@@ -10,11 +10,12 @@
 
 ARangedTurret::ARangedTurret()
 {
-	TurretData = RangedTurretData;
 }
 
 void ARangedTurret::BeginPlay()
 {
+	TurretData = RangedTurretData;
+
 	Super::BeginPlay();
 
 	CollectMuzzleSockets();
