@@ -13,6 +13,7 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "Building/BaseShop.h"
 #include "UI/UW_ShopWindow.h"
+#include "UI/UW_Compass.h"
 
 
 
@@ -70,6 +71,8 @@ void ABAPlayerController::BeginPlay()
 				}
 			}
 		}
+
+		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 
 		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
 		if (IsValid(SpawnManager))
