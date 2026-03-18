@@ -7,7 +7,8 @@
 #include "SlowPulseTurret.generated.h"
 
 class UGameplayEffect;
-class UNiagaraSystem;
+class UPulseTurretDataAsset;
+class ABaseEnemyCharacter;
 
 UCLASS()
 class BULLETANT_API ASlowPulseTurret : public ABaseTurret
@@ -30,21 +31,6 @@ protected:
 	void Multicast_PlayPulseFX();
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Pulse")
-	float PulseRadius = 500.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Pulse")
-	float PulseInterval = 2.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Pulse")
-	float PulseDamage = 10.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Pulse")
-	TSubclassOf<UGameplayEffect> DamageEffectClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Pulse")
-	TSubclassOf<UGameplayEffect> SlowEffectClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Pulse")
-	TEnumAsByte<ECollisionChannel> EnemyTraceChannel = ECC_GameTraceChannel6;
+	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
+	TObjectPtr<UPulseTurretDataAsset> PulseTurretData;
 };

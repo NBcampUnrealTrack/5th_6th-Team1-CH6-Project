@@ -10,9 +10,11 @@
 #include "Components/SphereComponent.h"
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h" 
+#include "Building/PulseTurretDataAsset.h"
 
 ASlowPulseTurret::ASlowPulseTurret()
 {
+	TurretData = PulseTurretData;
 }
 
 bool ASlowPulseTurret::CanStartAttack() const
@@ -35,7 +37,7 @@ bool ASlowPulseTurret::CanStartAttack() const
 
 float ASlowPulseTurret::GetAttackInterval() const
 {
-	return PulseInterval;
+	return PulseTurretData->PulseInterval;
 }
 
 void ASlowPulseTurret::ExecuteAttack()
@@ -61,7 +63,7 @@ void ASlowPulseTurret::ExecuteAttack()
 		}
 
 		ApplyDamageToEnemy(Enemy);
-		ApplyEffectToEnemy(Enemy, SlowEffectClass);
+		ApplyEffectToEnemy(Enemy, PulseTurretData->SlowEffectClass);
 	}
 
 	Multicast_PlayPulseFX();
@@ -79,12 +81,12 @@ void ASlowPulseTurret::GatherPulseTargets(TArray<ABaseEnemyCharacter*>& OutEnemi
 
 	TArray<FOverlapResult> Overlaps;
 
-	FCollisionShape SphereShape = FCollisionShape::MakeSphere(PulseRadius);
+	FCollisionShape SphereShape = FCollisionShape::MakeSphere(PulseTurretData->PulseRadius);
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SlowPulseTurret), false);
 	QueryParams.AddIgnoredActor(this);
 
 	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(EnemyTraceChannel);
+	ObjectQueryParams.AddObjectTypesToQuery(PulseTurretData->EnemyTraceChannel);
 
 	const bool bHit = World->OverlapMultiByObjectType(
 		Overlaps,
@@ -145,7 +147,7 @@ void ASlowPulseTurret::ApplyEffectToEnemy(ABaseEnemyCharacter* Enemy, TSubclassO
 
 void ASlowPulseTurret::ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy) const
 {
-	if (!Enemy || !DamageEffectClass)
+	if (!Enemy || !PulseTurretData->DamageEffectClass)
 	{
 		return;
 	}
@@ -161,13 +163,13 @@ void ASlowPulseTurret::ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy) const
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddSourceObject(const_cast<ASlowPulseTurret*>(this));
 
-	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.f, Context);
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(PulseTurretData->DamageEffectClass, 1.f, Context);
 	if (!SpecHandle.IsValid())
 	{
 		return;
 	}
 
-	SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, PulseDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, PulseTurretData->PulseDamage);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
