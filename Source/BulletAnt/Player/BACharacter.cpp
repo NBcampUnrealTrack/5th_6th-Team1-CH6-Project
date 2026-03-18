@@ -362,6 +362,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(GroundScannerAction, ETriggerEvent::Started, this, &ABACharacter::SwitchGroundScanner);
 		}
+
+		if (PingAction)
+		{
+			EnhancedInputComponent->BindAction(PingAction, ETriggerEvent::Started, this, &ABACharacter::ExecutePing);
+		}
 	}
 }
 
@@ -649,7 +654,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 			FRotator ViewRot;
 			GetActorEyesViewPoint(ViewLoc, ViewRot);
 
-			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
+			FVector AimEnd = ViewLoc + ViewRot.Vector() * 100000.f;
 
 			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 		}
@@ -944,6 +949,17 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 		Jump();
 	}
 }
+void ABACharacter::ExecutePing(const FInputActionValue& Value)
+{
+	if (IsValid(AbilitySystemComponent) == false)
+		return;
+
+	FGameplayTagContainer Tag;
+	Tag.AddTag(TAG_Event_Communicate_Ping);
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
