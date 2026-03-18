@@ -28,6 +28,7 @@ public:
 
 protected:
 	void PingTrace();
+	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& Data, FGameplayTag Tag);
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
