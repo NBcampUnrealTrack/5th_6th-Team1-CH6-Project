@@ -21,7 +21,7 @@ ABaseTurret::ABaseTurret()
 	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	TargetSearchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSearchingSphere"));
-	TargetSearchingSphere->SetupAttachment(RootComponent);
+	TargetSearchingSphere->SetupAttachment(BarrelMesh);
 	TargetSearchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TargetSearchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 }

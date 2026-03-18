@@ -20,13 +20,16 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
 	virtual bool CanStartAttack() const override;
 	virtual float GetAttackInterval() const override;
 	virtual void ExecuteAttack() override;
 
 	void GatherPulseTargets(TArray<class ABaseEnemyCharacter*>& OutEnemies) const;
 	void ApplyEffectToEnemy(ABaseEnemyCharacter* Enemy, TSubclassOf<UGameplayEffect> EffectClass, float Level = 1.f) const;
-	void ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy) const;
+	void ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy, const FHitResult& HitResult) const;
+
+	bool FindHitResultOnEnemyCapsule(ABaseEnemyCharacter* Enemy, FHitResult& OutHitResult) const;
 
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayPulseFX();
