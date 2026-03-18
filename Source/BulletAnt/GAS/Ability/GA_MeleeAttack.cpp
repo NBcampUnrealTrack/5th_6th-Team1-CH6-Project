@@ -6,6 +6,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "GameFramework/Character.h"
+#include "Engine/OverlapResult.h"
 
 
 UGA_MeleeAttack::UGA_MeleeAttack()
@@ -42,11 +44,15 @@ void UGA_MeleeAttack::ActivateAbility(
 		return;
 	}
 
-	UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
+	Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 
-	UAbilityTask_WaitGameplayEvent* WaitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, Data->HitEventTag);
-	WaitTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnHitEventReceived);
-	WaitTask->ReadyForActivation();
+	UAbilityTask_WaitGameplayEvent* WaitStartTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_StartAttack);
+	WaitStartTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnStartEventReceived);
+	WaitStartTask->ReadyForActivation();
+
+	UAbilityTask_WaitGameplayEvent* WaitEndTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_EndAttack);
+	WaitEndTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnEndEventReceived);
+	WaitEndTask->ReadyForActivation();
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->AttackMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
@@ -60,20 +66,86 @@ void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_MeleeAttack::OnHitEventReceived(FGameplayEventData Payload)
+void UGA_MeleeAttack::OnStartEventReceived(FGameplayEventData Payload)
 {
-	if(!CurrentActorInfo->IsNetAuthority()) return;
+	HitActors.Empty();
+	GetWorld()->GetTimerManager().SetTimer(
+		HitCheckTimer,
+		this,
+		&UGA_MeleeAttack::PerformHitCheck,
+		0.1f,
+		true
+	);
+}
 
-	AActor* HitActor = const_cast<AActor*>(Payload.Target.Get());
-
-	if (!HitActor) return;
-
-	ApplyDamage(CurrentActorInfo, HitActor);
+void UGA_MeleeAttack::OnEndEventReceived(FGameplayEventData Payload)
+{
+	GetWorld()->GetTimerManager().ClearTimer(HitCheckTimer);
 }
 
 void UGA_MeleeAttack::OnMontageFinished()
 {
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_MeleeAttack::PerformHitCheck()
+{
+	if (!CurrentActorInfo->IsNetAuthority()) return;
+	OwnerActor = Cast<ACharacter>(CurrentActorInfo->AvatarActor.Get());
+	USkeletalMeshComponent* MeshComp = OwnerActor->GetMesh();
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC) return;
+
+	FVector Origin;
+
+	if (Data->SocketName.IsNone())
+	{
+		Origin = OwnerActor->GetActorLocation() + OwnerActor->GetActorForwardVector() * 50.f;
+	}
+	else
+	{
+		Origin = MeshComp->GetSocketLocation(Data->SocketName);
+	}
+
+	TArray<FOverlapResult> Overlaps;
+	FCollisionQueryParams Params(NAME_None, false, OwnerActor);
+	Params.AddIgnoredActors(HitActors);
+
+	bool bHit = OwnerActor->GetWorld()->OverlapMultiByChannel(
+		Overlaps,
+		Origin,
+		FQuat::Identity,
+		ECC_GameTraceChannel2,
+		FCollisionShape::MakeSphere(Data->AttackRadius),
+		Params
+	);
+
+	DrawDebugSphere(
+		OwnerActor->GetWorld(),
+		Origin,
+		Data->AttackRadius,
+		12,
+		bHit ? FColor::Green : FColor::Red,
+		false,
+		-1.f                         // 1frame
+	);
+
+	if (bHit)
+	{
+		for (const FOverlapResult& Overlap : Overlaps)
+		{
+			if (AActor* OverlapActor = Overlap.GetActor())
+			{
+				if (HitActors.Contains(OverlapActor)) continue;
+				if (OverlapActor == OwnerActor) continue;
+
+				HitActors.Add(OverlapActor);
+
+				ApplyDamage(CurrentActorInfo, OverlapActor);
+			}
+		}
+	}
 }
 
 
@@ -86,10 +158,6 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 
 	if (SourceASC && TargetASC)
 	{
-		IDataAssetInterface* Interface = Cast<IDataAssetInterface>(ActorInfo->AvatarActor.Get());
-		if (!Interface || !Interface->GetDataAsset()) return;
-
-		UMeleeWeaponDataAsset* Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
 		if (!Data) return;
 
 		if (Data->OnUseStateHitEffect)

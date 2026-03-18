@@ -55,8 +55,6 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	
-
 	if (ActorInfo->IsNetAuthority())
 	{
 		Source->GetCharacterMovement()->DisableMovement();

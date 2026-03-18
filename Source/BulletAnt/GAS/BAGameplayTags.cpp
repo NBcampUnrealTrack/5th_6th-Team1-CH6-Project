@@ -24,6 +24,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Weapon_Switch, "Event.Weapon.Switch");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Dead, "Event.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Hit, "Event.Combat.Hit");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Damaged, "Event.Combat.Damaged");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_StartAttack, "Event.Combat.StartAttack");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_EndAttack, "Event.Combat.EndAttack");
 
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Dead, "GameplayCue.Combat.Dead");
