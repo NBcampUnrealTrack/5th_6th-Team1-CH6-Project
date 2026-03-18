@@ -112,8 +112,12 @@ void UGA_Mine::OnMontageFinished()
 				if (IsValid(Ground) == true)
 				{
 					Ground->DigGround(HitResult.Location, MiningData->DigRadius);
+					UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+					FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+					Context.AddHitResult(HitResult);
+					ASC->ExecuteGameplayCue(TAG_GameplayCue_Mining_Hit, Context);
 				}
-			}
+			}		
 		}
 	}
 	StartAutoDigLoop();

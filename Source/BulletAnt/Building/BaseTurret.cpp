@@ -2,14 +2,11 @@
 
 
 #include "Building/BaseTurret.h"
-#include "GameplayTagContainer.h"
-#include "Net/UnrealNetwork.h"
-#include "AbilitySystemComponent.h"
-#include "Weapon/Abilities/GA_Fire.h"
-#include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "Components/SphereComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "Building/TurretDataAsset.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
-#include "Engine/StaticMeshSocket.h"
+#include "AbilitySystemComponent.h"
 
 ABaseTurret::ABaseTurret()
 {
@@ -23,33 +20,38 @@ ABaseTurret::ABaseTurret()
 	BarrelMesh->SetupAttachment(BodyMesh);
 	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	TargetSerchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSerchingSphere"));
-	TargetSerchingSphere->SetupAttachment(RootComponent);
-
-	TargetSerchingSphere->SetSphereRadius(SerchingSphereRadius);
-	TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	TargetSerchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	TargetSerchingSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	TargetSearchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSearchingSphere"));
+	TargetSearchingSphere->SetupAttachment(BarrelMesh);
+	TargetSearchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TargetSearchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 }
 
 void ABaseTurret::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CollectMuzzleSockets();
+	ApplyTurretData();
 
-	if (HasAuthority())
+	if (HasAuthority() && TurretData)
 	{
-		ASC->GiveAbility(FGameplayAbilitySpec(UGA_Fire::StaticClass(), 1));
+		TargetSearchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnTargetBeginOverlap);
+		TargetSearchingSphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnTargetEndOverlap);
 
-		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseTurret::OnTargetBeginOverlap);
-		TargetSerchingSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseTurret::OnTargetEndOverlap);
+		TargetSearchingSphere->UpdateOverlaps();
+
+		TArray<AActor*> OverlappingActors;
+		TargetSearchingSphere->GetOverlappingActors(OverlappingActors, ABaseEnemyCharacter::StaticClass());
+
+		for (AActor* Enemy : OverlappingActors)
+		{
+			TargetCandidates.AddUnique(Enemy);
+		}
 
 		GetWorldTimerManager().SetTimer(
 			TargetSearchTimer,
 			this,
-			&ABaseTurret::UpdateCurrentTarget,
-			TargetSearchInterval,
+			&ThisClass::UpdateCurrentTarget,
+			TurretData->TargetSearchInterval,
 			true
 		);
 	}
@@ -64,43 +66,7 @@ void ABaseTurret::Tick(float DeltaSeconds)
 		return;
 	}
 
-	if (IsValid(CurrentTarget))
-	{
-		const FVector TargetLoc = CurrentTarget->GetActorLocation();
-
-		// ===== 타겟 Yaw 계산 =====
-		const FVector BodyLoc = BodyMesh->GetComponentLocation();
-
-		FVector Dir = TargetLoc - BodyLoc;
-		Dir.Z = 0.f;
-
-		float DesiredYaw = 0.f;
-		if (!Dir.IsNearlyZero())
-		{
-			DesiredYaw = Dir.Rotation().Yaw;
-		}
-
-		const float BodyYaw = BodyMesh->GetComponentRotation().Yaw;
-		const float NewYaw = FMath::FixedTurn(BodyYaw, DesiredYaw, TurnSpeedDegPerSec * DeltaSeconds);
-		BodyMesh->SetWorldRotation(FRotator(0.f, NewYaw, 0.f));
-
-		// ===== 타겟 Pitch 계산 =====
-		const FVector ParrelLoc = BarrelMesh->GetComponentLocation();
-
-		Dir = TargetLoc - ParrelLoc;
-		const float Dist = FVector2D(Dir.X, Dir.Y).Size();
-
-		float DesiredPitch = 0.f;
-		if (!Dir.IsNearlyZero())
-		{
-			DesiredPitch = FMath::RadiansToDegrees(FMath::Atan2(Dir.Z, Dist));
-		}
-		DesiredPitch = FMath::ClampAngle(DesiredPitch, PitchMin, PitchMax);
-
-		const float BarrelPitch = BarrelMesh->GetRelativeRotation().Pitch;
-		const float NewPitch = FMath::FixedTurn(BarrelPitch, DesiredPitch, TurnSpeedDegPerSec * DeltaSeconds);
-		BarrelMesh->SetRelativeRotation(FRotator(NewPitch, 0.f, 0.f));
-	}
+	UpdateAim(DeltaSeconds);
 }
 
 void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -129,10 +95,10 @@ void ABaseTurret::SetPreviewMode(bool bInPreview)
 		BarrelMesh->SetMaterial(i, PreviewMID);
 	}
 
-	if (TargetSerchingSphere)
+	if (TargetSearchingSphere)
 	{
-		TargetSerchingSphere->SetGenerateOverlapEvents(false);
-		TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		TargetSearchingSphere->SetGenerateOverlapEvents(false);
+		TargetSearchingSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
 	if(ASC)
@@ -143,58 +109,9 @@ void ABaseTurret::SetPreviewMode(bool bInPreview)
 	CurrentTarget = nullptr;
 }
 
-FVector ABaseTurret::GetFireStartLocation_Implementation() const
-{
-	if (BarrelMesh)
-	{
-		if (MuzzleSocketNames.IsValidIndex(CurrentMuzzleIndex))
-		{
-			const FName SocketName = MuzzleSocketNames[CurrentMuzzleIndex];
-
-			if (BarrelMesh->DoesSocketExist(SocketName))
-			{
-				return BarrelMesh->GetSocketLocation(SocketName);
-			}
-		}
-	}
-
-	return GetActorLocation();
-}
-
-FVector ABaseTurret::GetFireDirection_Implementation() const
-{
-	if (BarrelMesh)
-	{
-		if (MuzzleSocketNames.IsValidIndex(CurrentMuzzleIndex))
-		{
-			const FName SocketName = MuzzleSocketNames[CurrentMuzzleIndex];
-
-			if (BarrelMesh->DoesSocketExist(SocketName))
-			{
-				const FTransform SocketTM = BarrelMesh->GetSocketTransform(SocketName, RTS_World);
-				return SocketTM.GetUnitAxis(EAxis::X);
-			}
-		}
-	}
-
-	return GetActorForwardVector();
-}
-
-UDataAsset* ABaseTurret::GetDataAsset() const
-{
-	return TurretData;
-}
-
 void ABaseTurret::OnDeath()
 {
 	Super::OnDeath();
-
-	if (ASC && TurretData)
-	{
-		FGameplayTagContainer FireTags;
-		FireTags.AddTag(TurretData->WeaponTag);
-		ASC->CancelAbilities(&FireTags, nullptr, nullptr);
-	}
 }
 
 void ABaseTurret::OnRep_Dead()
@@ -219,36 +136,91 @@ bool ABaseTurret::CanStartAttack() const
 
 float ABaseTurret::GetAttackInterval() const
 {
-	if (!TurretData || TurretData->RoundPerMinute <= 0.f)
-	{
-		return 0.f;
-	}
-
-	return 60.f / TurretData->RoundPerMinute;
+	return 0.f;
 }
 
 void ABaseTurret::ExecuteAttack()
 {
-	if (!HasAuthority() || bDead || !ASC || !CurrentTarget || !TurretData)
+}
+
+void ABaseTurret::ApplyTurretData()
+{
+	if (!TurretData || !TargetSearchingSphere)
 	{
 		return;
 	}
 
-	CurrentMuzzleIndex = NextMuzzleIndex;
+	TargetSearchingSphere->SetSphereRadius(TurretData->SearchRadius);
+	TargetSearchingSphere->SetCollisionResponseToChannel(TurretData->EnemyTraceChannel, ECR_Overlap);
+}
 
-	const int32 MuzzleCount = MuzzleSocketNames.Num();
-	if (MuzzleCount > 0)
+void ABaseTurret::UpdateAim(float DeltaSeconds)
+{
+	if (!TurretData || !IsValid(CurrentTarget))
 	{
-		NextMuzzleIndex = (NextMuzzleIndex + 1) % MuzzleCount;
-	}
-	else
-	{
-		NextMuzzleIndex = 0;
+		return;
 	}
 
-	FGameplayTagContainer FireTags;
-	FireTags.AddTag(TurretData->WeaponTag);
-	ASC->TryActivateAbilitiesByTag(FireTags);
+	const FVector TargetLoc = CurrentTarget->GetActorLocation();
+
+	if (BodyMesh)
+	{
+		const FVector BodyLoc = BodyMesh->GetComponentLocation();
+
+		FVector Dir = TargetLoc - BodyLoc;
+		Dir.Z = 0.f;
+
+		if (!Dir.IsNearlyZero())
+		{
+			const float DesiredYaw = Dir.Rotation().Yaw;
+			const float BodyYaw = BodyMesh->GetComponentRotation().Yaw;
+			const float NewYaw = FMath::FixedTurn(BodyYaw, DesiredYaw, TurretData->TurnSpeedDegPerSec * DeltaSeconds);
+			BodyMesh->SetWorldRotation(FRotator(0.f, NewYaw, 0.f));
+		}
+	}
+
+	if (BarrelMesh)
+	{
+		const FVector BarrelLoc = BarrelMesh->GetComponentLocation();
+		FVector Dir = TargetLoc - BarrelLoc;
+
+		if (!Dir.IsNearlyZero())
+		{
+			const float Dist = FVector2D(Dir.X, Dir.Y).Size();
+			float DesiredPitch = FMath::RadiansToDegrees(FMath::Atan2(Dir.Z, Dist));
+			DesiredPitch = FMath::ClampAngle(DesiredPitch, TurretData->PitchMin, TurretData->PitchMax);
+
+			const float BarrelPitch = BarrelMesh->GetRelativeRotation().Pitch;
+			const float NewPitch = FMath::FixedTurn(BarrelPitch, DesiredPitch, TurretData->TurnSpeedDegPerSec * DeltaSeconds);
+			BarrelMesh->SetRelativeRotation(FRotator(NewPitch, 0.f, 0.f));
+		}
+	}
+}
+
+AActor* ABaseTurret::SelectBestTarget() const
+{
+	AActor* BestTarget = nullptr;
+	float BestDistSq = FLT_MAX;
+
+	const FVector MyLoc = GetActorLocation();
+
+	for (const TWeakObjectPtr<AActor>& CandidatePtr : TargetCandidates)
+	{
+		AActor* Candidate = CandidatePtr.Get();
+		if (!IsValid(Candidate))
+		{
+			continue;
+		}
+
+		const float DistSq = FVector::DistSquared(MyLoc, Candidate->GetActorLocation());
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestTarget = Candidate;
+		}
+	}
+
+	return BestTarget;
 }
 
 void ABaseTurret::StartFireLoop()
@@ -290,28 +262,12 @@ void ABaseTurret::StopFireLoop()
 
 void ABaseTurret::HandleAttackTick()
 {
-	if (!HasAuthority() || bDead || !ASC || !CurrentTarget || !TurretData)
+	if (!CanStartAttack())
 	{
 		return;
 	}
 
-	CurrentMuzzleIndex = NextMuzzleIndex;
-
-	const int32 MuzzleCount = MuzzleSocketNames.Num();
-
-	if (MuzzleCount > 0)
-	{
-		NextMuzzleIndex = (NextMuzzleIndex + 1) % MuzzleCount;
-	}
-	else
-	{
-		NextMuzzleIndex = 0;
-	}
-
-	FGameplayTagContainer FireTags;
-	FireTags.AddTag(TurretData->WeaponTag);
-
-	ASC->TryActivateAbilitiesByTag(FireTags);
+	ExecuteAttack();
 }
 
 void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -321,18 +277,12 @@ void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AAct
 		return;
 	}
 
-	ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(OtherActor);
-	if (!Enemy)
-	{
-		return;
-	}
-	TargetCandidates.AddUnique(Enemy);
+	TargetCandidates.AddUnique(OtherActor);
 }
 
 void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(OtherActor);
-	TargetCandidates.Remove(Enemy);
+	TargetCandidates.Remove(OtherActor);
 
 	if (CurrentTarget == OtherActor)
 	{
@@ -342,90 +292,28 @@ void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor
 
 void ABaseTurret::UpdateCurrentTarget()
 {
-	if (!HasAuthority() || bDead || !ASC || !TurretData)
+	if (!HasAuthority() || bDead || !TurretData)
 	{
 		return;
 	}
 
-	AActor* PrevTarget = CurrentTarget;
-
-	AActor* BestTarget = nullptr;
-	float BestDistSq = FLT_MAX;
-
-	const FVector MyLoc = GetActorLocation();
-
 	for (int32 i = TargetCandidates.Num() - 1; i >= 0; --i)
 	{
-		AActor* Candidate = TargetCandidates[i].Get();
-		if (!IsValid(Candidate))
+		if (!IsValid(TargetCandidates[i].Get()))
 		{
 			TargetCandidates.RemoveAt(i);
-			continue;
-		}
-
-		const float DistSq = FVector::DistSquared(MyLoc, Candidate->GetActorLocation());
-
-		if (DistSq < BestDistSq)
-		{
-			BestDistSq = DistSq;
-			BestTarget = Candidate;
 		}
 	}
 
-	CurrentTarget = BestTarget;
+	AActor* PrevTarget = CurrentTarget;
+	CurrentTarget = SelectBestTarget();
 
-	// 타겟 생김
 	if (!IsValid(PrevTarget) && IsValid(CurrentTarget))
 	{
 		StartFireLoop();
 	}
-	// 타겟 잃음
-	else if (!IsValid(CurrentTarget))
+	else if (IsValid(PrevTarget) && !IsValid(CurrentTarget))
 	{
 		StopFireLoop();
-
-		FGameplayTagContainer FireTags;
-		FireTags.AddTag(TurretData->WeaponTag);
-
-		ASC->CancelAbilities(&FireTags);
 	}
-}
-
-void ABaseTurret::CollectMuzzleSockets()
-{
-	MuzzleSocketNames.Empty();
-
-	if (!BarrelMesh)
-	{
-		return;
-	}
-
-	const UStaticMesh* Mesh = BarrelMesh->GetStaticMesh();
-	if (!Mesh)
-	{
-		return;
-	}
-
-	const TArray<UStaticMeshSocket*>& Sockets = Mesh->Sockets;
-
-	for (const UStaticMeshSocket* Socket : Sockets)
-	{
-		if (!Socket)
-		{
-			continue;
-		}
-
-		const FString NameStr = Socket->SocketName.ToString();
-
-		if (NameStr.StartsWith(MuzzleSocketPrefix.ToString()))
-		{
-			MuzzleSocketNames.Add(Socket->SocketName);
-		}
-	}
-
-	// 정렬 (Muzzle_0, Muzzle_1 순서)
-	MuzzleSocketNames.Sort([](const FName& A, const FName& B)
-		{
-			return A.LexicalLess(B);
-		});
 }
