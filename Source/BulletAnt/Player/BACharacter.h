@@ -91,6 +91,7 @@ public:
 
     //TEST
     FORCEINLINE UCameraComponent* GetCamera() const { return CameraComponent; }
+    FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; };
     void SpringArmRot(bool check);
 
 protected:
@@ -197,7 +198,8 @@ public:
 
     // --- 실제 동작 함수 ---
 public:
-    
+    void AimStart(const FInputActionValue& Value);
+    void AimStop(const FInputActionValue& Value);
 
 protected:
     void Move(const FInputActionValue& Value);
@@ -207,9 +209,7 @@ protected:
     void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
-    void CrouchInput(const FInputActionValue& Value);
-    void AimStart(const FInputActionValue& Value);
-    void AimStop(const FInputActionValue& Value);
+    void CrouchInput(const FInputActionValue& Value); 
     void ADSStart(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void EnterBuildMode(const FInputActionValue& Value);
@@ -265,8 +265,6 @@ protected:
 
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
-
-    FVector ADSLineTrace(ABAPlayerController* PC);
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;

@@ -6,6 +6,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Mining, "Ability.Active.Mining");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Jetpack, "Ability.Active.Jetpack");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_Reload, "Ability.Active.Reload");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active, "Ability.Active");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Active_ADS, "Ability.Active.ADS");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Combat_Damage, "Data.Combat.Damage");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Combat_Heal, "Data.Combat.Heal");
@@ -14,6 +15,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Combat_RespawnTime, "Data.Combat.RespawnTime");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Dead, "State.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Reload, "State.Combat.Reload");
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_ADS, "State.Combat.ADS");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Melee, "Weapon.Equipped.Melee");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Mining, "Weapon.Equipped.Mining");
