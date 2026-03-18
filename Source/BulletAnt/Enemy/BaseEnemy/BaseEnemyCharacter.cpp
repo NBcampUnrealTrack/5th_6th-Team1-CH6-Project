@@ -23,6 +23,8 @@
 #include "Enemy/DataAsset/TargetPriority.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayEffect.h"
+#include "GAS/AttributeSet/MoveAttributeSet.h"
+#include "GameplayEffectTypes.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -47,6 +49,7 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
 	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthAttributeSet"));
+	MoveAttributeSet = CreateDefaultSubobject<UMoveAttributeSet>(TEXT("MoveAttributeSet"));
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 	StateTreeComponent->SetStartLogicAutomatically(false);
@@ -347,6 +350,7 @@ void ABaseEnemyCharacter::ApplyTribe()
 		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
 
 		WalkSpeed = BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul;
+		MoveAttributeSet->SetMoveSpeed(WalkSpeed);
 		OnRep_WalkSpeed();
 	}
 }
@@ -433,7 +437,7 @@ void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
 
 void ABaseEnemyCharacter::OnRep_WalkSpeed()
 {
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = MoveAttributeSet->GetMoveSpeed() * MoveAttributeSet->GetMoveSpeedMultiplier();
 }
 
 void ABaseEnemyCharacter::StartIntrudeAction()
@@ -571,8 +575,17 @@ void ABaseEnemyCharacter::InitGAS()
 
 		DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
 			.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
+
+		MoveAttributeSet->SetMoveSpeedMultiplier(1);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(MoveAttributeSet->GetMoveSpeedMultiplierAttribute())
+			.AddUObject(this, &ABaseEnemyCharacter::OnSpeedMultiplier);
 	}
 
+}
+
+void ABaseEnemyCharacter::OnSpeedMultiplier(const FOnAttributeChangeData& Data)
+{
+	OnRep_WalkSpeed();
 }
 
 void ABaseEnemyCharacter::PossessedBy(AController* NewController)

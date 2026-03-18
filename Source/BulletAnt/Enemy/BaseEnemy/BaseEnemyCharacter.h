@@ -18,6 +18,8 @@ class ABaseBuilding;
 enum class ETargetPriorityType : uint8;
 struct FGameplayEventData;
 struct FGameplayEffectRemovalInfo;
+class UMoveAttributeSet;
+struct FOnAttributeChangeData;
 
 USTRUCT()
 struct FActorArrayWrapper
@@ -131,11 +133,16 @@ public:
 protected:
 	void InitGAS();
 
+	void OnSpeedMultiplier(const FOnAttributeChangeData& Data);
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
 	UPROPERTY()
 	UHealthAttributeSet* HealthAttributeSet;
+
+	UPROPERTY()
+	UMoveAttributeSet* MoveAttributeSet;
 
 	FDelegateHandle DeadEventHandle;
 
