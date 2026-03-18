@@ -27,7 +27,7 @@ public:
 		bool bWasCancelled) override;
 
 protected:
-	void PingTrace();
+	void SendTargetData();
 	void OnTargetDataReady(const FGameplayAbilityTargetDataHandle& Data, FGameplayTag Tag);
 
 protected:
