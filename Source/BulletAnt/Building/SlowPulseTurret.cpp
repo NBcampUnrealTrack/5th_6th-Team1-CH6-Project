@@ -8,11 +8,23 @@
 #include "GAS/BAGameplayTags.h"
 #include "GameplayEffect.h"
 #include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h" 
+#include "Building/PulseTurretDataAsset.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 
 ASlowPulseTurret::ASlowPulseTurret()
 {
+}
+
+void ASlowPulseTurret::BeginPlay()
+{
+	TurretData = PulseTurretData;
+	Super::BeginPlay();
 }
 
 bool ASlowPulseTurret::CanStartAttack() const
@@ -22,7 +34,7 @@ bool ASlowPulseTurret::CanStartAttack() const
 		return false;
 	}
 
-	for (const TWeakObjectPtr<ABaseEnemyCharacter>& Candidate : TargetCandidates)
+	for (const TWeakObjectPtr<AActor>& Candidate : TargetCandidates)
 	{
 		if (IsValid(Candidate.Get()))
 		{
@@ -35,7 +47,7 @@ bool ASlowPulseTurret::CanStartAttack() const
 
 float ASlowPulseTurret::GetAttackInterval() const
 {
-	return PulseInterval;
+	return PulseTurretData->PulseInterval;
 }
 
 void ASlowPulseTurret::ExecuteAttack()
@@ -60,8 +72,13 @@ void ASlowPulseTurret::ExecuteAttack()
 			continue;
 		}
 
-		ApplyDamageToEnemy(Enemy);
-		ApplyEffectToEnemy(Enemy, SlowEffectClass);
+		FHitResult HitResult;
+		if (FindHitResultOnEnemyCapsule(Enemy, HitResult))
+		{
+			ApplyDamageToEnemy(Enemy, HitResult);
+		}
+
+		ApplyEffectToEnemy(Enemy, PulseTurretData->SlowEffectClass);
 	}
 
 	Multicast_PlayPulseFX();
@@ -79,12 +96,12 @@ void ASlowPulseTurret::GatherPulseTargets(TArray<ABaseEnemyCharacter*>& OutEnemi
 
 	TArray<FOverlapResult> Overlaps;
 
-	FCollisionShape SphereShape = FCollisionShape::MakeSphere(PulseRadius);
+	FCollisionShape SphereShape = FCollisionShape::MakeSphere(PulseTurretData->PulseRadius);
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SlowPulseTurret), false);
 	QueryParams.AddIgnoredActor(this);
 
 	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(EnemyTraceChannel);
+	ObjectQueryParams.AddObjectTypesToQuery(PulseTurretData->EnemyTraceChannel);
 
 	const bool bHit = World->OverlapMultiByObjectType(
 		Overlaps,
@@ -143,9 +160,9 @@ void ASlowPulseTurret::ApplyEffectToEnemy(ABaseEnemyCharacter* Enemy, TSubclassO
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
-void ASlowPulseTurret::ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy) const
+void ASlowPulseTurret::ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy, const FHitResult& HitResult) const
 {
-	if (!Enemy || !DamageEffectClass)
+	if (!Enemy || !PulseTurretData || !PulseTurretData->DamageEffectClass)
 	{
 		return;
 	}
@@ -160,19 +177,95 @@ void ASlowPulseTurret::ApplyDamageToEnemy(ABaseEnemyCharacter* Enemy) const
 
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddSourceObject(const_cast<ASlowPulseTurret*>(this));
+	Context.AddHitResult(HitResult);
+	Context.AddOrigin(HitResult.ImpactPoint);
+	Context.AddInstigator(const_cast<ASlowPulseTurret*>(this), const_cast<ASlowPulseTurret*>(this));
 
-	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.f, Context);
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(
+		PulseTurretData->DamageEffectClass,
+		1.f,
+		Context
+	);
+
 	if (!SpecHandle.IsValid())
 	{
 		return;
 	}
 
-	SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, PulseDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		TAG_Data_Combat_Damage,
+		PulseTurretData->PulseDamage
+	);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
+bool ASlowPulseTurret::FindHitResultOnEnemyCapsule(ABaseEnemyCharacter* Enemy, FHitResult& OutHitResult) const
+{
+	OutHitResult = FHitResult();
+
+	if (!Enemy)
+	{
+		return false;
+	}
+
+	UCapsuleComponent* Capsule = Enemy->GetCapsuleComponent();
+	if (!Capsule)
+	{
+		return false;
+	}
+
+	const FVector Start = BarrelMesh->GetComponentLocation();
+	const FVector End = Capsule->GetComponentLocation();
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(PulseCapsuleTrace), false);
+	Params.AddIgnoredActor(this);
+
+	// 캡슐 컴포넌트 자체에 직접 라인트레이스
+	const bool bHit = Capsule->LineTraceComponent(
+		OutHitResult,
+		Start,
+		End,
+		Params
+	);
+
+	if (bHit)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 void ASlowPulseTurret::Multicast_PlayPulseFX_Implementation()
 {
-	// 나중에 Niagara / 사운드 추가
+	if (!PulseTurretData)
+	{
+		return;
+	}
+
+	const FVector FXLocation = BarrelMesh->GetComponentLocation();
+	const FRotator FXRotation = GetActorRotation();
+
+	if (PulseTurretData->PulseSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			PulseTurretData->PulseSound,
+			FXLocation
+		);
+	}
+
+	if (PulseTurretData->PulseNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			this,
+			PulseTurretData->PulseNiagara,
+			FXLocation,
+			FXRotation,
+			PulseTurretData->FXScale,
+			true,
+			true
+		);
+	}
 }

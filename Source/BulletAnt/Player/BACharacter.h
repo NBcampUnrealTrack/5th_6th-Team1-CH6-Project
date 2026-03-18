@@ -188,6 +188,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
     UInputAction* GroundScannerAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Communicate")
+    UInputAction* PingAction;
+
 #pragma endregion
 
 #pragma region Action Function
@@ -222,6 +225,7 @@ protected:
     void OnToggleBuildInfo(const FInputActionValue& Value);
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
+    void ExecutePing(const FInputActionValue& Value);
 
 
 public:

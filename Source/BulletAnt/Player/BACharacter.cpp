@@ -362,6 +362,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(GroundScannerAction, ETriggerEvent::Started, this, &ABACharacter::SwitchGroundScanner);
 		}
+
+		if (PingAction)
+		{
+			EnhancedInputComponent->BindAction(PingAction, ETriggerEvent::Started, this, &ABACharacter::ExecutePing);
+		}
 	}
 }
 
@@ -952,6 +957,17 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 		Jump();
 	}
 }
+void ABACharacter::ExecutePing(const FInputActionValue& Value)
+{
+	if (IsValid(AbilitySystemComponent) == false)
+		return;
+
+	FGameplayTagContainer Tag;
+	Tag.AddTag(TAG_Event_Communicate_Ping);
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

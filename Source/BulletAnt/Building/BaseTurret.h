@@ -3,18 +3,13 @@
 
 #include "CoreMinimal.h"
 #include "Building/BaseBuilding.h"
-#include "Common/FireStartInterface.h"
-#include "Common/DataAssetInterface.h"
 #include "BaseTurret.generated.h"
 
-class URangedWeaponDataAsset;
+class UTurretDataAsset;
 class USphereComponent;
-class ABaseEnemyCharacter;
 
 UCLASS()
 class BULLETANT_API ABaseTurret : public ABaseBuilding
-								, public IFireStartInterface
-								, public IDataAssetInterface
 {
 	GENERATED_BODY()
 	
@@ -27,17 +22,9 @@ protected:
 public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 	virtual void SetPreviewMode(bool bInPreview) override;
 
 protected:
-	// IFireStartInterface
-	virtual FVector GetFireStartLocation_Implementation() const override;
-	virtual FVector GetFireDirection_Implementation() const override;
-
-	// IDataAssetInterface
-	virtual UDataAsset* GetDataAsset() const override;
-
 	// IOnDeathInterface
 	virtual void OnDeath() override;
 	virtual void OnRep_Dead() override;
@@ -45,6 +32,10 @@ protected:
 	virtual bool CanStartAttack() const;
 	virtual float GetAttackInterval() const;
 	virtual void ExecuteAttack();
+
+	virtual void ApplyTurretData();
+	virtual void UpdateAim(float DeltaSeconds);
+	virtual AActor* SelectBestTarget() const;
 
 	void StartFireLoop();
 	void StopFireLoop();
@@ -60,8 +51,6 @@ private:
 	UFUNCTION()
 	void UpdateCurrentTarget();
 
-	void CollectMuzzleSockets();
-
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Turret|Mesh")
 	TObjectPtr<UStaticMeshComponent> BodyMesh;
@@ -70,45 +59,17 @@ protected:
 	TObjectPtr<UStaticMeshComponent> BarrelMesh;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
-	TObjectPtr<URangedWeaponDataAsset> TurretData;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
-	TArray<FName> MuzzleSocketNames;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
-	FName MuzzleSocketPrefix = TEXT("Muzzle");
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
-	int32 CurrentMuzzleIndex = 0;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Muzzle")
-	int32 NextMuzzleIndex = 0;
-
-	FTimerHandle FireLoopTimerHandle;
+	TObjectPtr<UTurretDataAsset> TurretData;
 
 	UPROPERTY(VisibleAnywhere, Category = "Turret|Targeting")
-	TObjectPtr<USphereComponent> TargetSerchingSphere;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float SerchingSphereRadius = 1000.f;
+	TObjectPtr<USphereComponent> TargetSearchingSphere;
 
 	UPROPERTY()
-	TArray<TWeakObjectPtr<ABaseEnemyCharacter>> TargetCandidates;
+	TArray<TWeakObjectPtr<AActor>> TargetCandidates;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<AActor> CurrentTarget;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float TargetSearchInterval = 1.f;
-
+	FTimerHandle FireLoopTimerHandle;
 	FTimerHandle TargetSearchTimer;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float TurnSpeedDegPerSec = 180.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float PitchMin = -20.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Turret|Targeting")
-	float PitchMax = 90.f;
 };

@@ -38,7 +38,7 @@ void ABaseCore::FindAnchors()
 {
     Anchors.Reserve(ScanCount);
 
-    const float ScanRadius = 2000.f; 
+    const float ScanRadius = 1300.f; 
     FVector Start = GetActorLocation();
     Start.Z = 0;
 
