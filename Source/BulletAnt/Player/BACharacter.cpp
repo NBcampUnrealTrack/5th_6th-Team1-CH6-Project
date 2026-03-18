@@ -645,11 +645,23 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 			}
 
 			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
-			FVector ViewLoc;
-			FRotator ViewRot;
-			GetActorEyesViewPoint(ViewLoc, ViewRot);
-
-			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
+			FVector ViewLoc = FVector::ZeroVector;
+			FVector ViewRot = FVector::ZeroVector;
+			int32 ScreenX = 1920;
+			int32 ScreenY = 1080;
+			APlayerController* PC = Cast<APlayerController>(GetController());
+			if (PC)
+			{
+				PC->GetViewportSize(ScreenX, ScreenY);
+				PC->DeprojectScreenPositionToWorld(
+					(float)ScreenX/2,
+					(float)ScreenY/2,
+					ViewLoc,
+					ViewRot
+				);
+			}
+		
+			FVector AimEnd = ViewLoc + ViewRot.GetSafeNormal() * 10000.f;
 
 			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 		}
