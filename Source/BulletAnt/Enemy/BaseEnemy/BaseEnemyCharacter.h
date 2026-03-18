@@ -6,9 +6,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
-#include "AbilitySystemBlueprintLibrary.h"
-#include "Enemy/DataAsset/TargetPriority.h"
-#include "Net/UnrealNetwork.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "BaseEnemyCharacter.generated.h"
 
 class UStateTreeComponent;
@@ -16,6 +14,12 @@ class UBaseEnemyDataAsset;
 class UHealthAttributeSet;
 class USphereComponent;
 class UTribeDataAsset;
+class ABaseBuilding;
+enum class ETargetPriorityType : uint8;
+struct FGameplayEventData;
+struct FGameplayEffectRemovalInfo;
+class UMoveAttributeSet;
+struct FOnAttributeChangeData;
 
 USTRUCT()
 struct FActorArrayWrapper
@@ -75,6 +79,10 @@ public:
 public:
 	USphereComponent* GetDetectionSphere() const;
 
+	void SetTargetPrioriy(ETargetPriorityType InTargetPriority);
+
+	void InitTarget();
+
 protected:
 	UFUNCTION()
 	virtual void OnDetectionSphereBeginOverlap(
@@ -95,6 +103,13 @@ protected:
 	void SenseNearbyActors();
 
 	bool IsInFieldOfView(AActor* Target, float FOVAngle);
+
+	void OnTargetBuildingDestroy();
+
+	void BindOnTargetDestroy(AActor* Target);
+	void RemoveOnTargetDestroy(AActor* Target);
+
+	void TransitionToRotate();
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
@@ -118,11 +133,16 @@ public:
 protected:
 	void InitGAS();
 
+	void OnSpeedMultiplier(const FOnAttributeChangeData& Data);
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
 	UPROPERTY()
 	UHealthAttributeSet* HealthAttributeSet;
+
+	UPROPERTY()
+	UMoveAttributeSet* MoveAttributeSet;
 
 	FDelegateHandle DeadEventHandle;
 
@@ -152,7 +172,7 @@ public:
 
 	void SetTribeType(UTribeDataAsset* InTribeType);
 
-	void ApplyTribe();
+	virtual void ApplyTribe();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ApplyTribeMaterial();
@@ -189,4 +209,13 @@ protected:
 
 #pragma endregion
 
+#pragma region Intrude
+
+protected:
+	void StartIntrudeAction();
+
+	void FinishIntrudeAction(const FGameplayEffectRemovalInfo& InGERemovalInfo);
+
+	FActiveGameplayEffectHandle GEIntrudeHandle;
+#pragma endregion
 };
