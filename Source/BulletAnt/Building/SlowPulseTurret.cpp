@@ -22,7 +22,7 @@ bool ASlowPulseTurret::CanStartAttack() const
 		return false;
 	}
 
-	for (const TWeakObjectPtr<ABaseEnemyCharacter>& Candidate : TargetCandidates)
+	for (const TWeakObjectPtr<AActor>& Candidate : TargetCandidates)
 	{
 		if (IsValid(Candidate.Get()))
 		{

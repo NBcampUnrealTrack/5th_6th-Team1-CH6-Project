@@ -29,7 +29,7 @@ ABaseTurret::ABaseTurret()
 	TargetSerchingSphere->SetSphereRadius(SerchingSphereRadius);
 	TargetSerchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TargetSerchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	TargetSerchingSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	TargetSerchingSphere->SetCollisionResponseToChannel(ECC_GameTraceChannel6, ECR_Overlap);
 }
 
 void ABaseTurret::BeginPlay()
@@ -44,6 +44,16 @@ void ABaseTurret::BeginPlay()
 
 		TargetSerchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseTurret::OnTargetBeginOverlap);
 		TargetSerchingSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseTurret::OnTargetEndOverlap);
+
+		TargetSerchingSphere->UpdateOverlaps();
+
+		TArray<AActor*> OverlappingActors;
+		TargetSerchingSphere->GetOverlappingActors(OverlappingActors, ABaseEnemyCharacter::StaticClass());
+
+		for (AActor* Enemy : OverlappingActors)
+		{
+			TargetCandidates.AddUnique(Enemy);
+		}
 
 		GetWorldTimerManager().SetTimer(
 			TargetSearchTimer,
@@ -290,28 +300,12 @@ void ABaseTurret::StopFireLoop()
 
 void ABaseTurret::HandleAttackTick()
 {
-	if (!HasAuthority() || bDead || !ASC || !CurrentTarget || !TurretData)
+	if (!CanStartAttack())
 	{
 		return;
 	}
 
-	CurrentMuzzleIndex = NextMuzzleIndex;
-
-	const int32 MuzzleCount = MuzzleSocketNames.Num();
-
-	if (MuzzleCount > 0)
-	{
-		NextMuzzleIndex = (NextMuzzleIndex + 1) % MuzzleCount;
-	}
-	else
-	{
-		NextMuzzleIndex = 0;
-	}
-
-	FGameplayTagContainer FireTags;
-	FireTags.AddTag(TurretData->WeaponTag);
-
-	ASC->TryActivateAbilitiesByTag(FireTags);
+	ExecuteAttack();
 }
 
 void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -321,18 +315,12 @@ void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AAct
 		return;
 	}
 
-	ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(OtherActor);
-	if (!Enemy)
-	{
-		return;
-	}
-	TargetCandidates.AddUnique(Enemy);
+	TargetCandidates.AddUnique(OtherActor);
 }
 
 void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(OtherActor);
-	TargetCandidates.Remove(Enemy);
+	TargetCandidates.Remove(OtherActor);
 
 	if (CurrentTarget == OtherActor)
 	{

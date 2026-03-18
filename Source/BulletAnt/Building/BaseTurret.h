@@ -93,7 +93,7 @@ protected:
 	float SerchingSphereRadius = 1000.f;
 
 	UPROPERTY()
-	TArray<TWeakObjectPtr<ABaseEnemyCharacter>> TargetCandidates;
+	TArray<TWeakObjectPtr<AActor>> TargetCandidates;
 
 	UPROPERTY(Replicated)
 	TObjectPtr<AActor> CurrentTarget;
