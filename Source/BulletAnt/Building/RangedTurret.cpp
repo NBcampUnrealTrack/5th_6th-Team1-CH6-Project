@@ -77,7 +77,11 @@ void ARangedTurret::ExecuteAttack()
 		return;
 	}
 
-	CurrentMuzzleIndex = NextMuzzleIndex;
+	if (MuzzleSocketNames.Num() > 0)
+	{
+		CurrentMuzzleIndex = NextMuzzleIndex;
+		NextMuzzleIndex = (NextMuzzleIndex + 1) % MuzzleSocketNames.Num();
+	}
 
 	FGameplayTagContainer FireTags;
 	FireTags.AddTag(RangedTurretData->WeaponData->WeaponTag);
