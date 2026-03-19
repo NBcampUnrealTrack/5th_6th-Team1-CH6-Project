@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "AbilitySystemInterface.h"
+#include "Common/BAItemInterface.h"
 #include "BaseBuilding.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnDestroyed);
@@ -42,6 +43,7 @@ struct FBuildingEdge
 UCLASS()
 class BULLETANT_API ABaseBuilding : public AActor
 								  , public IAbilitySystemInterface
+								  , public IBAItemInterface
 {
 	GENERATED_BODY()
 	
@@ -56,6 +58,11 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	virtual void Use_Implementation(AActor* User) override;
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDemolish();
+
 	virtual void OnDeath();
 
 	void GetEdgesWorld(TArray<FBuildingEdge>& OutEdges) const;

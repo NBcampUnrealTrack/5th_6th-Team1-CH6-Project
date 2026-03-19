@@ -14,7 +14,7 @@ class UUW_ShopWindow;
 class UUISubsystem;
 
 UCLASS()
-class BULLETANT_API ABaseShop : public ABaseBuilding, public IBAItemInterface
+class BULLETANT_API ABaseShop : public ABaseBuilding
 {
 	GENERATED_BODY()
 	
