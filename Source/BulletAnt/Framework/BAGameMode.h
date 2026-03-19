@@ -15,11 +15,12 @@ public:
 	ABAGameMode();
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-
 	virtual void Logout(AController* Exiting) override;
 
-	void MineOre(EOreType OreType, int32 PointCount);
+	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
+public:
+	void MineOre(EOreType OreType, int32 PointCount);
 	bool TrySpendOre(const TMap<EOreType, int32>& Cost);
 
 protected:

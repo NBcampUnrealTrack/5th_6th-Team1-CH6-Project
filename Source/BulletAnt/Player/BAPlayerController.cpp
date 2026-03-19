@@ -17,21 +17,19 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "UI/UW_WeaponLog.h"
 #include "UI/UW_Compass.h"
+#include "Player/BAPlayerState.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 
 
 void ABAPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	if (!IsLocalController()) return;
 
-	FInputModeGameOnly GameAndUI;
-	SetInputMode(GameAndUI);
-	bShowMouseCursor = false;
+	if (IsLocalController() == false)
+		return;
 
-	bIsBuildMode = false;
-
-	if(UEnhancedInputLocalPlayerSubsystem* Subsystem 
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem
 		= ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
 		if (DefaultMappingContext)
@@ -40,49 +38,7 @@ void ABAPlayerController::BeginPlay()
 		}
 	}
 
-	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
-	{
-		if (HUDClass) 
-		{
-			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
-
-			HUD->OwnerCharacter = PlayerCharacter;
-			HUD->AddToViewport(0);
-		}
-	}
-
-	ULocalPlayer* LP = GetLocalPlayer();
-	if (!LP) return;
-
-	UISubsystem = LP->GetSubsystem<UUISubsystem>();
-	if (IsValid(UISubsystem) == true)
-	{
-		UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
-		if (IsValid(OreCountUI) == true)
-		{
-			ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
-			if (IsValid(GS) == true)
-			{
-				FOnOreChanged::FDelegate Delegate;
-				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
-				GS->BindOnOreChanged(Delegate); 
-
-				const auto& OreInventory = GS->GetOreInventory();
-				for (const auto& OrePair : OreInventory)
-				{
-					OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
-				}
-			}
-		}
-
-		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
-
-		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManager))
-		{
-			WaveTimerUI = UISubsystem->ShowUI<UUW_WaveTimer>(EUIType::WaveTimer);
-		}
-	}
+	SetupForLobby();
 }
 
 void ABAPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -252,6 +208,125 @@ void ABAPlayerController::SwitchGroundScanner()
 			{
 				UIS->HideUI(EUIType::GroundScanner);
 			}
+		}
+	}
+}
+
+void ABAPlayerController::SetLevelType(ELevelType InType)
+{
+	LevelType = InType;
+	Client_SetupController(LevelType);
+}
+
+void ABAPlayerController::Client_SetupController_Implementation(ELevelType InType)
+{
+	LevelType = InType;
+	SetupController();
+}
+
+void ABAPlayerController::SetupController()
+{
+	if (IsLocalController() == false)
+		return;
+
+	UWorld* World = GetWorld();
+	ABAGameState* GS = IsValid(World) == true ? World->GetGameState<ABAGameState>() : nullptr;
+	APawn* MyPawn = GetPawn();
+	if (IsValid(GS) == false || IsValid(MyPawn) == false)
+	{
+		World->GetTimerManager().SetTimerForNextTick(this, &ThisClass::SetupController);
+		return;
+	}
+
+	switch (LevelType)
+	{
+		case ELevelType::Lobby:
+			SetupForLobby();
+			break;
+		case ELevelType::Main:
+			SetupForMain();
+			break;
+		default:
+			break;
+	}
+}
+
+void ABAPlayerController::SetupForLobby()
+{
+	FInputModeGameOnly GameAndUI;
+	SetInputMode(GameAndUI);
+	bShowMouseCursor = false;
+
+	bIsBuildMode = false;
+
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP) return;
+
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem) == true)
+	{
+		UISubsystem->ResetAllUI();
+		UISubsystem->InitRootHUD();
+
+	}
+}
+
+void ABAPlayerController::SetupForMain()
+{
+	FInputModeGameOnly GameAndUI;
+	SetInputMode(GameAndUI);
+	bShowMouseCursor = false;
+
+	bIsBuildMode = false;
+
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 0"));
+	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 1"));
+		if (HUDClass)
+		{
+			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
+
+			HUD->OwnerCharacter = PlayerCharacter;
+			HUD->AddToViewport(0);
+		}
+	}
+
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP) return;
+
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 2"));
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem) == true)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 3"));
+		UISubsystem->ResetAllUI();
+		UISubsystem->InitRootHUD();
+
+		UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
+		if (IsValid(OreCountUI) == true)
+		{
+			ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+			if (IsValid(GS) == true)
+			{
+				FOnOreChanged::FDelegate Delegate;
+				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
+				GS->BindOnOreChanged(Delegate);
+
+				const auto& OreInventory = GS->GetOreInventory();
+				for (const auto& OrePair : OreInventory)
+				{
+					OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
+				}
+			}
+		}
+
+		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
+
+		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManager))
+		{
+			WaveTimerUI = UISubsystem->ShowUI<UUW_WaveTimer>(EUIType::WaveTimer);
 		}
 	}
 }
