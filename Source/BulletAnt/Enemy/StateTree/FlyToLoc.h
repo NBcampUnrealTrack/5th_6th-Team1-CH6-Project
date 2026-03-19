@@ -9,6 +9,7 @@
 
 class ABaseEnemyCharacter;
 class UCharacterMovementComponent;
+class UFlyDataAsset;
 
 UCLASS()
 class BULLETANT_API UFlyToLoc : public UStateTreeTaskBlueprintBase
@@ -25,6 +26,10 @@ protected:
 
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
 
+	void FindDestLoc();
+
+	void FlyToProperLoc(const FVector& Current, const FVector& Dest, const float DeltaTime, bool& bCan);
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	TObjectPtr<ABaseEnemyCharacter> ContextEnemy;
@@ -38,9 +43,9 @@ public:
 protected:
 	TWeakObjectPtr<UCharacterMovementComponent> CMC;
 
-	float TurnSpeed = 3.0f;
+	TObjectPtr<UFlyDataAsset> FlyDataAsset;
 
-	float AccelerationRate = 2.0f;
+	FVector DestLocation;
 
 	FActiveGameplayEffectHandle ActiveGEHandle;
 };

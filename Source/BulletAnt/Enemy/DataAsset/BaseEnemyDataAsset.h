@@ -57,8 +57,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Move")
 	float AcceptanceRadius = 100.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Move")
-	float RotationRate = 360.f;
 
 #pragma endregion
 
@@ -73,6 +71,9 @@ public:
 #pragma endregion
 
 #pragma region Rotate
+
+	UPROPERTY(EditDefaultsOnly, Category = "Rotate")
+	float RotationRate = 360.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotate")
 	TSubclassOf<UGameplayEffect> RotateEffect;

@@ -244,7 +244,10 @@ void USpawnManagerSubsystem::SpawnEnemies()
 			if (IsValid(Enemy))
 			{
 				AliveEnemyCount++;
-				Enemy->SetTribeType(TribeDataAsset);
+				if (IsValid(TribeDataAsset))
+				{
+					Enemy->SetTribeType(TribeDataAsset);
+				}
 				Enemy->ApplyTribe();
 			}
 		}
