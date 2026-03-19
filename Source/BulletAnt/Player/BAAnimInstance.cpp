@@ -83,7 +83,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("LeftHandSocket"))
 	{
 		FTransform GunLeftHandSocket = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("LeftHandSocket");
-		FTransform Righthand = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("hand_r");
+		FTransform Righthand = Character->GetMesh()->GetSocketTransform("hand_r");
 		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
 	}
 	FVector RightDir = OwningActor->GetActorRightVector();
@@ -100,7 +100,6 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	VerticalVelocity = Velocity.Z;
 
 	RootYawOffset = Character->RootYawOffset * -1;
-
 	IsGrabLeftHand(DeltaSeconds);
 	//Test
 	
@@ -130,7 +129,7 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 		if (Character->EquippedWeapon)
 			Params.AddIgnoredActor(Character->EquippedWeapon);
 
-		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel10, Params);
 
 		FVector TargetLocation = bHit ? Hit.ImpactPoint : TraceEnd;
 

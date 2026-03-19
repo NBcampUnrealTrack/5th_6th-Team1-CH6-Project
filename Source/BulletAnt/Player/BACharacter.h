@@ -312,6 +312,7 @@ public:
 
     float LastBodyYaw;
     float RootYawOffset;
+    float TurnStartYaw;
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
