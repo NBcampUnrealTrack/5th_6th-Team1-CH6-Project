@@ -8,6 +8,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Weapon/BaseWeapon.h"
 #include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UGA_ADS::UGA_ADS()
 {
@@ -20,6 +21,14 @@ UGA_ADS::UGA_ADS()
 	SetAssetTags(DefaultTag);
 
 	ActivationOwnedTags.AddTag(TAG_State_Combat_ADS);
+
+	FAbilityTriggerData TriggerData;
+	TriggerData.TriggerTag = TAG_Ability_Active_ADS;
+	TriggerData.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent;
+
+	AbilityTriggers.Add(TriggerData);
+
+	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active_ADS);
 }
 
 void UGA_ADS::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -40,6 +49,11 @@ void UGA_ADS::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 	CachedWeapon = Cast<ABaseWeapon>(TriggerEventData->OptionalObject);
 	if (!IsValid(CachedWeapon)) return;
 
+	StartADS();
+
+	UAbilityTask_WaitGameplayEvent* Task = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_EndADS);
+	Task->EventReceived.AddDynamic(this, &UGA_ADS::StopADS);
+	Task->ReadyForActivation();
 }
 
 void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
@@ -50,42 +64,48 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 
 void UGA_ADS::StartADS()
 {
-	SavedTargetPoint = ADSLineTrace();
-	FVector SightLoc = CachedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
-	FRotator SightRot = CachedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
-
-	FRotator IdealLookAtRot = UKismetMathLibrary::FindLookAtRotation(SightLoc, SavedTargetPoint);
-	FRotator ErrorDelta = UKismetMathLibrary::NormalizedDeltaRotator(IdealLookAtRot, SightRot);
-
-	FRotator CurrentControlRot = PC->GetControlRotation();
-	FRotator NewControlRot = CurrentControlRot + ErrorDelta;
-
-	USpringArmComponent* SpringArm = Source->GetSpringArm();
-	Source->bUseControllerRotationYaw = true;
-	SpringArm->bUsePawnControlRotation = false;
-	Source->GetCamera()->FieldOfView = 70.f;
-	Source->AimStart(1.f);
-
-	SavedSpringArmTransform = SpringArm->GetRelativeTransform();
-	SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-	SpringArm->TargetArmLength = 0.f;
-	PC->SetControlRotation(NewControlRot);
-
+	Source->GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	if (IsLocallyControlled())
 	{
+		
+		Source->bUseControllerRotationYaw = true;
+		SavedTargetPoint = ADSLineTrace();
+		FVector SightLoc = CachedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
+		FRotator SightRot = CachedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
+
+		/*FRotator IdealLookAtRot = UKismetMathLibrary::FindLookAtRotation(SightLoc, SavedTargetPoint);
+		FRotator ErrorDelta = UKismetMathLibrary::NormalizedDeltaRotator(IdealLookAtRot, SightRot);
+
+		FRotator CurrentControlRot = PC->GetControlRotation();
+		FRotator NewControlRot = CurrentControlRot + ErrorDelta;*/
+
+		USpringArmComponent* SpringArm = Source->GetSpringArm();		
+		SpringArm->bUsePawnControlRotation = false;
+		Source->GetCamera()->FieldOfView = 70.f;
+		Source->StartAiming();
+
+		SavedSpringArmTransform = SpringArm->GetRelativeTransform();
+		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::KeepWorldTransform, "ADS_Sight");
+		SpringArm->TargetArmLength = 0.f;
+		/*PC->SetControlRotation(Source->EquippedWeapon->GetActorRotation());*/
+
+
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
+		
 	}
+
 }
 
-void UGA_ADS::StopADS()
+void UGA_ADS::StopADS(FGameplayEventData Payload)
 {
+	Source->GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	Source->bUseControllerRotationYaw = false;
 	USpringArmComponent* SpringArm = Source->GetSpringArm();
 	UCameraComponent* Camera = Source->GetCamera();
 	SpringArm->bUsePawnControlRotation = true;
 	Source->GetCamera()->FieldOfView = 90.f;
 	PC->StopADSUI();
-	Source->AimStop(1.f);
+	Source->EndAiming();
 
 	SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 	SpringArm->SetRelativeTransform(SavedSpringArmTransform);
@@ -98,6 +118,8 @@ void UGA_ADS::StopADS()
 	{
 		Source->GetMesh()->UnHideBoneByName(FName("head"));
 	}
+
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
 FVector UGA_ADS::ADSLineTrace()

@@ -197,7 +197,7 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming)&&!bIsADS)
+	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming))
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
 		GetCharacterMovement()->bUseControllerDesiredRotation = false;
@@ -660,6 +660,26 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 	return GetActorRotation().Vector().GetSafeNormal();
 }
 
+void ABACharacter::StartAiming()
+{
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
+	bIsAiming = true;
+
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	Server_SetAiming(true);
+}
+
+void ABACharacter::EndAiming()
+{
+	if (!bIsAiming) return;
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS)) return;
+	bIsAiming = false;
+
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+
+	Server_SetAiming(false);
+}
+
 void ABACharacter::OnRep_bIsFiring()
 {
 	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(GetMesh()->GetAnimInstance());
@@ -703,23 +723,15 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
-	bIsAiming = true;
+	
 
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	Server_SetAiming(true);
+	StartAiming();
 }
 
 //조준 끝
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
-	if (!bIsAiming) return;
-	if (bIsADS) return;
-	bIsAiming = false;
-
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-
-	Server_SetAiming(false);
+	EndAiming();
 }
 
 void ABACharacter::ADSStart(const FInputActionValue& Value)
@@ -729,7 +741,16 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 
 	FGameplayEventData Payload;
 	Payload.OptionalObject = EquippedWeapon;
-	AbilitySystemComponent->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	{
+		AbilitySystemComponent->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
+	}
+	else
+	{
+		AbilitySystemComponent->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
+	}
+
+	
 }
 
 

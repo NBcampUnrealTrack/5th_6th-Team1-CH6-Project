@@ -33,7 +33,10 @@ public:
 
 protected:
 	void StartADS();
-	void StopADS();
+
+	UFUNCTION()
+	void StopADS(FGameplayEventData Payload);
+
 	FVector ADSLineTrace();
 
 	ABAPlayerController* PC = nullptr;

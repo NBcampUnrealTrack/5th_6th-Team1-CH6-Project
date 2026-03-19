@@ -28,6 +28,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Hit, "Event.Combat.Hit");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_Damaged, "Event.Combat.Damaged");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_StartAttack, "Event.Combat.StartAttack");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_EndAttack, "Event.Combat.EndAttack");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_EndADS, "Event.Combat.EndADS");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Communicate_Ping, "Event.Communicate.Ping");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Dead, "GameplayCue.Combat.Dead");

@@ -198,14 +198,15 @@ public:
 
     // --- 실제 동작 함수 ---
 public:
-    void AimStart(const FInputActionValue& Value);
-    void AimStop(const FInputActionValue& Value);
+    
 
 protected:
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
     void StartAttack(const FInputActionValue& Value);
     void Reload(const FInputActionValue& Value);
+    void AimStart(const FInputActionValue& Value);
+    void AimStop(const FInputActionValue& Value);
     void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
@@ -381,6 +382,9 @@ public:
 
     virtual FVector GetFireStartLocation_Implementation() const override;
     virtual FVector GetFireDirection_Implementation() const override;
+
+    void StartAiming();
+    void EndAiming();
 
     UFUNCTION()
     void OnRep_bIsFiring();
