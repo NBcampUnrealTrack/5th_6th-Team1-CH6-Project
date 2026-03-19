@@ -38,8 +38,9 @@ public:
 	void ApplyUIOnlyInputMode(UUserWidget* FocusWidget);
 	void ApplyGameAndUIInputMode(UUserWidget* FocusWidget);
 
-private:
 	void InitRootHUD();
+
+public:
 	void ApplyLayoutPreset(UCanvasPanelSlot* Slot, const FUILayoutPreset& Layout);
 
 

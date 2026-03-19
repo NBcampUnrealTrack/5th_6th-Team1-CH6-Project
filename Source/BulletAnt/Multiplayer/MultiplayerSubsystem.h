@@ -31,7 +31,7 @@ public:
 
 	void ProcessEOSLogin(FString CredentialType, FString CredentialId, FString AuthToken);
 
-	void CreateSession(const FString& RoomName = TEXT("DefaultRoom"), int32 MaxPlayers = 4);
+	void CreateSession(const FString& RoomName = TEXT("DefaultRoom"), int32 MaxPlayers = 8);
 	void SearchSessions(int32 MaxSearchCount = 16);
 	void JoinSession(int32 Index);
 

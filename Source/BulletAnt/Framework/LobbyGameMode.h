@@ -13,5 +13,6 @@ public:
 	ALobbyGameMode();
 
 	virtual void BeginPlay() override;
+	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
 };
