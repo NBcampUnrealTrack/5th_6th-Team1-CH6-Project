@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -15,6 +15,8 @@ class BULLETANT_API ABaseCore : public ABaseBuilding
 	GENERATED_BODY()
 	
 public:
+	virtual void Use_Implementation(AActor* User) override;
+
 	const TArray<FVector>& GetAnchors() const;
 	
 protected:
