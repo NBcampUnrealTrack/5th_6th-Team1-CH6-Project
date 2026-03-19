@@ -87,12 +87,12 @@ void ABaseShop::DropWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)
 
 	ABATransportShip* Ship = GetWorld()->SpawnActor<ABATransportShip>(
 		TransportShipClass,
-		GetActorLocation() + FVector(0.f, 0.f, 5000.f),
+		GetActorLocation() + FVector(0.f, 0.f, 8000.f),
 		FRotator::ZeroRotator,
 		Params
 	);
 
-	FVector DropLocation = GetActorLocation() + FVector(0.f, 0.f, 5000.f);
+	FVector DropLocation = GetActorLocation() + FVector(0.f, 0.f, 8000.f);
 	Ship->InitItemPlane(DropLocation, InWeaponClass);
 }
 

@@ -95,7 +95,7 @@ void UGA_Respawn::HandleRespawn()
 		{
 			
 			if (!TransportShipClass) return;
-			FVector SpawnLocation = FVector(0.f, 0.f, 5000.f);
+			FVector SpawnLocation = FVector(0.f, 0.f, 8000.f);
 
 			ABATransportShip* Plane = GetWorld()->SpawnActor<ABATransportShip>(
 				TransportShipClass,
