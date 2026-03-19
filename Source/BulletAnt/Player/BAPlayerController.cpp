@@ -38,7 +38,7 @@ void ABAPlayerController::BeginPlay()
 		}
 	}
 
-	SetupForLobby();
+	SetupForMain();
 }
 
 void ABAPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -284,10 +284,8 @@ void ABAPlayerController::SetupForMain()
 
 	bIsBuildMode = false;
 
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 0"));
 	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
 	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 1"));
 		if (HUDClass)
 		{
 			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
@@ -300,31 +298,11 @@ void ABAPlayerController::SetupForMain()
 	ULocalPlayer* LP = GetLocalPlayer();
 	if (!LP) return;
 
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 2"));
 	UISubsystem = LP->GetSubsystem<UUISubsystem>();
 	if (IsValid(UISubsystem) == true)
 	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Setup Main 3"));
 		UISubsystem->ResetAllUI();
 		UISubsystem->InitRootHUD();
-
-		UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
-		if (IsValid(OreCountUI) == true)
-		{
-			ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
-			if (IsValid(GS) == true)
-			{
-				FOnOreChanged::FDelegate Delegate;
-				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
-				GS->BindOnOreChanged(Delegate);
-
-				const auto& OreInventory = GS->GetOreInventory();
-				for (const auto& OrePair : OreInventory)
-				{
-					OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
-				}
-			}
-		}
 
 		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 

@@ -4,6 +4,9 @@
 #include "Components/TextBlock.h"
 #include "UI/UW_WeaponLog.h"
 #include "Components/VerticalBox.h"
+#include "UI/UW_OreCount.h"
+#include "Framework/BAGameState.h"
+
 void UUW_PlayerHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -20,6 +23,23 @@ void UUW_PlayerHUDWidget::NativeConstruct()
 		this,
 		&UUW_PlayerHUDWidget::UpdateAmmo
 	);
+
+	if (IsValid(OreCountUI) == true)
+	{
+		ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+		if (IsValid(GS) == true)
+		{
+			FOnOreChanged::FDelegate Delegate;
+			Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
+			GS->BindOnOreChanged(Delegate);
+
+			const auto& OreInventory = GS->GetOreInventory();
+			for (const auto& OrePair : OreInventory)
+			{
+				OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
+			}
+		}
+	}
 }
 
 void UUW_PlayerHUDWidget::AddWeaponLog(UWeaponDataAsset* InData)
