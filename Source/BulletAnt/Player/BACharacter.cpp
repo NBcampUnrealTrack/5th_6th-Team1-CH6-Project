@@ -211,10 +211,12 @@ void ABACharacter::Tick(float DeltaTime)
 			SyncAimYaw = ControlRot.Yaw;
 		}
 	}
-	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
 
 	IdleTurning(DeltaTime);
-
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
+	}
 	if (IsLocallyControlled())
 	{
 		if (!FMath::IsNearlyZero(CurrentRecoilPitch))
@@ -425,7 +427,6 @@ void ABACharacter::Move(const FInputActionValue& Value)
 	if (!Controller) return;
 
 	StopMontage();
-
 	FVector2D MovementVector = Value.Get<FVector2D>();
 	// 컨트롤러가 보고 있는 방향(Yaw)을 알아냄
 	const FRotator Rotation = Controller->GetControlRotation();
@@ -614,7 +615,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 		TEXT("WeaponSocket")
 	);
-
+	NewWeapon->SetActorRelativeTransform(NewWeapon->GripOffset);
 	NewWeapon->EquipWeapon(AbilitySystemComponent);
 
 	EquippedWeapon = NewWeapon;
@@ -919,15 +920,19 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 
 void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)
 {
+	if (!MontageToPlay) return;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance) return;
+
+	if (AnimInstance->Montage_IsPlaying(MontageToPlay)) return;
 	if (MotionWarpingComp)
 	{
 		MotionWarpingComp->AddOrUpdateWarpTargetFromTransform(FName("TurnTarget"), TargetTransform);
 	}
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && MontageToPlay)
 	{
-		AnimInstance->Montage_Play(MontageToPlay);
+		float PlayResult = AnimInstance->Montage_Play(MontageToPlay);
 
 		FOnMontageEnded EndDelegate;
 		EndDelegate.BindUObject(this, &ABACharacter::OnTurnMontageEnded);
@@ -946,7 +951,11 @@ void ABACharacter::Multicast_StopTurnMontage_Implementation()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && CurrentTurnMontage)
 	{
-		AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
+		AnimInstance->Montage_Stop(0.f, CurrentTurnMontage);
+	}
+	if (MotionWarpingComp)
+	{
+		MotionWarpingComp->DisableAllRootMotionModifiers();
 	}
 	SetTurnStatus();
 }
@@ -960,7 +969,63 @@ void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 }
 void ABACharacter::IdleTurning(float DeltaTime)
 {
-	/*if (!HasAuthority()) return;
+	if (!HasAuthority()) return;
+
+	if (!bIsTurning)
+	{
+		RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
+		if (GEngine) GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도 차이: %f"), FMath::Abs(RootYawOffset)));
+	}
+	else
+	{
+		float TotalFlickYaw = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - TurnStartYaw);
+
+		if (FMath::Abs(TotalFlickYaw) > 135.f && (TurnType == ETurnType::Right90 || TurnType == ETurnType::Left90))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("180도 감지. 90도 취소하고 180도로 덮어씌움."));
+
+			bool bRight = (TotalFlickYaw < 0); // 방향 다시 계산
+			LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
+			TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
+			if (bIsCrouched)
+			{
+				switch (TurnType)
+				{
+				case ETurnType::Left180:
+					LastBodyYaw -= 90;
+					CurrentTurnMontage = CrouchTurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					LastBodyYaw += 90;
+					CurrentTurnMontage = CrouchTurnRight180Montage;
+					break;
+				}
+			}
+			else
+			{
+				switch (TurnType)
+				{
+				case ETurnType::Left180:
+					LastBodyYaw -= 90;
+					CurrentTurnMontage = TurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					LastBodyYaw += 90;
+					CurrentTurnMontage = TurnRight180Montage;
+					break;
+				}
+			}
+			CurrentTurnSpeed = 15.f;
+
+			if (CurrentTurnMontage && MotionWarpingComp)
+			{
+				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
+				FTransform TargetTransform(GoalRot, GetActorLocation());
+				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
+			}
+		}
+	}
+
 	if (!bIsTurning)
 	{
 		if (FMath::Abs(RootYawOffset) > 90.f)
@@ -968,66 +1033,43 @@ void ABACharacter::IdleTurning(float DeltaTime)
 			TurnDelayTimer += DeltaTime;
 			if (TurnDelayTimer > 0.1f)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("90도 넘음"));
 				bIsTurning = true;
 
-				bool bRight = (RootYawOffset < 0);
+				TurnStartYaw = LastBodyYaw;
+				bool bRight = RootYawOffset > 0;
+				LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
+				TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
+				CurrentTurnSpeed = 10.f;
 
-				if (FMath::Abs(RootYawOffset) > 135.f)
-				{
-					TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
-					CurrentTurnSpeed = 15.f;
-				}
-				else if (FMath::Abs(RootYawOffset) > 90.f)
-				{
-					TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
-					CurrentTurnSpeed = 10.f;
-				}
 				CurrentTurnMontage = nullptr;
+
 				if (bIsCrouched)
 				{
 					switch (TurnType)
 					{
-					case ETurnType::Left90:
-						CurrentTurnMontage = CrouchTurnLeft90Montage;
+					case ETurnType::Left90:  
+						CurrentTurnMontage = CrouchTurnLeft90Montage; 
 						break;
 					case ETurnType::Right90:
-						CurrentTurnMontage = CrouchTurnRight90Montage;
+						CurrentTurnMontage = CrouchTurnRight90Montage; 
 						break;
-					case ETurnType::Left180:
-						CurrentTurnMontage = CrouchTurnLeft180Montage;
-						break;
-					case ETurnType::Right180:
-						CurrentTurnMontage = CrouchTurnRight180Montage;
-						break;
-					default:
-						return;
 					}
 				}
 				else
 				{
 					switch (TurnType)
 					{
-					case ETurnType::Left90:
+					case ETurnType::Left90: 
 						CurrentTurnMontage = TurnLeft90Montage;
 						break;
 					case ETurnType::Right90:
 						CurrentTurnMontage = TurnRight90Montage;
 						break;
-					case ETurnType::Left180:
-						CurrentTurnMontage = TurnLeft180Montage;
-						break;
-					case ETurnType::Right180:
-						CurrentTurnMontage = TurnRight180Montage;
-						break;
-					default:
-						return;
 					}
 				}
 				if (CurrentTurnMontage && MotionWarpingComp)
 				{
 					FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
-
 					FTransform TargetTransform(GoalRot, GetActorLocation());
 					Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
 				}
@@ -1037,7 +1079,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 		{
 			TurnDelayTimer = 0.f;
 		}
-	}*/
+	}
 }
 
 void ABACharacter::SetTurnStatus()
@@ -1046,17 +1088,14 @@ void ABACharacter::SetTurnStatus()
 	TurnType = ETurnType::None;
 	CurrentTurnMontage = nullptr;
 	TurnDelayTimer = 0.f;
-	LastBodyYaw = GetActorRotation().Yaw;
 	RootYawOffset = 0.0f;
 }
 
 void ABACharacter::StopMontage()
 {
+	LastBodyYaw = GetActorRotation().Yaw;
 	if (bIsTurning)
 	{
-		bIsTurning = false;
-		TurnDelayTimer = 0.f;
-
 		if (HasAuthority())
 		{
 			Multicast_StopTurnMontage();
