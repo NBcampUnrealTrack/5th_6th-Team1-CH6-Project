@@ -8,6 +8,7 @@
 #include "AbilitySystemComponent.h"
 #include "FrameWork/BAGameState.h"
 #include "Building/BaseCore.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 void ABaseSpitterEnemy::StartSpit()
 {

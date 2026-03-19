@@ -14,10 +14,6 @@ class BULLETANT_API UGA_Reload : public UGameplayAbility
 public:
 	UGA_Reload();
 
-	
-
-public:
-
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -31,6 +27,16 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		bool bReplicateEndAbility,
 		bool bWasCancelled) override;
+	virtual void PreActivate(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		FOnGameplayAbilityEnded::FDelegate* OnGameplayAbilityEndedDelegate,
+		const FGameplayEventData* TriggerEventData);
+
+protected:
+	UFUNCTION()
+	void OnFailedMontage();
 
 	UFUNCTION()
 	void OnMontageFinished();

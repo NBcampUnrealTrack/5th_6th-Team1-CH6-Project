@@ -8,6 +8,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOkayButtonClicked, int32, GachaCo
 
 class UButton;
 class UTextBlock;
+enum class EOreType;
 
 UCLASS()
 class BULLETANT_API UUW_GachaUI : public UUserWidget
@@ -17,7 +18,7 @@ class BULLETANT_API UUW_GachaUI : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 	
-	void ResetGachaCount();
+	void InitGachaUI(TMap<EOreType, int32> InCost);
 	FORCEINLINE int32 GetGachaCount() const { return GachaCount; };
 	
 	UPROPERTY(BlueprintAssignable)
@@ -34,6 +35,9 @@ protected:
 	UFUNCTION()
 	void HandleOkayButtonClicked();
 
+	UFUNCTION()
+	void SetOreCount(EOreType Ore, int32 Count);
+
 	UPROPERTY(meta = (BindWidget))
 	UButton* UpButton;
 	
@@ -45,6 +49,18 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* CountText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* GoldText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* MineralText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* RequireGoldText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* RequireMineralText;
 
 	int32 GachaCount = 0;
 };

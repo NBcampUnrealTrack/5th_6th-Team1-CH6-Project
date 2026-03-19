@@ -175,7 +175,22 @@ void UUISubsystem::ApplyLayoutPreset(UCanvasPanelSlot* Slot, const FUILayoutPres
 
     if (!Layout.bAutoSize)
     {
-        Slot->SetSize(Layout.Size);
+        if (Layout.Anchors.Minimum == FVector2D(0.f, 0.f) &&
+            Layout.Anchors.Maximum == FVector2D(1.f, 1.f))
+        {
+            // 풀스크린
+            Slot->SetOffsets(FMargin(0.f));
+        }
+        else
+        {
+            // 일반 배치
+            Slot->SetPosition(Layout.Position);
+
+            if (!Layout.bAutoSize)
+            {
+                Slot->SetSize(Layout.Size);
+            }
+        }
     }
 
     Slot->SetZOrder(Layout.ZOrder);

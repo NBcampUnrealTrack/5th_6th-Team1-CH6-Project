@@ -197,7 +197,7 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming)&&!bIsADS)
+	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming))
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
 		GetCharacterMovement()->bUseControllerDesiredRotation = false;
@@ -364,6 +364,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(GroundScannerAction, ETriggerEvent::Started, this, &ABACharacter::SwitchGroundScanner);
 		}
+
+		if (PingAction)
+		{
+			EnhancedInputComponent->BindAction(PingAction, ETriggerEvent::Started, this, &ABACharacter::ExecutePing);
+		}
 	}
 }
 
@@ -512,10 +517,7 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 void ABACharacter::Reload(const FInputActionValue& Value)
 {
 	if (!AbilitySystemComponent) return;
-	if (bIsADS)
-	{
-		ADSStart(1.f);
-	}
+
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Ability_Active_Reload);
 
@@ -528,9 +530,11 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
+	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
+	IgnoreTags.AddTag(TAG_Ability_Active_Reload);
 
-	AbilitySystemComponent->CancelAbilities(&CancelTags);
+	AbilitySystemComponent->CancelAbilities(&CancelTags,&IgnoreTags);
 }
 
 UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
@@ -638,7 +642,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			if (bIsADS)
+			if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 			{
 				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
@@ -655,6 +659,26 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 	}
 
 	return GetActorRotation().Vector().GetSafeNormal();
+}
+
+void ABACharacter::StartAiming()
+{
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
+	bIsAiming = true;
+
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+	Server_SetAiming(true);
+}
+
+void ABACharacter::EndAiming()
+{
+	if (!bIsAiming) return;
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS)) return;
+	bIsAiming = false;
+
+	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
+
+	Server_SetAiming(false);
 }
 
 void ABACharacter::OnRep_bIsFiring()
@@ -695,91 +719,39 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 	{
 		PC->StartRespawnBar(RespawnTime);
 	}
-	else if (NewCount == 0)
-	{
-		PC->StopRespawnBar();
-	}
 }
 
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
-	bIsAiming = true;
+	
 
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-	Server_SetAiming(true);
+	StartAiming();
 }
 
 //조준 끝
 void ABACharacter::AimStop(const FInputActionValue& Value)
 {
-	if (!bIsAiming) return;
-	if (bIsADS) return;
-	bIsAiming = false;
-
-	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
-
-	Server_SetAiming(false);
+	EndAiming();
 }
 
 void ABACharacter::ADSStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
-	bIsADS = !bIsADS;
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
-	if (PC)
+	if (!AbilitySystemComponent) return;
+	if (!EquippedWeapon) return;
+
+	FGameplayEventData Payload;
+	Payload.OptionalObject = EquippedWeapon;
+	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
-		FVector SavedTargetPoint = ADSLineTrace(PC);
-
-		if (bIsADS)
-		{
-			FVector SightLoc = EquippedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
-			FRotator SightRot = EquippedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
-
-			FRotator IdealLookAtRot = UKismetMathLibrary::FindLookAtRotation(SightLoc, SavedTargetPoint);
-			FRotator ErrorDelta = UKismetMathLibrary::NormalizedDeltaRotator(IdealLookAtRot, SightRot);
-
-			FRotator CurrentControlRot = PC->GetControlRotation();
-			FRotator NewControlRot = CurrentControlRot + ErrorDelta;
-
-			bUseControllerRotationYaw = true;
-			SpringArm->bUsePawnControlRotation = false;
-			CameraComponent->FieldOfView = 70.f;
-			PC->StartADSUI();
-			AimStart(1.f);
-
-			SavedSpringArmTransform = SpringArm->GetRelativeTransform();
-			SpringArm->AttachToComponent(EquippedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-			SpringArm->TargetArmLength = 0.f;
-			PC->SetControlRotation(NewControlRot);
-
-			if (IsLocallyControlled())
-			{
-				GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
-			}
-		}
-		else
-		{
-			bUseControllerRotationYaw = false;
-			SpringArm->bUsePawnControlRotation = true;
-			CameraComponent->FieldOfView = 90.f;
-			PC->StopADSUI();
-			AimStop(1.f);
-
-			SpringArm->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-			SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-			SpringArm->TargetArmLength = 223.f;
-			FVector RestoredCamLoc = CameraComponent->GetComponentLocation();
-			FRotator NewLookAtRot = UKismetMathLibrary::FindLookAtRotation(RestoredCamLoc, SavedTargetPoint);
-			PC->SetControlRotation(NewLookAtRot);
-
-			if (IsLocallyControlled())
-			{
-				GetMesh()->UnHideBoneByName(FName("head"));
-			}
-		}
+		AbilitySystemComponent->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
 	}
+	else
+	{
+		AbilitySystemComponent->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
+	}
+
+	
 }
 
 
@@ -907,11 +879,6 @@ void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 	int32 Index = (int32)Value.Get<float>() - 1;
 	if (!OwnedEquipment.IsValidIndex(Index)) return;
 
-	if (bIsADS)
-	{
-		ADSStart(1.f);
-	}
-
 	Server_EquipWeapon(OwnedEquipment[Index]);
 }
 
@@ -929,6 +896,17 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 		Jump();
 	}
 }
+void ABACharacter::ExecutePing(const FInputActionValue& Value)
+{
+	if (IsValid(AbilitySystemComponent) == false)
+		return;
+
+	FGameplayTagContainer Tag;
+	Tag.AddTag(TAG_Event_Communicate_Ping);
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+}
+
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -1127,23 +1105,6 @@ void ABACharacter::StopMontage()
 			ServerRPC_StopTurnMontage();
 		}
 	}
-}
-
-FVector ABACharacter::ADSLineTrace(ABAPlayerController* PC)
-{
-	FVector CamLoc;
-	FRotator CamRot;
-	PC->GetPlayerViewPoint(CamLoc, CamRot);
-	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.f);
-
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-	if (EquippedWeapon)
-		Params.AddIgnoredActor(EquippedWeapon);
-	GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
-
-	return Hit.bBlockingHit ? Hit.ImpactPoint : TraceEnd;
 }
 
 void ABACharacter::RotateScannerParent(const FVector2D& Input)

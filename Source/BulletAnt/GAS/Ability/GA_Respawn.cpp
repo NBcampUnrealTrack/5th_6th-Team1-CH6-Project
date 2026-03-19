@@ -5,12 +5,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Player/BAPlayerController.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
-#include "GAS/AbilitySystemComponent/BAAbilitySystemComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Framework/BAGameState.h"
-#include "Building/BaseCore.h"
+#include "Shop/BATransportShip.h"
+#include "Player/BACharacter.h"
+#include "Weapon/BaseWeapon.h"
 
 UGA_Respawn::UGA_Respawn()
 {
@@ -22,12 +21,14 @@ UGA_Respawn::UGA_Respawn()
 
 	AbilityTriggers.Add(Trigger);
 
-	bIsBlockingOtherAbilities = true;
+	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active);
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Dead);
 }
 
 void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
@@ -40,17 +41,11 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	Source = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
+	Source = Cast<ABACharacter>(ActorInfo->AvatarActor.Get());
 	if (!Source)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
-	}
-
-	PC = Cast<APlayerController>(Source->GetController());
-	if (PC&&ActorInfo->IsLocallyControlled())
-	{
-		Source->DisableInput(PC);
 	}
 
 	ASC = Cast<UAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get());
@@ -60,16 +55,12 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return;
 	}
 
-	SavedMeshRelativeTransform = Source->GetMesh()->GetRelativeTransform();
-
 	if (ActorInfo->IsNetAuthority())
-	{	
-		Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	{
 		Source->GetCharacterMovement()->DisableMovement();
-		Source->GetCharacterMovement()->StopMovementImmediately();		
+		Source->GetCharacterMovement()->StopMovementImmediately();
+		ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 	}
-
-	ASC->AddGameplayCue(TAG_GameplayCue_Combat_Dead);
 
 	GetWorld()->GetTimerManager().SetTimer(
 		RespawnHandler,
@@ -82,39 +73,6 @@ void UGA_Respawn::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 
 void UGA_Respawn::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	if (Source)
-	{
-		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
-
-		Source->GetMesh()->SetRelativeTransform(SavedMeshRelativeTransform);
-		if (ActorInfo->IsNetAuthority())
-		{	
-			Source->TeleportTo(FVector(0.f, 0.f, 5.f), FRotator::ZeroRotator, false, true);		
-			Source->ForceNetUpdate();
-			Source->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);					
-		}
-
-		if (PC&&ActorInfo->IsLocallyControlled())
-		{
-			PC->SetControlRotation(FRotator::ZeroRotator);
-			Source->EnableInput(PC);
-		}
-	}
-
-	const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
-
-	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(RespawnHealEffect, 1.f, ASC->MakeEffectContext());
-
-	if (Spec.IsValid())
-	{
-		Spec.Data->SetSetByCallerMagnitude(
-			TAG_Data_Combat_Heal,
-			HealthSet->GetMaxHealth()
-		);
-
-		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
-	}
-
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -131,6 +89,62 @@ void UGA_Respawn::PreActivate(const FGameplayAbilitySpecHandle Handle, const FGa
 
 void UGA_Respawn::HandleRespawn()
 {
+	if (Source)
+	{		
+		if (CurrentActorInfo->IsNetAuthority())
+		{
+			
+			if (!TransportShipClass) return;
+			FVector SpawnLocation = FVector(0.f, 0.f, 5000.f);
+
+			ABATransportShip* Plane = GetWorld()->SpawnActor<ABATransportShip>(
+				TransportShipClass,
+				SpawnLocation,
+				FRotator::ZeroRotator
+			);
+			Plane->DropFromPlane.AddDynamic(this, &UGA_Respawn::DropPlayer);
+
+			Plane->InitPlayerPlane(SpawnLocation, Source);
+
+			Source->AttachToComponent(
+				Plane->GetMesh(),
+				FAttachmentTransformRules::SnapToTargetIncludingScale,
+				TEXT("SeatSocket")
+			);
+
+			Source->SetActorHiddenInGame(true);
+			Source->EquippedWeapon->SetActorHiddenInGame(true);
+			
+			const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
+
+			FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(RespawnHealEffect, 1.f, ASC->MakeEffectContext());
+
+			if (Spec.IsValid())
+			{
+				Spec.Data->SetSetByCallerMagnitude(
+					TAG_Data_Combat_Heal,
+					HealthSet->GetMaxHealth()
+				);
+
+				ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+			}
+		}	
+	}
+}
+
+void UGA_Respawn::DropPlayer()
+{
+	if (Source)
+	{
+		ASC->RemoveGameplayCue(TAG_GameplayCue_Combat_Dead);
+		Source->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+		Source->DetachFromActor(
+			FDetachmentTransformRules::KeepWorldTransform
+		);
+		Source->SetActorHiddenInGame(false);
+		Source->EquippedWeapon->SetActorHiddenInGame(false);
+	}
+
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 

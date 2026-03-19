@@ -38,9 +38,7 @@ void UUW_ShopWindow::OnClickGachaButton(int32 Count)
 
 void UUW_ShopWindow::OnClickEndButton()
 {
-	SetIsFocusable(false);
 	ABAPlayerController* PC = Cast<ABAPlayerController>(GetOwningPlayer());
-	PC->bShowMouseCursor = false;
 	ULocalPlayer* LP = GetOwningLocalPlayer();
 	if (LP)
 	{
@@ -48,6 +46,7 @@ void UUW_ShopWindow::OnClickEndButton()
 		if (UISubsystem) 
 		{
 			UISubsystem->HideUI(EUIType::Shop);
+			UISubsystem->ApplyGameOnlyInputMode();
 		}
 	}
 }
@@ -85,8 +84,10 @@ void UUW_ShopWindow::SetupWeaponButton()
 
 void UUW_ShopWindow::InitShopUI(ABaseShop* InShop)
 {
-	GachaUI->ResetGachaCount();
 	CachedShop = InShop;
+	TMap<int32, TMap<EOreType, int32>> Cost = CachedShop->GetCachedCostData();
+	GachaUI->InitGachaUI(Cost[0]);
+	
 	SetupWeaponButton();
 	WeaponInfoUI->SetVisibility(ESlateVisibility::Hidden);
 }

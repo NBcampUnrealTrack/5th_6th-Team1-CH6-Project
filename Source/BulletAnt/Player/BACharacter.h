@@ -91,6 +91,7 @@ public:
 
     //TEST
     FORCEINLINE UCameraComponent* GetCamera() const { return CameraComponent; }
+    FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; };
     void SpringArmRot(bool check);
 
 protected:
@@ -188,6 +189,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundScanner")
     UInputAction* GroundScannerAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Communicate")
+    UInputAction* PingAction;
+
 #pragma endregion
 
 #pragma region Action Function
@@ -201,12 +205,12 @@ protected:
     void Look(const FInputActionValue& Value);
     void StartAttack(const FInputActionValue& Value);
     void Reload(const FInputActionValue& Value);
+    void AimStart(const FInputActionValue& Value);
+    void AimStop(const FInputActionValue& Value);
     void StopAttack(const FInputActionValue& Value);
     void StartRunning(const FInputActionValue& Value);
     void StopRunning(const FInputActionValue& Value);
-    void CrouchInput(const FInputActionValue& Value);
-    void AimStart(const FInputActionValue& Value);
-    void AimStop(const FInputActionValue& Value);
+    void CrouchInput(const FInputActionValue& Value); 
     void ADSStart(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void EnterBuildMode(const FInputActionValue& Value);
@@ -222,6 +226,7 @@ protected:
     void OnToggleBuildInfo(const FInputActionValue& Value);
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
+    void ExecutePing(const FInputActionValue& Value);
 
 
 public:
@@ -261,8 +266,6 @@ protected:
 
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
-
-    FVector ADSLineTrace(ABAPlayerController* PC);
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
@@ -380,6 +383,9 @@ public:
 
     virtual FVector GetFireStartLocation_Implementation() const override;
     virtual FVector GetFireDirection_Implementation() const override;
+
+    void StartAiming();
+    void EndAiming();
 
     UFUNCTION()
     void OnRep_bIsFiring();

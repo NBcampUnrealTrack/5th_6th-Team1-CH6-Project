@@ -34,8 +34,21 @@ protected:
 	void ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target);
 
 	UFUNCTION()
-	void OnHitEventReceived(FGameplayEventData Payload);
+	void OnStartEventReceived(FGameplayEventData Payload);
+
+	UFUNCTION()
+	void OnEndEventReceived(FGameplayEventData Payload);
 
 	UFUNCTION()
 	void OnMontageFinished();
+
+	void PerformHitCheck();
+
+	TArray<AActor*> HitActors;
+
+	UMeleeWeaponDataAsset* Data;
+
+	ACharacter* OwnerActor;
+
+	FTimerHandle HitCheckTimer;
 };

@@ -7,6 +7,8 @@
 #include "AbilitySystemInterface.h"
 #include "BaseBuilding.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FOnDestroyed);
+
 class UPrimitiveComponent;
 class UAbilitySystemComponent;
 class UHealthAttributeSet;
@@ -149,4 +151,11 @@ protected:
 	// 위 건물들
 	UPROPERTY(VisibleAnywhere, Category = "Build|Support")
 	TSet<TWeakObjectPtr<ABaseBuilding>> SupportedBuildings;
+
+#pragma region Delegate
+
+	public:
+		FOnDestroyed OnDestroyed;
+
+#pragma endregion
 };

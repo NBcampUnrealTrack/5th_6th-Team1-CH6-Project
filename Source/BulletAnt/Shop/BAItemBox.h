@@ -9,14 +9,12 @@
 
 class UProjectileMovementComponent;
 class ABaseWeapon;
+class USoundBase;
 
 UCLASS()
 class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
 {
 	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	USceneComponent* Root;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* Mesh;
@@ -27,17 +25,32 @@ class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
 public:	
 	ABAItemBox();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	FORCEINLINE bool GetbIsUsed() { return bIsUsed; };
+	FORCEINLINE void SetbIsUsed(bool InIsUsed) { bIsUsed = InIsUsed; };
+
 	virtual void Use_Implementation(AActor* User) override;
 
 	UFUNCTION(BlueprintCallable)
 	void SetItem(TSubclassOf<ABaseWeapon> InItem);
 
+	UFUNCTION(BlueprintCallable)
+	void DestroyItemBox();
+
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY()
+	UFUNCTION()
+	void PlayDropSound(const FHitResult& ImpactPoint);
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	TSubclassOf<ABaseWeapon> Item;
 
+	UPROPERTY(Replicated)
+	bool bIsUsed = false;
 
+	UPROPERTY(EditDefaultsOnly)
+	USoundBase* DropSound;
 
 };

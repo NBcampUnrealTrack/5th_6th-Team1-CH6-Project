@@ -12,6 +12,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SplineComponent.h"
+#include "Components/BoxComponent.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -47,6 +48,9 @@ ABaseBuilding::ABaseBuilding()
 	DestructionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	DestructionComp->SetSimulatePhysics(false);
 	DestructionComp->SetIsReplicated(false);
+	DestructionComp->SetCanEverAffectNavigation(false);
+	DestructionComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	DestructionComp->SetCollisionResponseToChannel(ECC_GameTraceChannel6, ECR_Ignore);
 
 	PreviewBaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/BulletAnt/Building/M_BuildingPreview.M_BuildingPreview"));
 }
@@ -517,12 +521,41 @@ void ABaseBuilding::OnRep_Dead()
 	{
 		return;
 	}
-
+	
 	if (StaticMeshComp)
 	{
 		StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		StaticMeshComp->SetHiddenInGame(true);
+		StaticMeshComp->SetCanEverAffectNavigation(false);
 	}
+
+	TArray<UActorComponent*> Components;
+	GetComponents(UPrimitiveComponent::StaticClass(), Components);
+
+	for (UActorComponent* Comp : Components)
+	{
+		UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(Comp);
+		if (!Prim)
+		{
+			continue;
+		}
+
+		if (Prim == DestructionComp)
+		{
+			continue;
+		}
+
+		Prim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Prim->SetGenerateOverlapEvents(false);
+		Prim->SetCanEverAffectNavigation(false);
+	}
+
+	UBoxComponent* Box = FindComponentByClass<UBoxComponent>();
+	if (IsValid(Box))
+	{
+		Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	OnDestroyed.Broadcast();
 }
 
 void ABaseBuilding::Multicast_PlayDestruction_Implementation(const FVector& ImpulseOrigin)
@@ -535,8 +568,13 @@ void ABaseBuilding::Multicast_PlayDestruction_Implementation(const FVector& Impu
 	// 렌더 켬
 	DestructionComp->SetHiddenInGame(false);
 
+	// 네비 영향 off
+	DestructionComp->SetCanEverAffectNavigation(false);
+
 	// 충돌/물리 켬
 	DestructionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	DestructionComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	DestructionComp->SetCollisionResponseToChannel(ECC_GameTraceChannel6, ECR_Ignore);
 
 	// 시뮬 켬
 	DestructionComp->SetSimulatePhysics(true);

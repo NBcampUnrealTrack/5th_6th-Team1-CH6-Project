@@ -7,6 +7,8 @@
 class ABACharacter;
 class UProgressBar;
 class UTextBlock;
+class UVerticalBox;
+class UUW_WeaponLog;
 
 UCLASS()
 class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
@@ -14,21 +16,30 @@ class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	virtual void NativeConstruct() override;
+
+	UPROPERTY()
+	TWeakObjectPtr<ABACharacter> OwnerCharacter;
+
+	UFUNCTION()
+	void AddWeaponLog(UWeaponDataAsset* InData);
+
+protected:
+	UFUNCTION()
+	void UpdateHealth(float Current, float Max);
+
+	UFUNCTION()
+	void UpdateAmmo(float Current, float Max);
+
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* HealthBar;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* AmmoText;
 
-	UPROPERTY(BlueprintReadWrite, meta = (ExposeOnSpawn = "true"))
-	ABACharacter* OwnerCharacter;
+	UPROPERTY(meta = (BindWidget))
+	UVerticalBox* WeaponLogBox;
 
-	UFUNCTION()
-	void UpdateAmmo(float Current, float Max);
-
-	virtual void NativeConstruct() override;
-protected:
-	UFUNCTION()
-	void UpdateHealth(float Current, float Max);
-	
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUW_WeaponLog> WeaponLogClass;
 };

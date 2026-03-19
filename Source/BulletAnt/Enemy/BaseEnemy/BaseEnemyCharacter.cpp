@@ -20,6 +20,11 @@
 #include "Enemy/DataAsset/TribeDataAsset.h"
 #include "Enemy/Spawn/TribeMaterialManagerSubsystem.h"
 #include "Components/CapsuleComponent.h"
+#include "Enemy/DataAsset/TargetPriority.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameplayEffect.h"
+#include "GAS/AttributeSet/MoveAttributeSet.h"
+#include "GameplayEffectTypes.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -33,7 +38,7 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	UCharacterMovementComponent* CharacterMovementComponent = GetCharacterMovement();
 	if (IsValid(CharacterMovementComponent))
 	{
-		CharacterMovementComponent->bOrientRotationToMovement = false;
+		CharacterMovementComponent->bOrientRotationToMovement = true;
 		CharacterMovementComponent->bUseControllerDesiredRotation = true;
 	}
 
@@ -44,6 +49,7 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
 	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthAttributeSet"));
+	MoveAttributeSet = CreateDefaultSubobject<UMoveAttributeSet>(TEXT("MoveAttributeSet"));
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 	StateTreeComponent->SetStartLogicAutomatically(false);
@@ -67,6 +73,11 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
 {
 	return DetectionSphere;
+}
+
+void ABaseEnemyCharacter::SetTargetPrioriy(ETargetPriorityType InTargetPriority)
+{
+	TargetActorPriority = InTargetPriority;
 }
 
 void ABaseEnemyCharacter::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -141,10 +152,15 @@ void ABaseEnemyCharacter::OnDetectionSphereEndOverlap(UPrimitiveComponent* Overl
 		return;
 	}
 
-
 	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
 	{
 		Value->Actors.Remove(OtherActor);
+		if (TargetActor == OtherActor)
+		{
+			InitTarget();
+			StartIntrudeAction();
+			TransitionToRotate();
+		}
 	}
 }
 
@@ -184,6 +200,9 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 
 			if (IsValid(NewTarget) && TargetActor != NewTarget)
 			{
+				//RemoveOnTargetDestroy(TargetActor);
+				//BindOnTargetDestroy(NewTarget);
+
 				TargetActor = NewTarget;
 				TargetActorPriority = NewTargetPriority;
 				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
@@ -195,17 +214,8 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 
 	if (!IsValid(TargetActor))
 	{
-		UWorld* World = GetWorld();
-		if (IsValid(World))
-		{
-			ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-			if (IsValid(BAGameState))
-			{
-				TargetActor = BAGameState->GetTargetCore();
-				FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
-				StateTreeComponent->SendStateTreeEvent(ToRotate);
-			}
-		}
+		InitTarget();
+		TransitionToRotate();
 	}
 }
 
@@ -217,6 +227,80 @@ bool ABaseEnemyCharacter::IsInFieldOfView(AActor* Target, float FOVAngle)
 	float DotProduct = FVector::DotProduct(Forward, DirectionToTarget);
 
 	return DotProduct >= FMath::Cos(FMath::DegreesToRadians(FOVAngle / 2));
+}
+
+void ABaseEnemyCharacter::InitTarget()
+{
+	UWorld* World = GetWorld();
+	if (!ensureMsgf(IsValid(World), TEXT("ABaseEnemyCharacter InitTarget : World Error")))
+	{
+		return;
+	}
+	ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+	if (!ensureMsgf(IsValid(BAGameState), TEXT("ABaseEnemyCharacter InitTarget : BAGameState Error")))
+	{
+		return;
+	}
+
+	TargetActor = BAGameState->GetTargetCore();
+	TargetActorPriority = ETargetPriorityType::Max;		
+}
+
+//void ABaseEnemyCharacter::OnTargetBuildingDestroy()
+//{
+//	if (!HasAuthority())
+//	{
+//		return;
+//	}
+//
+//	UWorld* World = GetWorld();
+//	if (!ensureMsgf(IsValid(World), TEXT("ABaseEnemyCharacter OnTargetBuildingDestroy : World Error")))
+//	{
+//		return;
+//	}
+//	ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
+//	if (!ensureMsgf(IsValid(BAGameState), TEXT("ABaseEnemyCharacter OnTargetBuildingDestroy : BAGameState Error")))
+//	{
+//		return;
+//	}
+//	//TargetActor = BAGameState->GetTargetCore();
+//	//TargetActorPriority = ETargetPriorityType::High;
+//	//FStateTreeEvent ToRotateForIntrude(FGameplayTag::RequestGameplayTag(TEXT("State.Intrude.Rotate")));
+//	//StateTreeComponent->SendStateTreeEvent(ToRotateForIntrude);
+//}
+//
+//void ABaseEnemyCharacter::BindOnTargetDestroy(AActor* Target)
+//{
+//	if (!IsValid(Target))
+//	{
+//		return;
+//	}
+//
+//	ABaseBuilding* Building = Cast<ABaseBuilding>(Target);
+//	if (IsValid(Building))
+//	{
+//		Building->OnDestroyed.AddUObject(this, &ABaseEnemyCharacter::OnTargetBuildingDestroy);
+//	}
+//}
+//
+//void ABaseEnemyCharacter::RemoveOnTargetDestroy(AActor* Target)
+//{
+//	if (!IsValid(Target))
+//	{
+//		return;
+//	}
+//
+//	ABaseBuilding* BaseBuilding = Cast<ABaseBuilding>(Target);
+//	if (IsValid(BaseBuilding))
+//	{
+//		BaseBuilding->OnDestroyed.RemoveAll(this);
+//	}
+//}
+
+void ABaseEnemyCharacter::TransitionToRotate()
+{
+	FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
+	StateTreeComponent->SendStateTreeEvent(ToRotate);
 }
 
 UAbilitySystemComponent* ABaseEnemyCharacter::GetAbilitySystemComponent() const
@@ -266,6 +350,7 @@ void ABaseEnemyCharacter::ApplyTribe()
 		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
 
 		WalkSpeed = BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul;
+		MoveAttributeSet->SetMoveSpeed(WalkSpeed);
 		OnRep_WalkSpeed();
 	}
 }
@@ -352,7 +437,40 @@ void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
 
 void ABaseEnemyCharacter::OnRep_WalkSpeed()
 {
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = MoveAttributeSet->GetMoveSpeed() * MoveAttributeSet->GetMoveSpeedMultiplier();
+}
+
+void ABaseEnemyCharacter::StartIntrudeAction()
+{
+	TargetActorPriority = ETargetPriorityType::High;
+
+	if (!ensureMsgf(IsValid(AbilitySystemComponent), TEXT("BaseEnemyCharacter StartIntrudeAction : AbilitySystemComponent Missing")))
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter StartIntrudeAction : DataAsset Missing")))
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset->IntrudeEffect), TEXT("BaseEnemyCharacter StartIntrudeAction : IntrudeEffect Missing")))
+	{
+		return;
+	}
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(BaseEnemyDataAsset->IntrudeEffect, 1.0f, EffectContext);
+
+	if (SpecHandle.IsValid())
+	{
+		SpecHandle.Data.Get()->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Intrude")), BaseEnemyDataAsset->IntrudeTime);
+		GEIntrudeHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		AbilitySystemComponent->OnGameplayEffectRemoved_InfoDelegate(GEIntrudeHandle)->AddUObject(this, &ABaseEnemyCharacter::FinishIntrudeAction);
+	}
+}
+
+void ABaseEnemyCharacter::FinishIntrudeAction(const FGameplayEffectRemovalInfo& InGERemovalInfo)
+{
+	TargetActorPriority = ETargetPriorityType::Max;
 }
 
 //void ABaseEnemyCharacter::Die()
@@ -457,8 +575,17 @@ void ABaseEnemyCharacter::InitGAS()
 
 		DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
 			.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
+
+		MoveAttributeSet->SetMoveSpeedMultiplier(1);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(MoveAttributeSet->GetMoveSpeedMultiplierAttribute())
+			.AddUObject(this, &ABaseEnemyCharacter::OnSpeedMultiplier);
 	}
 
+}
+
+void ABaseEnemyCharacter::OnSpeedMultiplier(const FOnAttributeChangeData& Data)
+{
+	OnRep_WalkSpeed();
 }
 
 void ABaseEnemyCharacter::PossessedBy(AController* NewController)
@@ -469,6 +596,7 @@ void ABaseEnemyCharacter::PossessedBy(AController* NewController)
 	{
 		if (IsValid(StateTreeComponent))
 		{
+			InitTarget();
 			StateTreeComponent->StartLogic();
 		}
 	}

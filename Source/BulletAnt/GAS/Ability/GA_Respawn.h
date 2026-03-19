@@ -8,6 +8,8 @@ class UUW_RespawnBar;
 class ABAPlayerController;
 class UBAAbilitySystemComponent;
 class ABaseCore;
+class ABATransportShip;
+class ABACharacter;
 
 UCLASS()
 class BULLETANT_API UGA_Respawn : public UGameplayAbility
@@ -42,18 +44,16 @@ protected:
 
 	void HandleRespawn();
 
-	UPROPERTY()
-	ACharacter* Source;
+	UFUNCTION()
+	void DropPlayer();
 
 	UPROPERTY()
-	APlayerController* PC;
+	ABACharacter* Source;
 
 	UPROPERTY()
 	UUW_RespawnBar* UI;
 
 	FTimerHandle RespawnHandler;
-
-	FTransform SavedMeshRelativeTransform;
 	UPROPERTY()
 	UAbilitySystemComponent* ASC;
 
@@ -61,4 +61,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UGameplayEffect> RespawnHealEffect;
 
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ABATransportShip> TransportShipClass;
 };

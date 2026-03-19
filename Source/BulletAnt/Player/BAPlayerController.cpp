@@ -13,6 +13,10 @@
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 #include "Building/BaseShop.h"
 #include "UI/UW_ShopWindow.h"
+#include "Shop/BAItemBox.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "UI/UW_WeaponLog.h"
+#include "UI/UW_Compass.h"
 
 
 
@@ -43,7 +47,7 @@ void ABAPlayerController::BeginPlay()
 			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
 
 			HUD->OwnerCharacter = PlayerCharacter;
-			HUD->AddToViewport();
+			HUD->AddToViewport(0);
 		}
 	}
 
@@ -61,7 +65,7 @@ void ABAPlayerController::BeginPlay()
 			{
 				FOnOreChanged::FDelegate Delegate;
 				Delegate.BindDynamic(OreCountUI, &UUW_OreCount::SetOreCount);
-				GS->BindOnOreChanged(Delegate);
+				GS->BindOnOreChanged(Delegate); 
 
 				const auto& OreInventory = GS->GetOreInventory();
 				for (const auto& OrePair : OreInventory)
@@ -70,6 +74,8 @@ void ABAPlayerController::BeginPlay()
 				}
 			}
 		}
+
+		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 
 		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
 		if (IsValid(SpawnManager))
@@ -113,10 +119,15 @@ void ABAPlayerController::HandleRespawnBar()
 {
 	if (!IsValid(this)) return;
 	if (!IsValid(RespawnBarUI)) return;
+	if (CurrentTime > TotalTime)
+	{
+		StopRespawnBar();
+	}
 
 	CurrentTime += 0.1f;
 
 	RespawnBarUI->UpdateRespawnBar(CurrentTime, TotalTime);
+	
 }
 
 void ABAPlayerController::StartRespawnBar(float InTotalTime)
@@ -179,6 +190,35 @@ void ABAPlayerController::Server_RequestAddWeapon_Implementation(TSubclassOf<ABa
 	if (!GS) return;
 
 	GS->AddHaveWeapon(InWeaponClass);
+}
+
+void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InItemBox)
+{
+	if (!InItemBox) return;
+	if (InItemBox->GetbIsUsed()) return;
+
+	InItemBox->SetbIsUsed(true);
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetPawn());
+	if (ASC)
+	{
+		FGameplayCueParameters Params;
+		Params.SourceObject = InItemBox;
+		ASC->ExecuteGameplayCue(TAG_GameplayCue_Shop_UseItemBox, Params);
+	}
+}
+
+void ABAPlayerController::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	Multicast_ShowWeaponLog(InData);
+}
+
+void ABAPlayerController::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	if (HUD)
+	{
+		HUD->AddWeaponLog(InData);
+	}
 }
 
 void ABAPlayerController::ShowShopUI()

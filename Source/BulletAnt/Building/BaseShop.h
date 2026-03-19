@@ -35,6 +35,8 @@ public:
 	
 	virtual void Use_Implementation(AActor* User) override;
 
+	const TMap<int32, TMap<EOreType, int32>>& GetCachedCostData() const { return CachedCostData; };
+
 protected:
 	virtual void BeginPlay() override;
 
