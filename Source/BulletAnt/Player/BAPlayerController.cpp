@@ -16,6 +16,7 @@
 #include "Shop/BAItemBox.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "UI/UW_WeaponLog.h"
+#include "UI/UW_Compass.h"
 
 
 
@@ -74,6 +75,8 @@ void ABAPlayerController::BeginPlay()
 			}
 		}
 
+		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
+
 		USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
 		if (IsValid(SpawnManager))
 		{
@@ -116,10 +119,15 @@ void ABAPlayerController::HandleRespawnBar()
 {
 	if (!IsValid(this)) return;
 	if (!IsValid(RespawnBarUI)) return;
+	if (CurrentTime > TotalTime)
+	{
+		StopRespawnBar();
+	}
 
 	CurrentTime += 0.1f;
 
 	RespawnBarUI->UpdateRespawnBar(CurrentTime, TotalTime);
+	
 }
 
 void ABAPlayerController::StartRespawnBar(float InTotalTime)

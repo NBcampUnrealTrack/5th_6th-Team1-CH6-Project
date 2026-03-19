@@ -93,7 +93,7 @@ void ABaseShop::DropWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)
 	);
 
 	FVector DropLocation = GetActorLocation() + FVector(0.f, 0.f, 5000.f);
-	Ship->InitPlane(DropLocation, InWeaponClass);
+	Ship->InitItemPlane(DropLocation, InWeaponClass);
 }
 
 void ABaseShop::ShowShop(ABAPlayerController* PC)

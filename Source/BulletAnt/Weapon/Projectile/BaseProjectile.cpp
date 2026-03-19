@@ -107,7 +107,6 @@ void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UP
 	FGameplayEffectSpecHandle Spec =
 		SourceASC->MakeOutgoingSpec(CachedData->OnUseStateHitEffect, 1.f, Context);
 	
-
 	if (!Spec.IsValid()) return;
 
 	Spec.Data->SetSetByCallerMagnitude(

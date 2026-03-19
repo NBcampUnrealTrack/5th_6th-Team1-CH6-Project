@@ -11,7 +11,7 @@ void UBAGameInstance::OnStart()
 		UMultiplayerSubsystem* MultiplayerSubsystem = GetSubsystem<UMultiplayerSubsystem>();
 		if (IsValid(MultiplayerSubsystem) == true)
 		{
-			MultiplayerSubsystem->EpicLogin();
+			MultiplayerSubsystem->SteamLogin();
 		}
 	}
 }

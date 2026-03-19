@@ -62,14 +62,14 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
 	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
-	if (bIsAiming && !Character->bIsADS)
+	if (bIsAiming && !Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		DeltaRot = CameraTargetOffset();
 	}
 	TargetPitch = (FMath::Abs(DeltaRot.Pitch) > 90.0f) ? 0.0f : DeltaRot.Pitch;
 	TargetYaw = (FMath::Abs(DeltaRot.Yaw) > 90.0f) ? 0.0f : DeltaRot.Yaw;
 
-	if (Character->bIsADS)
+	if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 0.f);
 		AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 0.f);
@@ -83,7 +83,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("LeftHandSocket"))
 	{
 		FTransform GunLeftHandSocket = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("LeftHandSocket");
-		FTransform Righthand = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("hand_r");
+		FTransform Righthand = Character->GetMesh()->GetSocketTransform("hand_r");
 		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
 	}
 	FVector RightDir = OwningActor->GetActorRightVector();
@@ -100,7 +100,6 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	VerticalVelocity = Velocity.Z;
 
 	RootYawOffset = Character->RootYawOffset * -1;
-
 	IsGrabLeftHand(DeltaSeconds);
 	//Test
 	
@@ -130,7 +129,7 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 		if (Character->EquippedWeapon)
 			Params.AddIgnoredActor(Character->EquippedWeapon);
 
-		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel11, Params);
 
 		FVector TargetLocation = bHit ? Hit.ImpactPoint : TraceEnd;
 

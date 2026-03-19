@@ -11,7 +11,7 @@ UCLASS()
 class BULLETANT_API UUW_OreCount : public UUserWidget
 {
 	GENERATED_BODY()
-	
+
 public:
 	UFUNCTION()
 	void SetOreCount(EOreType OreType, int32 OreCount);
