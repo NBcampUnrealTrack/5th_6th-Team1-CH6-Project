@@ -134,7 +134,7 @@ protected:
 	void SetupForMain();
 
 protected:
-	ELevelType LevelType = ELevelType::Lobby;
+	ELevelType LevelType = ELevelType::Main;
 
 #pragma endregion
 

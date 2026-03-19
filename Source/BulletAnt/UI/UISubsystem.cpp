@@ -9,10 +9,18 @@
 
 UUISubsystem::UUISubsystem()
 {
-    static ConstructorHelpers::FObjectFinder<UUIConfig> ConfigObj(TEXT("/Game/BulletAnt/UI/DA_UIConfig.DA_UIConfig"));
-    if (ConfigObj.Succeeded())
+}
+
+void UUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+    Super::Initialize(Collection);
+
+    static const TCHAR* UIConfigPath = TEXT("/Game/BulletAnt/UI/DA_UIConfig.DA_UIConfig");
+    UIConfigData = LoadObject<UUIConfig>(nullptr, UIConfigPath);
+
+    if (!UIConfigData)
     {
-        UIConfigData = ConfigObj.Object;
+        UE_LOG(LogTemp, Error, TEXT("UIConfig load failed: %s"), UIConfigPath);
     }
 }
 

@@ -17,6 +17,7 @@ class BULLETANT_API UUISubsystem : public ULocalPlayerSubsystem
 public:
 	UUISubsystem();
 
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void PlayerControllerChanged(APlayerController* NewPlayerController) override;
 
 	UUserWidget* ShowUI(EUIType Type);
