@@ -129,7 +129,7 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 		if (Character->EquippedWeapon)
 			Params.AddIgnoredActor(Character->EquippedWeapon);
 
-		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel10, Params);
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel11, Params);
 
 		FVector TargetLocation = bHit ? Hit.ImpactPoint : TraceEnd;
 
