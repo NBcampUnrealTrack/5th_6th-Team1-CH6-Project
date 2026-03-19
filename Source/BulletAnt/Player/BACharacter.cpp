@@ -533,6 +533,7 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
 	IgnoreTags.AddTag(TAG_Ability_Active_Reload);
+	IgnoreTags.AddTag(TAG_Ability_Active_ADS);
 
 	AbilitySystemComponent->CancelAbilities(&CancelTags,&IgnoreTags);
 }
@@ -673,7 +674,6 @@ void ABACharacter::StartAiming()
 void ABACharacter::EndAiming()
 {
 	if (!bIsAiming) return;
-	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS)) return;
 	bIsAiming = false;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();

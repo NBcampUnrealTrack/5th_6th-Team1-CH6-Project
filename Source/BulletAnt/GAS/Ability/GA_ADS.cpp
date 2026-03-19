@@ -58,6 +58,21 @@ void UGA_ADS::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 
 void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
+	Source->GetCharacterMovement()->bUseControllerDesiredRotation = true;
+	if (IsLocallyControlled())
+	{
+		Source->bUseControllerRotationYaw = false;
+		USpringArmComponent* SpringArm = Source->GetSpringArm();
+		SpringArm->bUsePawnControlRotation = true;
+		Source->GetCamera()->FieldOfView = 90.f;
+		Source->EndAiming();
+
+		SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
+		SpringArm->TargetArmLength = 223.f;
+
+		Source->GetMesh()->UnHideBoneByName(FName("head"));
+	}	
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -85,7 +100,7 @@ void UGA_ADS::StartADS()
 		Source->StartAiming();
 
 		SavedSpringArmTransform = SpringArm->GetRelativeTransform();
-		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::KeepWorldTransform, "ADS_Sight");
+		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
 		SpringArm->TargetArmLength = 0.f;
 		/*PC->SetControlRotation(Source->EquippedWeapon->GetActorRotation());*/
 
@@ -98,27 +113,6 @@ void UGA_ADS::StartADS()
 
 void UGA_ADS::StopADS(FGameplayEventData Payload)
 {
-	Source->GetCharacterMovement()->bUseControllerDesiredRotation = true;
-	Source->bUseControllerRotationYaw = false;
-	USpringArmComponent* SpringArm = Source->GetSpringArm();
-	UCameraComponent* Camera = Source->GetCamera();
-	SpringArm->bUsePawnControlRotation = true;
-	Source->GetCamera()->FieldOfView = 90.f;
-	PC->StopADSUI();
-	Source->EndAiming();
-
-	SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
-	SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-	SpringArm->TargetArmLength = 223.f;
-	FVector RestoredCamLoc = Camera->GetComponentLocation();
-	FRotator NewLookAtRot = UKismetMathLibrary::FindLookAtRotation(RestoredCamLoc, SavedTargetPoint);
-	PC->SetControlRotation(NewLookAtRot);
-
-	if (IsLocallyControlled())
-	{
-		Source->GetMesh()->UnHideBoneByName(FName("head"));
-	}
-
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 

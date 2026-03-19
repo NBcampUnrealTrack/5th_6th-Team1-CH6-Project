@@ -57,7 +57,7 @@ void ABAPlayerController::BeginPlay()
 	UISubsystem = LP->GetSubsystem<UUISubsystem>();
 	if (IsValid(UISubsystem) == true)
 	{
-		UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
+		/*UUW_OreCount* OreCountUI = UISubsystem->ShowUI<UUW_OreCount>(EUIType::OreCount);
 		if (IsValid(OreCountUI) == true)
 		{
 			ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
@@ -73,7 +73,7 @@ void ABAPlayerController::BeginPlay()
 					OreCountUI->SetOreCount(OrePair.Key, OrePair.Value);
 				}
 			}
-		}
+		}*/
 
 		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 
