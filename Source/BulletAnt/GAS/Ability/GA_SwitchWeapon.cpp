@@ -52,4 +52,6 @@ void UGA_SwitchWeapon::ApplySwitchEffect(const FGameplayAbilityActorInfo* ActorI
 	{
 		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
+
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }

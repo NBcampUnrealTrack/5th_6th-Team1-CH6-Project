@@ -38,6 +38,17 @@ void ABAGameMode::Logout(AController* Exiting)
 	Super::Logout(Exiting);
 }
 
+void ABAGameMode::HandleSeamlessTravelPlayer(AController*& C)
+{
+    Super::HandleSeamlessTravelPlayer(C);
+
+    ABAPlayerController* PC = Cast<ABAPlayerController>(C);
+    if (IsValid(PC) == false)
+        return;
+
+    PC->SetLevelType(ELevelType::Main);
+}
+
 void ABAGameMode::MineOre(EOreType OreType, int32 PointCount)
 {
     if (OreType == EOreType::None)

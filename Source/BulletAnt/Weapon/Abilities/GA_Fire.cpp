@@ -91,6 +91,16 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 {
 	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
 
+	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
+	if (AmmoSet)
+	{
+		if (AmmoSet->GetCurrentAmmo() <= 0.f)
+		{
+			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
+	}
+
 	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(ActorInfo->AvatarActor.Get());
 	FVector Dir = IFireStartInterface::Execute_GetFireDirection(ActorInfo->AvatarActor.Get());
 	
@@ -144,23 +154,6 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 void UGA_Fire::StartAutoFireLoop()
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-
-	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC)
-	{
-		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
-	if (AmmoSet)
-	{
-		if (AmmoSet->GetCurrentAmmo() <= 0.f)
-		{
-			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-			return;
-		}
-	}
 
 	FireOnce(ActorInfo);
 

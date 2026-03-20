@@ -19,12 +19,5 @@ public:
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 
 protected:
-	UPROPERTY()
-	TArray<AActor*> HitActors;
-
-	UPROPERTY()
-	UMeleeWeaponDataAsset* Data;
-
-	UPROPERTY()
-	AActor* OwnerActor;
+	
 };

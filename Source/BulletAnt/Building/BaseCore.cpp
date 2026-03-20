@@ -3,6 +3,17 @@
 
 #include "Building/BaseCore.h"
 #include "Framework/BAGameState.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+
+void ABaseCore::Use_Implementation(AActor* User)
+{
+    GEngine->AddOnScreenDebugMessage(
+        -1,
+        3.f,
+        FColor::Yellow,
+        FString::Printf(TEXT("HP: %.1f"), HealthSet->GetHealth())
+    );
+}
 
 const TArray<FVector>& ABaseCore::GetAnchors() const
 {
@@ -29,6 +40,9 @@ void ABaseCore::BeginPlay()
 				GS->SetTargetCore(this);
 			}
 		}
+
+        HealthSet->SetMaxHealth(5000.f);
+        HealthSet->SetHealth(5000.f);
 
 		FindAnchors();
 	}

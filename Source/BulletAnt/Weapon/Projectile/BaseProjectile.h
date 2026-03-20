@@ -50,7 +50,7 @@ public:
 
 protected:
 	UFUNCTION()
-	void OnHit(
+	virtual void OnHit(
 		UPrimitiveComponent* HitComp,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,

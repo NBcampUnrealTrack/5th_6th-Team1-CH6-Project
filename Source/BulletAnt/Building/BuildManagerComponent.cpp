@@ -70,47 +70,20 @@ void UBuildManagerComponent::EnterBuildMode()
     }
 
     bBuildMode = true;
+    bSnapMode = true;
     RefreshCachedRef();
     RefreshCategoryCache();
     CurrentYaw = 0.f;
     SetCurrentBuildingRow(DefaultBuildingRow);
     SelectCategory(CurrentCategory);
-    SetComponentTickEnabled(true);
-
-    //if (auto* PC = CachedPC.Get())
-    //{
-    //    if (auto* LP = PC->GetLocalPlayer())
-    //    {
-    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-    //        {
-    //            UUW_BuildMenu* BuildMenuWidget = UIS->ShowUI<UUW_BuildMenu>(EUIType::BuildMenu);
-    //            if (IsValid(BuildMenuWidget))
-    //            {
-    //                BuildMenuWidget->OnBuildMenuSelected.RemoveDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-    //                BuildMenuWidget->OnBuildMenuSelected.AddDynamic(this, &UBuildManagerComponent::OnBuildMenuSelected);
-    //                PC->SetShowMouseCursor(true);
-    //            }
-    //        }
-    //    }
-    //}
-    
+    SetComponentTickEnabled(true);    
 }
 
 void UBuildManagerComponent::ExitBuildMode()
 {
+    bBuildMenuOpen = true;
+    ToggleBuildMenu();
     bBuildMode = false;
-
-    //if (auto* PC = CachedPC.Get())
-    //{
-    //    if (auto* LP = PC->GetLocalPlayer())
-    //    {
-    //        if (auto* UIS = LP->GetSubsystem<UUISubsystem>())
-    //        {
-    //           UIS->HideUI(EUIType::BuildMenu);
-    //           PC->SetShowMouseCursor(false);
-    //        }
-    //    }
-    //}
 
     SetComponentTickEnabled(false);
     CachedOwner = nullptr;

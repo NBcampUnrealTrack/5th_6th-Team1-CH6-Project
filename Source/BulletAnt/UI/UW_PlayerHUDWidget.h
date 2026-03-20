@@ -9,6 +9,7 @@ class UProgressBar;
 class UTextBlock;
 class UVerticalBox;
 class UUW_WeaponLog;
+class UUW_OreCount;
 
 UCLASS()
 class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
@@ -42,4 +43,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUW_WeaponLog> WeaponLogClass;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UUW_OreCount> OreCountUI;
 };

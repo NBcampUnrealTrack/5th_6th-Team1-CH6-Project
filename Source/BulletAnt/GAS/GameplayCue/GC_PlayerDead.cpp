@@ -1,6 +1,7 @@
 ﻿#include "GAS/GameplayCue/GC_PlayerDead.h"
 
 #include "GameFramework/Character.h"
+#include "Components/CapsuleComponent.h"
 
 void AGC_PlayerDead::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type EventType, const FGameplayCueParameters& Parameters)
 {
@@ -10,15 +11,21 @@ void AGC_PlayerDead::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type
     if (!Character) return;
 
     USkeletalMeshComponent* Mesh = Character->GetMesh();
+    UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
+
+    FTransform SavedMeshRelativeTransform = Character->GetMesh()->GetRelativeTransform();
 
     switch (EventType)
     {
     case EGameplayCueEvent::OnActive:
+        Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Mesh->SetSimulatePhysics(true);
         Mesh->SetCollisionProfileName(TEXT("Ragdoll"));
         return;
 
     case EGameplayCueEvent::Removed:
+        Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        Mesh->SetRelativeTransform(SavedMeshRelativeTransform);
         Mesh->SetSimulatePhysics(false);
         Mesh->SetCollisionProfileName(TEXT("Pawn"));
         return;

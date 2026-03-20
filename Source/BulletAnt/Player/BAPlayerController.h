@@ -6,6 +6,12 @@
 #include "GameFramework/PlayerController.h"
 #include "BAPlayerController.generated.h"
 
+UENUM()
+enum class ELevelType : uint8
+{
+	Lobby,
+	Main,
+};
 
 class UInputMappingContext;
 class ABuildingManagerComponent;
@@ -114,6 +120,23 @@ protected:
 
 #pragma endregion
 
+#pragma region SeamlessTravel
+
+public:
+	void SetLevelType(ELevelType InType);
+
+protected:
+	UFUNCTION(Client, Reliable)
+	void Client_SetupController(ELevelType InType);
+	void SetupController();
+
+	void SetupForLobby();
+	void SetupForMain();
+
+protected:
+	ELevelType LevelType = ELevelType::Main;
+
+#pragma endregion
 
 #pragma region WaveTimer
 

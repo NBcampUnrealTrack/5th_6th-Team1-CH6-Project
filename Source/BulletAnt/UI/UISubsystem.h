@@ -17,6 +17,7 @@ class BULLETANT_API UUISubsystem : public ULocalPlayerSubsystem
 public:
 	UUISubsystem();
 
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void PlayerControllerChanged(APlayerController* NewPlayerController) override;
 
 	UUserWidget* ShowUI(EUIType Type);
@@ -38,8 +39,9 @@ public:
 	void ApplyUIOnlyInputMode(UUserWidget* FocusWidget);
 	void ApplyGameAndUIInputMode(UUserWidget* FocusWidget);
 
-private:
 	void InitRootHUD();
+
+public:
 	void ApplyLayoutPreset(UCanvasPanelSlot* Slot, const FUILayoutPreset& Layout);
 
 

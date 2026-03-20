@@ -108,6 +108,16 @@ void ABaseBuilding::BeginPlay()
 	RebuildCachedLocalEdges();
 }
 
+void ABaseBuilding::Use_Implementation(AActor* User)
+{
+	Server_RequestDemolish_Implementation();
+}
+
+void ABaseBuilding::Server_RequestDemolish_Implementation()
+{
+	OnDeath();
+}
+
 void ABaseBuilding::OnDeath()
 {
 	if (!HasAuthority() || bDead)

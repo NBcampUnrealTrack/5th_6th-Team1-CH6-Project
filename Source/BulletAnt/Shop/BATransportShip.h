@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "BATransportShip.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDropFromPlane);
+
 class UProjectileMovementComponent;
 class ABAItemBox;
 class ABaseWeapon;
@@ -28,8 +30,19 @@ class BULLETANT_API ABATransportShip : public AActor
 public:	
 	ABATransportShip();
 
+	FORCEINLINE UStaticMeshComponent* GetMesh() { return PlaneMesh; };
+
 	UFUNCTION()
-	void InitPlane(FVector& InDropLocation, TSubclassOf<ABaseWeapon> InItem);
+	void InitItemPlane(FVector& InDropLocation, TSubclassOf<ABaseWeapon> InItem);
+
+	UFUNCTION()
+	void InitPlayerPlane(FVector& InDropLocation, ACharacter* PlayerCharacter);
+
+	UFUNCTION()
+	void HandleDropFromPlane();
+
+	UPROPERTY(BlueprintAssignable)
+	FDropFromPlane DropFromPlane;
 
 protected:
 	virtual void Tick(float DeltaTime) override;
@@ -37,7 +50,7 @@ protected:
 	void SpawnItemBox();
 	
 	UPROPERTY()
-	TSubclassOf<ABaseWeapon> Item;
+	TSubclassOf<ABaseWeapon> Item = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Speed = 1000.f;
@@ -45,6 +58,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float TotalDistance = 40000.f;
 
+	TWeakObjectPtr<ACharacter> CachedPlayerCharacter;
+
 	float CurrentDistance = 0.f;
 	bool bIsDropped = false;
+	bool bIsPlayer = false;
 };

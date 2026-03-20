@@ -117,7 +117,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Rotate")
 	float WheelYawStep = 15.f;
 
-	bool bSnapMode = false;
+	bool bSnapMode = true;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
 	float SnapSearchRadius = 4000.f;
