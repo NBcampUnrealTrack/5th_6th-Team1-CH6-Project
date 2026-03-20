@@ -13,6 +13,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/BoxComponent.h"
+#include "Building/BuildManagerComponent.h"
+#include "Player/BACharacter.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -110,11 +112,33 @@ void ABaseBuilding::BeginPlay()
 
 void ABaseBuilding::Use_Implementation(AActor* User)
 {
-	Server_RequestDemolish_Implementation();
+	if (!IsValid(User))
+	{
+		return;
+	}
+
+	ABACharacter* Character = Cast<ABACharacter>(User);
+	if (!Character)
+	{
+		return;
+	}
+
+	UBuildManagerComponent* BuildManager = Character->FindComponentByClass<UBuildManagerComponent>();
+	if (!BuildManager)
+	{
+		return;
+	}
+
+	BuildManager->RequestDemolish(this);
 }
 
-void ABaseBuilding::Server_RequestDemolish_Implementation()
+void ABaseBuilding::RequestDemolish(AActor* User)
 {
+	if (!HasAuthority() || bDead)
+	{
+		return;
+	}
+
 	OnDeath();
 }
 

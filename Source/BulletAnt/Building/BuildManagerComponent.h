@@ -59,6 +59,12 @@ public:
 	void OnCycleNext() { CycleInCategory(+1); }
 
 
+	UFUNCTION(BlueprintCallable, Category = "Build")
+	void RequestDemolish(ABaseBuilding* TargetBuilding);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDemolish(ABaseBuilding* TargetBuilding);
+
 private:
 	void SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass);
 	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);
