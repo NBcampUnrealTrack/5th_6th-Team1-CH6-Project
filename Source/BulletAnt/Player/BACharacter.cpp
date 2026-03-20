@@ -17,6 +17,7 @@
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
+#include "Weapon/Data/RangedWeaponDataAsset.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
@@ -679,6 +680,36 @@ void ABACharacter::EndAiming()
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 
 	Server_SetAiming(false);
+}
+
+void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex)
+{
+	OwnedEquipment[WeaponIndex] = InWeapon;
+	Server_EquipWeapon(InWeapon);
+
+	if (AbilitySystemComponent)
+	{
+		const UAmmoAttributeSet* AmmoSet = AbilitySystemComponent->GetSet<UAmmoAttributeSet>();
+		if (!AmmoSet) return;
+
+		ABaseRangedWeapon* CDOWeapon = Cast<ABaseRangedWeapon>(InWeapon->GetDefaultObject());
+		if (!CDOWeapon) return;
+
+		URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(CDOWeapon->GetWeaponData());
+		if (!Data) return;
+
+		int32 NewMaxAmmo = Data->MaxAmmo;
+
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetMaxAmmoAttribute(),
+			NewMaxAmmo
+		);
+
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
+			NewMaxAmmo
+		);
+	}
 }
 
 void ABACharacter::OnRep_bIsFiring()

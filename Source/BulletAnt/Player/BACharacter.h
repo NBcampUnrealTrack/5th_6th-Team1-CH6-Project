@@ -387,6 +387,9 @@ public:
     void StartAiming();
     void EndAiming();
 
+    UFUNCTION(Server,Reliable)
+    void Server_SetChangeWeapon(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex);
+
     UFUNCTION()
     void OnRep_bIsFiring();
 
