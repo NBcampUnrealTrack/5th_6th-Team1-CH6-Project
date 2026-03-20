@@ -84,7 +84,7 @@ ABaseFlyEnemy::ABaseFlyEnemy()
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (IsValid(Capsule))
 	{
-		GetCapsuleComponent()->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel11);	// FlyEnemy ObjectType
+		GetCapsuleComponent()->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel12);	// FlyEnemy ObjectType
 		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 		Capsule->SetCollisionResponseToChannel(ECC_Vehicle, ECR_Ignore);
 		Capsule->SetCollisionResponseToChannel(ECC_Destructible, ECR_Ignore);
