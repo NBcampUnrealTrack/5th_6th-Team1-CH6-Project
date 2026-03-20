@@ -35,4 +35,6 @@ protected:
 	float TraceDistance = 1600.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float TraceRadius = 30.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UGameplayEffect> GE_Ping;
 };

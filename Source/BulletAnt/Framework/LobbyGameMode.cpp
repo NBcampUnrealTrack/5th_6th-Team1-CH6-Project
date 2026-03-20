@@ -1,6 +1,9 @@
 ﻿#include "Framework/LobbyGameMode.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
 #include "Player/BAPlayerController.h"
+#include "Multiplayer/PlayerColorSubsystem.h"
+#include "Player/BAPlayerState.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 ALobbyGameMode::ALobbyGameMode()
 {
@@ -55,4 +58,35 @@ void ALobbyGameMode::HandleSeamlessTravelPlayer(AController*& C)
         return;
 
     PC->SetLevelType(ELevelType::Lobby);
+}
+
+void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
+{
+    Super::PostLogin(NewPlayer);
+
+    ABAPlayerState* PS = NewPlayer->GetPlayerState<ABAPlayerState>();
+    if (IsValid(PS) == true)
+    {
+        UPlayerColorSubsystem* PlayerColorSubsystem = GetGameInstance()->GetSubsystem<UPlayerColorSubsystem>();
+        if (IsValid(PlayerColorSubsystem) == true)
+        {
+            int32 NewColorIdx = PlayerColorSubsystem->GetColorIndex(PS->GetUniqueId());
+            PS->SetPlayerColorIdx(NewColorIdx);
+        }
+    }
+}
+
+void ALobbyGameMode::Logout(AController* Exiting)
+{
+    ABAPlayerState* PS = Exiting->GetPlayerState<ABAPlayerState>();
+    if (IsValid(PS) == true)
+    {
+        UPlayerColorSubsystem* PlayerColorSubsystem = GetGameInstance()->GetSubsystem<UPlayerColorSubsystem>();
+        if (IsValid(PlayerColorSubsystem) == true)
+        {
+            PlayerColorSubsystem->ReleaseColorIndex(PS->GetUniqueId());
+        }
+    }
+
+    Super::Logout(Exiting);
 }

@@ -4,7 +4,7 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Framework/BAGameState.h"
-#include "GameFramework/PlayerState.h"
+#include "Player/BAPlayerState.h"
 
 const FName UUW_Compass::NameCompassOffset("Offset");
 const FName UUW_Compass::NameUVScale("UVScale");
@@ -89,6 +89,12 @@ void UUW_Compass::UpdatePlayerIcons(float CompassWidth)
                 continue;       // 아이콘 생성 실패
 
             PlayerIcons.Add(NewIcon);
+        }
+
+        ABAPlayerState* BAPS = Cast<ABAPlayerState>(PS);
+        if (IsValid(BAPS) == true)
+        {
+            PlayerIcons[ActiveIconIdx]->SetColorAndOpacity(BAPS->GetPlayerColor());
         }
 
         float Alpha = GetAlphaToTarget(TargetPawn->GetActorLocation());
