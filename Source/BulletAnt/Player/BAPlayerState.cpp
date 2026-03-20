@@ -23,6 +23,7 @@ void ABAPlayerState::CopyProperties(APlayerState* NewPlayerState)
 void ABAPlayerState::SetPlayerColorIdx(int32 NewIdx)
 {
 	PlayerColorIdx = NewIdx;
+	OnRep_PlayerColorIdx();
 }
 
 FLinearColor ABAPlayerState::GetPlayerColor() const
@@ -30,14 +31,19 @@ FLinearColor ABAPlayerState::GetPlayerColor() const
 	return PlayerColorTable.IsValidIndex(PlayerColorIdx) == true ? PlayerColorTable[PlayerColorIdx] : FLinearColor::White;
 }
 
-void ABAPlayerState::BindOnChangedPlayerColor(const FOnChangedPlayerColor::FDelegate& Delegate)
+FDelegateHandle ABAPlayerState::BindOnChangedPlayerColor(const FOnChangedPlayerColor::FDelegate& Delegate)
 {
-	OnChangedPlayerColor.Add(Delegate);
+	return OnChangedPlayerColor.Add(Delegate);
 }
 
 void ABAPlayerState::UnbindOnChangedPlayerColor(const UObject* Object)
 {
 	OnChangedPlayerColor.RemoveAll(Object);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerColor(FDelegateHandle Handle)
+{
+	OnChangedPlayerColor.Remove(Handle);
 }
 
 void ABAPlayerState::OnRep_PlayerColorIdx()

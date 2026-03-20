@@ -20,8 +20,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FLinearColor GetPlayerColor() const;
 
-	void BindOnChangedPlayerColor(const FOnChangedPlayerColor::FDelegate& Delegate);
+	FDelegateHandle BindOnChangedPlayerColor(const FOnChangedPlayerColor::FDelegate& Delegate);
 	void UnbindOnChangedPlayerColor(const UObject* Object);
+	void UnbindOnChangedPlayerColor(FDelegateHandle Handle);
 
 protected:
 	UFUNCTION()

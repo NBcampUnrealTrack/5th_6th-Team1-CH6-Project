@@ -8,6 +8,7 @@
 class ABaseCore;
 class ABAPlayerController;
 class ABaseWeapon;
+class ABACharacter;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EOreType, OreType, int32, OreCount);
 DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
@@ -22,6 +23,16 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+
+public:
+	void AddActiveCharacter(ABACharacter* InCharacter);
+	void RemoveActiveCharacter(ABACharacter* InCharacter);
+
+	const TArray<TWeakObjectPtr<ABACharacter>>& GetActiveCharacters() const { return ActiveCharacters; }
+
+protected:
+	UPROPERTY()
+	TArray<TWeakObjectPtr<ABACharacter>> ActiveCharacters;
 
 #pragma region Ground
 
