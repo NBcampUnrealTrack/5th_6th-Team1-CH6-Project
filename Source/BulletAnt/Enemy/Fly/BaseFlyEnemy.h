@@ -32,6 +32,9 @@ protected:
 	UFUNCTION()
 	void OnRep_Deceleration();
 
+	UFUNCTION()
+	void OnRep_AccelerationRate();
+
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetDiveMode();
 	UFUNCTION(NetMulticast, Reliable)
@@ -43,4 +46,7 @@ protected:
 
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_Deceleration)
 	float Deceleration;
+
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_AccelerationRate)
+	float AccelerationRate;
 };

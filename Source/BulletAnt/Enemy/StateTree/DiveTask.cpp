@@ -27,6 +27,7 @@ EStateTreeRunStatus UDiveTask::EnterState(FStateTreeExecutionContext& Context, c
 		return EStateTreeRunStatus::Failed;
 	}
 	CMC = ContextEnemy->GetCharacterMovement();
+    CMC->bOrientRotationToMovement = true;
 
 	if (!ensureMsgf(IsValid(ContextEnemy->BaseEnemyDataAsset), TEXT("UFlyToLoc : DataAsset Error")))
 	{
@@ -49,8 +50,7 @@ EStateTreeRunStatus UDiveTask::EnterState(FStateTreeExecutionContext& Context, c
         return EStateTreeRunStatus::Failed;
     }
     StartLocation = ContextEnemy->GetActorLocation();
-    MidLocation = TargetActor->GetActorLocation();
-    DiveEndLocation = CaculateDiveEndLocation();
+    MidLocation = FindAttackPoint();
 
     ABaseFlyEnemy* Fly = Cast<ABaseFlyEnemy>(ContextEnemy);
     if (!IsValid(Fly))
@@ -58,7 +58,7 @@ EStateTreeRunStatus UDiveTask::EnterState(FStateTreeExecutionContext& Context, c
         return EStateTreeRunStatus::Failed;
     }
     Fly->SetDiveMode();
-    Fly->SetFlySpeed(CMC->MaxFlySpeed * 2);
+    Fly->SetFlySpeed(CMC->MaxFlySpeed * DAFly->DiveSpeedMultiplier);
 
 	return res;
 }
@@ -66,6 +66,11 @@ EStateTreeRunStatus UDiveTask::EnterState(FStateTreeExecutionContext& Context, c
 EStateTreeRunStatus UDiveTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
 {
     DiveDuration += DeltaTime;
+    if (DiveDuration >= DiveTotalTime && ContextEnemy->GetActorLocation().Z >= StartLocation.Z)
+    {
+        return EStateTreeRunStatus::Succeeded;
+    }
+
     if (FMath::IsNearlyZero(DiveTotalTime))
     {
         DiveAlpha = 1.f;
@@ -75,46 +80,30 @@ EStateTreeRunStatus UDiveTask::Tick(FStateTreeExecutionContext& Context, const f
         DiveAlpha = FMath::Clamp(DiveDuration / DiveTotalTime, 0.0f, 1.0f);
     }
 
-    // [핵심] 수평 이동 (Start -> Exit 일직선 선형 보간)
-    FVector CurrentHorizontalLoc = FMath::Lerp(StartLocation, DiveEndLocation, DiveAlpha);
+    FVector CurrentHorizontalLoc;
+    if (DiveAlpha <= 0.5f)
+    {
+        MidLocation = TargetActor->GetActorLocation();
+        CurrentHorizontalLoc = FMath::Lerp(StartLocation, MidLocation, DiveAlpha * 2);
+    }
+    else
+    {
+        CurrentHorizontalLoc = FMath::Lerp(MidLocation, MidLocation + (TargetActor->GetActorLocation() - StartLocation), (DiveAlpha - 0.5f) * 2);
+    }
 
-    // [핵심] 수직 이동 (Sine 함수 활용)
-    // Alpha가 0.0 -> 1.0 갈 때, Sine(0) -> Sine(π) 즉 0 -> 1 -> 0으로 변함
-    float Depth = StartLocation.Z - MidLocation.Z;
+    float Depth = FMath::Abs(StartLocation.Z - MidLocation.Z);
     float SineAlpha = FMath::Sin(DiveAlpha * PI);
-
-    //// 높이 보간: 시작높이 -> 타겟높이 -> 이탈높이
-    //float StartZ = InstanceData.StartLocation.Z;
-    //float TargetZ = InstanceData.TargetLocation.Z;
-    //float ExitZ = InstanceData.ExitLocation.Z;
-
-    //// 하강 폭 계산 (타겟높이까지 얼마나 내려갈지)
-    //float DiveDepth = StartZ - TargetZ;
-
-    //// 최종 Z값: 기본 Lerp로 올라가는 와중에 Sine 값만큼 '아래로' 더해줌 (U자형 완성)
-    //float FinalZ = FMath::Lerp(StartZ, ExitZ, Alpha) - (SineAlpha * DiveDepth);
     float FinalZ = StartLocation.Z - SineAlpha * Depth;
     FVector FinalLocation(CurrentHorizontalLoc.X, CurrentHorizontalLoc.Y, FinalZ);
 
-    // --- 공격 수행 타이밍 (Sine 값이 가장 클 때, 즉 최저점 부근) ---
-    if (DiveAlpha >= 0.3 && DiveAlpha <= 0.7 && !bAttack) // 예: 90% 이상 내려왔을 때
+    if (DiveAlpha >= 0.3 && DiveAlpha <= 0.7 && !bAttack)
     {
-        // 발사체 발사 소환 로직 추가
-        // SpawnProjectile();
-        bAttack = true; // 한 번만 공격하도록
+        // Attack();
+        bAttack = true;
     }
-    // --------------------------------------------------------
 
-    // CMC에 속도 적용 (위치 기반으로 속도 역산)
     FVector MoveDir = (FinalLocation - ContextEnemy->GetActorLocation()).GetSafeNormal();
     ContextEnemy->AddMovementInput(MoveDir);
-    //CMC->Velocity = MoveDir * CMC->MaxFlySpeed; // 공격 시엔 좀 더 빠르게
-
-    // 완료 판정
-    if (DiveDuration >= DiveTotalTime)
-    {
-        return EStateTreeRunStatus::Succeeded; // 태스크 성공 종료 -> 다음 상태(예: Idle)로
-    }
 
     return EStateTreeRunStatus::Running;
 }
@@ -122,26 +111,52 @@ EStateTreeRunStatus UDiveTask::Tick(FStateTreeExecutionContext& Context, const f
 void UDiveTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {
     ABaseFlyEnemy* Fly = Cast<ABaseFlyEnemy>(ContextEnemy);
-    Fly->UnSetDiveMode();
-
-    if (CMC.IsValid())
+    if (IsValid(Fly))
     {
-        Fly->SetFlySpeed(CMC->MaxFlySpeed / 2);
+        Fly->UnSetDiveMode();
+    }
+
+    UFlyDataAsset* DAFly = Cast<UFlyDataAsset>(ContextEnemy->BaseEnemyDataAsset);
+    if (IsValid(DAFly))
+    {
+        if (CMC.IsValid())
+        {
+            Fly->SetFlySpeed(CMC->MaxFlySpeed / DAFly->DiveSpeedMultiplier);
+            CMC->bOrientRotationToMovement = false;
+        }
     }
 	CMC.Reset();
 
 	Super::ExitState(Context, Transition);
 }
 
-FVector UDiveTask::CaculateDiveEndLocation()
+FVector UDiveTask::FindAttackPoint()
 {
-    float Dist = FVector::Dist2D(StartLocation, MidLocation);
-    FVector Dir = (MidLocation - StartLocation).GetSafeNormal2D();
-    if (Dir.IsNearlyZero())
-    {
-        Dir = ContextEnemy->GetActorForwardVector();
-    }
+    FVector Res;
+    FHitResult HitResult;
 
-    FVector Res = StartLocation + Dir * Dist * 2;
+    FVector Start = ContextEnemy->GetActorLocation();
+    FVector End = TargetActor->GetActorLocation();
+
+    FCollisionObjectQueryParams ObjectParams;
+    ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel1);
+    ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel3);
+    ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel9);
+
+    bool bHit = GetWorld()->LineTraceSingleByObjectType(
+        HitResult,
+        Start,
+        End,
+        ObjectParams
+    );
+
+    if (bHit)
+    {
+        Res = HitResult.ImpactPoint;
+    }
+    else
+    {
+        Res = TargetActor->GetActorLocation();
+    }
     return Res;
 }
