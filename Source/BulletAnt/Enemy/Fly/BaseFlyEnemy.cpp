@@ -34,6 +34,8 @@ void ABaseFlyEnemy::ApplyTribe()
 		}
 		Deceleration = FlyDataAsset->BrakingDecelerationFlying * TribeType->SpeedMul;
 		OnRep_Deceleration();
+		AccelerationRate = FlyDataAsset->AccelerationRate * TribeType->SpeedMul;
+		OnRep_AccelerationRate();
 	}
 
 	return;
@@ -76,11 +78,13 @@ ABaseFlyEnemy::ABaseFlyEnemy()
 		CMC->bOrientRotationToMovement = false;
 		CMC->bUseControllerDesiredRotation = true;
 		CMC->BrakingFrictionFactor = 0.5f;
+		CMC->RotationRate = FRotator(100, 100, 100);
     }
 
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (IsValid(Capsule))
 	{
+		GetCapsuleComponent()->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel11);	// FlyEnemy ObjectType
 		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 		Capsule->SetCollisionResponseToChannel(ECC_Vehicle, ECR_Ignore);
 		Capsule->SetCollisionResponseToChannel(ECC_Destructible, ECR_Ignore);
@@ -94,21 +98,16 @@ void ABaseFlyEnemy::BeginPlay()
 {
     Super::BeginPlay();
 
-	if (HasAuthority())
+	if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("ABaseFlyEnemy BeginPlay : DataAsset Missing")))
 	{
-		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("ABaseFlyEnemy BeginPlay : DataAsset Missing")))
-		{
-			return;
-		}
-		UFlyDataAsset* FlyDataAsset = Cast<UFlyDataAsset>(BaseEnemyDataAsset);
-		if (!ensureMsgf(IsValid(FlyDataAsset), TEXT("ABaseFlyEnemy BeginPlay : FlyDataAsset Missing")))
-		{
-			return;
-		}
-
-		// Remove
-		ApplyTribe();
+		return;
 	}
+	UFlyDataAsset* FlyDataAsset = Cast<UFlyDataAsset>(BaseEnemyDataAsset);
+	if (!ensureMsgf(IsValid(FlyDataAsset), TEXT("ABaseFlyEnemy BeginPlay : FlyDataAsset Missing")))
+	{
+		return;
+	}
+	GetCharacterMovement()->RotationRate = FlyDataAsset->FlyRotationRate;
 }
 
 void ABaseFlyEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -117,6 +116,7 @@ void ABaseFlyEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 
 	DOREPLIFETIME(ABaseFlyEnemy, FlySpeed);
 	DOREPLIFETIME(ABaseFlyEnemy, Deceleration);
+	DOREPLIFETIME(ABaseFlyEnemy, AccelerationRate);
 }
 
 void ABaseFlyEnemy::PossessedBy(AController* NewController)
@@ -149,14 +149,20 @@ void ABaseFlyEnemy::OnRep_Deceleration()
 	}
 }
 
+void ABaseFlyEnemy::OnRep_AccelerationRate()
+{
+	if (IsValid(GetCharacterMovement()))
+	{
+		GetCharacterMovement()->MaxAcceleration = AccelerationRate;
+	}
+}
+
 void ABaseFlyEnemy::Multicast_UnSetDiveMode_Implementation()
 {
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (IsValid(Capsule))
 	{
-		Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-		Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Block);	// Building
+		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);	
 	}
 }
 
@@ -165,8 +171,6 @@ void ABaseFlyEnemy::Multicast_SetDiveMode_Implementation()
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (IsValid(Capsule))
 	{
-		Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Ignore);
-		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
-		Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Ignore);	// Building
+		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);	
 	}
 }

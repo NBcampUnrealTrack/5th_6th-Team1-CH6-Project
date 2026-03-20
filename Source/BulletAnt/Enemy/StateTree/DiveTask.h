@@ -32,7 +32,7 @@ public:
 	TObjectPtr<AActor> TargetActor;
 
 protected:
-	FVector CaculateDiveEndLocation();
+	FVector FindAttackPoint();
 
 	TWeakObjectPtr<UCharacterMovementComponent> CMC;
 
