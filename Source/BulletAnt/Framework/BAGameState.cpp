@@ -5,6 +5,7 @@
 #include "Mining/VoxelGroundSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Weapon/BaseWeapon.h"
+#include "Player/BACharacter.h"
 
 ABAGameState::ABAGameState()
 {
@@ -39,6 +40,16 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
     DOREPLIFETIME(ThisClass, GroundInitParams);
     DOREPLIFETIME(ThisClass, WavePreparationTime);
     DOREPLIFETIME(ThisClass, HaveWeaponArray);
+}
+
+void ABAGameState::AddActiveCharacter(ABACharacter* InCharacter)
+{
+    ActiveCharacters.Add(InCharacter);
+}
+
+void ABAGameState::RemoveActiveCharacter(ABACharacter* InCharacter)
+{
+    ActiveCharacters.Remove(InCharacter);
 }
 
 void ABAGameState::OnRep_SetInitParams()

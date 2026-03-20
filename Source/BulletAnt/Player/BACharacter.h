@@ -88,6 +88,7 @@ public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual void OnRep_Controller() override;
+    virtual void OnRep_PlayerState() override;
 
 
     //TEST
@@ -460,6 +461,11 @@ public:
     void RotateScannerParent(const FVector2D& Input);
     void ChangeScannerDistance(float Input);
     void SwitchGroundScanner();
+
+    void InitializeSceneCapture();
+    void UpdateShowComponents();
+    
+    void SetArrowPlayerColor();
         
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
@@ -486,6 +492,10 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
     TObjectPtr<UStaticMeshComponent> ArrowMesh;
+
+    FDelegateHandle ArrowColorChangeHandle;
+
+    static TWeakObjectPtr<USceneCaptureComponent2D> LocalSceneCapture;      // 해당 클라이언트에서 제어 중인 플레이어의 SceneCapture2D 
 
 #pragma endregion
 

@@ -29,6 +29,10 @@
 #include "Building/BuildManagerComponent.h"
 #include "Building/BaseShop.h"
 #include "Components/SceneCaptureComponent2D.h"
+#include "Framework/BAGameState.h"
+#include "Player/BAPlayerState.h"
+
+TWeakObjectPtr<USceneCaptureComponent2D> ABACharacter::LocalSceneCapture = nullptr;
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -99,35 +103,6 @@ ABACharacter::ABACharacter()
 	SceneCaptureParent->bInheritRoll = false;
 	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
 
-	SceneCapture2D = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture2D"));
-	SceneCapture2D->SetupAttachment(SceneCaptureParent);
-	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
-	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
-	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
-	SceneCapture2D->ShowFlags.SetLighting(false);
-	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
-	SceneCapture2D->ShowFlags.SetSkyLighting(false);
-	SceneCapture2D->ShowFlags.SetAtmosphere(false);
-	SceneCapture2D->ShowFlags.SetFog(false);
-	SceneCapture2D->ShowFlags.SetBloom(false);
-	SceneCapture2D->ShowFlags.SetEyeAdaptation(false);
-	SceneCapture2D->ShowFlags.SetMotionBlur(false);
-	SceneCapture2D->ShowFlags.SetAntiAliasing(false);
-	SceneCapture2D->ShowFlags.SetTemporalAA(false);
-	SceneCapture2D->ShowFlags.SetTonemapper(false);
-	SceneCapture2D->ShowFlags.SetTranslucency(false);
-	SceneCapture2D->ShowFlags.SetParticles(false);
-	SceneCapture2D->ShowFlags.SetSkeletalMeshes(false);
-	SceneCapture2D->ShowFlags.SetLandscape(false);
-	SceneCapture2D->ShowFlags.SetGameplayDebug(false);
-	SceneCapture2D->ShowFlags.SetCompositeDebugPrimitives(false);
-	SceneCapture2D->ShowFlags.SetDebugAI(false);
-	SceneCapture2D->ShowFlags.SetCollision(false);
-	SceneCapture2D->ShowFlags.SetBounds(false);
-	SceneCapture2D->ShowFlags.SetMaterials(true);
-	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
-	SceneCapture2D->ShowFlags.SetPostProcessing(true);
-
 	ArrowMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ArrowMesh"));
 	ArrowMesh->SetupAttachment(RootComponent);
 	ArrowMesh->SetVisibleInSceneCaptureOnly(true);
@@ -135,21 +110,54 @@ ABACharacter::ABACharacter()
 	ArrowMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	ArrowMesh->SetGenerateOverlapEvents(false);
 	ArrowMesh->SetRenderCustomDepth(true);
-	ArrowMesh->CustomDepthStencilValue = 1;
-	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
+
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	CharacterMesh->SetRenderCustomDepth(true);
+	CharacterMesh->CustomDepthStencilValue = 1;
 }
 
 // Called when the game starts or when spawned
 void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+#pragma region GroundScanner
+
+	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+	if (IsValid(GS) == true)
+	{
+		GS->AddActiveCharacter(this);
+	}
+
+	if (IsLocallyControlled() == true)
+	{
+		InitializeSceneCapture();
+
+		if (IsValid(GS) == true)
+		{
+			const auto& ActiveCharacters = GS->GetActiveCharacters();
+			for (const auto& ActiveCharacter : ActiveCharacters)
+			{
+				SceneCapture2D->ShowOnlyComponents.Add(ActiveCharacter->ArrowMesh);
+			}
+		}
+
+		LocalSceneCapture = SceneCapture2D;
+	}
+	else
+	{
+		if (LocalSceneCapture.IsValid() == true)
+		{
+			LocalSceneCapture->ShowOnlyComponents.Add(ArrowMesh);
+		}
+	}
+
+#pragma endregion
+
 	LastBodyYaw = GetMesh()->GetComponentRotation().Yaw;
 
 	if (IsLocallyControlled() == true)
 	{
-		SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
-		SceneCapture2D->TextureTarget = RT_GroundScanner;
-
 		TArray<USceneComponent*> MeshChildren;
 		GetMesh()->GetChildrenComponents(false, MeshChildren);
 
@@ -184,6 +192,22 @@ void ABACharacter::BeginPlay()
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+	if (IsValid(GS) == true)
+	{
+		GS->RemoveActiveCharacter(this);
+	}
+
+	if (ArrowColorChangeHandle.IsValid() == true)
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (IsValid(PS) == true)
+		{
+			PS->UnbindOnChangedPlayerColor(ArrowColorChangeHandle);
+			ArrowColorChangeHandle.Reset();
+		}
+	}
+
 	if (HasAuthority() && EquippedWeapon)
 	{
 		EquippedWeapon->Destroy();
@@ -406,6 +430,14 @@ void ABACharacter::OnRep_Controller()
 		}
 	}
 }
+
+void ABACharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	SetArrowPlayerColor();
+}
+
 void ABACharacter::SpringArmRot(bool check)
 {
 	SpringArm->bUsePawnControlRotation = check;
@@ -549,6 +581,8 @@ UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
 void ABACharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+
+	SetArrowPlayerColor();
 
 	if (AbilitySystemComponent)
 	{
@@ -1192,6 +1226,73 @@ void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InDa
 		if (HUD)
 		{
 			HUD->AddWeaponLog(InData);
+		}
+	}
+}
+
+void ABACharacter::InitializeSceneCapture()
+{
+	SceneCapture2D = NewObject<USceneCaptureComponent2D>(this, TEXT("SceneCapture2D"));
+	SceneCapture2D->RegisterComponent();
+	SceneCapture2D->AttachToComponent(SceneCaptureParent, FAttachmentTransformRules::KeepRelativeTransform);
+
+	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
+	SceneCapture2D->ShowFlags.SetLighting(false);
+	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
+	SceneCapture2D->ShowFlags.SetSkyLighting(false);
+	SceneCapture2D->ShowFlags.SetAtmosphere(false);
+	SceneCapture2D->ShowFlags.SetFog(false);
+	SceneCapture2D->ShowFlags.SetBloom(false);
+	SceneCapture2D->ShowFlags.SetEyeAdaptation(false);
+	SceneCapture2D->ShowFlags.SetMotionBlur(false);
+	SceneCapture2D->ShowFlags.SetAntiAliasing(false);
+	SceneCapture2D->ShowFlags.SetTemporalAA(false);
+	SceneCapture2D->ShowFlags.SetTonemapper(false);
+	SceneCapture2D->ShowFlags.SetTranslucency(false);
+	SceneCapture2D->ShowFlags.SetParticles(false);
+	SceneCapture2D->ShowFlags.SetSkeletalMeshes(false);
+	SceneCapture2D->ShowFlags.SetLandscape(false);
+	SceneCapture2D->ShowFlags.SetGameplayDebug(false);
+	SceneCapture2D->ShowFlags.SetCompositeDebugPrimitives(false);
+	SceneCapture2D->ShowFlags.SetDebugAI(false);
+	SceneCapture2D->ShowFlags.SetCollision(false);
+	SceneCapture2D->ShowFlags.SetBounds(false);
+	SceneCapture2D->ShowFlags.SetMaterials(true);
+	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
+	SceneCapture2D->ShowFlags.SetPostProcessing(true);
+
+	SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
+	SceneCapture2D->TextureTarget = RT_GroundScanner;
+}
+
+void ABACharacter::UpdateShowComponents()
+{
+	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
+}
+
+void ABACharacter::SetArrowPlayerColor()
+{
+	if (IsValid(ArrowMesh) == true)
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (IsValid(PS) == true)
+		{
+			FLinearColor PlayerColor = PS->GetPlayerColor();
+			ArrowMesh->SetCustomPrimitiveDataVector4(0, FVector4(PlayerColor));
+
+			if (ArrowColorChangeHandle.IsValid() == true)
+				return;
+
+			ArrowColorChangeHandle = PS->BindOnChangedPlayerColor(FOnChangedPlayerColor::FDelegate::CreateLambda(
+				[WeakThis = TWeakObjectPtr(this)](FLinearColor NewColor)
+				{
+					if (WeakThis.IsValid() == true)
+					{
+						WeakThis->SetArrowPlayerColor();
+					}
+				}));
 		}
 	}
 }
