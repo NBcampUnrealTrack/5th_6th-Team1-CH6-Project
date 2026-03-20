@@ -24,14 +24,17 @@ void UGA_PlayerFire::FireOnce()
 	}
 
 	// 장탄수 관리
-	if (CostEffect)
+	if (CurrentActorInfo->IsNetAuthority())
 	{
-		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
-
-		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(CostEffect, 1.0f, Context);
-		if (SpecHandle.IsValid())
+		if (CostEffect)
 		{
-			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+
+			FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(CostEffect, 1.0f, Context);
+			if (SpecHandle.IsValid())
+			{
+				CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			}
 		}
 	}
 
@@ -89,17 +92,20 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 void UGA_PlayerFire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	//쿨타임 관리
-	FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
-
-	FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(CooldownEffect, 1.0f, Context);
-	if (SpecHandle.IsValid())
+	if (ActorInfo->IsNetAuthority())
 	{
-		SpecHandle.Data->SetSetByCallerMagnitude(
-			TAG_Data_Fire_Cooldown,
-			FireDelay
-		);
+		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
 
-		CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(CooldownEffect, 1.0f, Context);
+		if (SpecHandle.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(
+				TAG_Data_Fire_Cooldown,
+				FireDelay
+			);
+
+			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
 	}
 
 	if (PlayerCharacter)

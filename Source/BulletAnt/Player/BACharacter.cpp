@@ -18,6 +18,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "UI/UISubsystem.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
@@ -177,6 +178,7 @@ void ABACharacter::BeginPlay()
 			}
 		}
 	}
+
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 }
 
@@ -1168,5 +1170,28 @@ void ABACharacter::SwitchGroundScanner()
 	if (PC)
 	{
 		PC->SwitchGroundScanner();
+	}
+}
+
+void ABACharacter::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	Multicast_ShowWeaponLog(InData);
+}
+
+void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	if (!GetWorld()) return;
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!LP) return;
+
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->AddWeaponLog(InData);
+		}
 	}
 }

@@ -8,6 +8,7 @@
 class ABaseCore;
 class ABAPlayerController;
 class ABaseWeapon;
+class UWeaponDataAsset;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EOreType, OreType, int32, OreCount);
 DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
@@ -113,7 +114,7 @@ public:
 	UFUNCTION()
 	void AddHaveWeapon(TSubclassOf<ABaseWeapon> InWeaponClass);
 
-	FORCEINLINE const TArray<TSubclassOf<ABaseWeapon>>& GetHaveWeaponArray() { return HaveWeaponArray; };	
+	FORCEINLINE const TArray<TSubclassOf<ABaseWeapon>>& GetHaveWeaponArray() { return HaveWeaponArray; };
 
 protected:
 	UPROPERTY(Replicated)

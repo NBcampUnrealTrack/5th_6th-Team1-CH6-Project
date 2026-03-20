@@ -24,6 +24,7 @@ class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
 class USceneCaptureComponent2D;
+class UUISubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
@@ -397,6 +398,12 @@ public:
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
     void SetbIsFiring(bool InIsFiring);
+
+    UFUNCTION(Server, Reliable)
+    void Server_RequestWeaponLog(UWeaponDataAsset* InData);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);
 
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
