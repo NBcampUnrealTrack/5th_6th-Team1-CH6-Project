@@ -831,9 +831,11 @@ void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
-	FVector Start = CameraComponent->GetComponentLocation();
-	FVector Forward = CameraComponent->GetForwardVector();
-	FVector End = Start + (Forward * LineTraceRange);
+	FVector CamLoc;
+	FRotator CamRot;
+	GetController()->GetPlayerViewPoint(CamLoc, CamRot);;
+	FVector Start = CamLoc;
+	FVector End = Start + (CamRot.Vector() * LineTraceRange);
 
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
@@ -843,8 +845,17 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 		HitResult,
 		Start,
 		End,
-		ECC_Visibility,
+		ECC_GameTraceChannel4,
 		Params
+	);
+
+	DrawDebugLine(
+		GetWorld(),
+		Start,
+		End,
+		FColor::Red,
+		false,
+		10.f
 	);
 
 	if (bHit)
@@ -1207,8 +1218,9 @@ void ABACharacter::SwitchGroundScanner()
 	}
 }
 
-void ABACharacter::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
+void ABACharacter::RequestWeaponLog(UWeaponDataAsset* InData)
 {
+	if (!HasAuthority()) return;
 	Multicast_ShowWeaponLog(InData);
 }
 

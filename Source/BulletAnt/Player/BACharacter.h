@@ -400,8 +400,8 @@ public:
 
     void SetbIsFiring(bool InIsFiring);
 
-    UFUNCTION(Server, Reliable)
-    void Server_RequestWeaponLog(UWeaponDataAsset* InData);
+    UFUNCTION()
+    void RequestWeaponLog(UWeaponDataAsset* InData);
 
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);

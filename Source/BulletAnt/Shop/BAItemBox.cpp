@@ -41,6 +41,8 @@ void ABAItemBox::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifeti
 
 void ABAItemBox::Use_Implementation(AActor* User)
 {
+	if (!IsValid(this)) return;
+
 	if (bIsUsed) return;
 
 	ABACharacter* Player = Cast<ABACharacter>(User);
@@ -49,16 +51,7 @@ void ABAItemBox::Use_Implementation(AActor* User)
 	ABAPlayerController* PC = Cast<ABAPlayerController>(Player->GetController());
 	if (!PC) return;
 
-	if (bIsUsed) return;
-	
-	if (Item)
-	{
-		PC->Server_RequestAddWeapon(Item);
-		PC->Server_RequestDeleteBox(this);
-
-		ABaseWeapon* WeaponCDO = Cast<ABaseWeapon>(Item->GetDefaultObject());
-		Player->Server_RequestWeaponLog(WeaponCDO->GetWeaponData());
-	}
+	PC->Server_RequestAddWeapon(this);
 }
 
 void ABAItemBox::SetItem(TSubclassOf<ABaseWeapon> InItem)
@@ -76,7 +69,7 @@ void ABAItemBox::BeginPlay()
 
 		ProjectileMovement->InitialSpeed = 0.f;
 		ProjectileMovement->MaxSpeed = 0.f;
-		ProjectileMovement->Velocity = FVector::ZeroVector;	
+		ProjectileMovement->Velocity = FVector::ZeroVector;
 
 		ProjectileMovement->Activate();
 	}
@@ -98,7 +91,14 @@ void ABAItemBox::PlayDropSound(const FHitResult& ImpactPoint)
 void ABAItemBox::DestroyItemBox()
 {
 	if (!HasAuthority()) return;
-	Destroy();
+	GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
+		{
+			if (IsValid(this))
+			{
+				Destroy();
+			}
+		});
+
 }
 
 
