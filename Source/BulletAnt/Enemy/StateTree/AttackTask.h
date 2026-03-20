@@ -17,7 +17,6 @@ class BULLETANT_API UAttackTask : public UStateTreeTaskBlueprintBase
 	
 protected:
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
-	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
 	
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
