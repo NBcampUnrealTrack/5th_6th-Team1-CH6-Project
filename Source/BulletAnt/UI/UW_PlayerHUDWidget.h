@@ -19,11 +19,13 @@ class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
-	UPROPERTY()
-	TWeakObjectPtr<ABACharacter> OwnerCharacter;
+	void InitPlayerHUD();
 
 	UFUNCTION()
 	void AddWeaponLog(UWeaponDataAsset* InData);
+
+	UPROPERTY()
+	TWeakObjectPtr<ABACharacter> OwnerCharacter;
 
 protected:
 	UFUNCTION()

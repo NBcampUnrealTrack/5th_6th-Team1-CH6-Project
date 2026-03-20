@@ -164,19 +164,6 @@ void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InI
 	}
 }
 
-void ABAPlayerController::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
-{
-	Multicast_ShowWeaponLog(InData);
-}
-
-void ABAPlayerController::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
-{
-	if (HUD)
-	{
-		HUD->AddWeaponLog(InData);
-	}
-}
-
 void ABAPlayerController::ShowShopUI()
 {
 	if (IsValid(UISubsystem))
@@ -284,17 +271,6 @@ void ABAPlayerController::SetupForMain()
 
 	bIsBuildMode = false;
 
-	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
-	{
-		if (HUDClass)
-		{
-			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
-
-			HUD->OwnerCharacter = PlayerCharacter;
-			HUD->AddToViewport(0);
-		}
-	}
-
 	ULocalPlayer* LP = GetLocalPlayer();
 	if (!LP) return;
 
@@ -303,6 +279,13 @@ void ABAPlayerController::SetupForMain()
 	{
 		UISubsystem->ResetAllUI();
 		UISubsystem->InitRootHUD();
+
+		HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->OwnerCharacter = Cast<ABACharacter>(GetPawn());
+			HUD->InitPlayerHUD();
+		}
 
 		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 

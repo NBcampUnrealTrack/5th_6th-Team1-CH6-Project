@@ -17,6 +17,8 @@
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
+#include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "UI/UISubsystem.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
@@ -176,6 +178,7 @@ void ABACharacter::BeginPlay()
 			}
 		}
 	}
+
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 }
 
@@ -681,6 +684,36 @@ void ABACharacter::EndAiming()
 	Server_SetAiming(false);
 }
 
+void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex)
+{
+	OwnedEquipment[WeaponIndex] = InWeapon;
+	Server_EquipWeapon(InWeapon);
+
+	if (AbilitySystemComponent)
+	{
+		const UAmmoAttributeSet* AmmoSet = AbilitySystemComponent->GetSet<UAmmoAttributeSet>();
+		if (!AmmoSet) return;
+
+		ABaseRangedWeapon* CDOWeapon = Cast<ABaseRangedWeapon>(InWeapon->GetDefaultObject());
+		if (!CDOWeapon) return;
+
+		URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(CDOWeapon->GetWeaponData());
+		if (!Data) return;
+
+		int32 NewMaxAmmo = Data->MaxAmmo;
+
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetMaxAmmoAttribute(),
+			NewMaxAmmo
+		);
+
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
+			NewMaxAmmo
+		);
+	}
+}
+
 void ABACharacter::OnRep_bIsFiring()
 {
 	UBAAnimInstance* Anim = Cast<UBAAnimInstance>(GetMesh()->GetAnimInstance());
@@ -1137,5 +1170,28 @@ void ABACharacter::SwitchGroundScanner()
 	if (PC)
 	{
 		PC->SwitchGroundScanner();
+	}
+}
+
+void ABACharacter::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	Multicast_ShowWeaponLog(InData);
+}
+
+void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	if (!GetWorld()) return;
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!LP) return;
+
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->AddWeaponLog(InData);
+		}
 	}
 }

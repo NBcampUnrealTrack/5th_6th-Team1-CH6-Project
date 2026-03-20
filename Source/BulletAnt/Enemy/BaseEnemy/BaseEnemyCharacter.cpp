@@ -520,7 +520,6 @@ void ABaseEnemyCharacter::BeginPlay()
 			return;
 		}
 		AcceptanceRadius = BaseEnemyDataAsset->AcceptanceRadius;
-		GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 		RotateThreshold = BaseEnemyDataAsset->RotateThreshold;
 		DetectionSphere->SetSphereRadius(BaseEnemyDataAsset->SenseRadius);
 
@@ -539,6 +538,7 @@ void ABaseEnemyCharacter::BeginPlay()
 			GetActorLocation()
 		);
 	}
+	GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 }
 
 void ABaseEnemyCharacter::InitGAS()

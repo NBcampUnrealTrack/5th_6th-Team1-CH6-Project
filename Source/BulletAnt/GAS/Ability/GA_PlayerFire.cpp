@@ -4,15 +4,39 @@
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "GAS/BAGameplayTags.h"
 #include "Player/BAAnimInstance.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
 
 UGA_PlayerFire::UGA_PlayerFire()
 {
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 }
 
-void UGA_PlayerFire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
+void UGA_PlayerFire::FireOnce()
 {
-	Super::FireOnce(ActorInfo);
+	const UAmmoAttributeSet* AmmoSet = GetAbilitySystemComponentFromActorInfo()->GetSet<UAmmoAttributeSet>();
+	if (AmmoSet)
+	{
+		if (AmmoSet->GetCurrentAmmo() <= 0.f)
+		{
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+			return;
+		}
+	}
+
+	// 장탄수 관리
+	if (CurrentActorInfo->IsNetAuthority())
+	{
+		if (CostEffect)
+		{
+			FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+
+			FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(CostEffect, 1.0f, Context);
+			if (SpecHandle.IsValid())
+			{
+				CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			}
+		}
+	}
 
 	if (IsLocallyControlled())
 	{
@@ -24,12 +48,16 @@ void UGA_PlayerFire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 			PlayerCharacter->SetRecoil(InRecoilPitch, InRecoilYaw);
 		}
 	}
+
+	Super::FireOnce();
 }
 
 void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
 	PlayerCharacter = Cast<ABACharacter>(ActorInfo->AvatarActor);
-	if (!PlayerCharacter) 
+	if (!PlayerCharacter)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -50,8 +78,8 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 	}
 
 	PlayerCharacter->SetbIsFiring(true);
-	
-	if (IsLocallyControlled()) 
+
+	if (IsLocallyControlled())
 	{
 		if (RangedData && RangedData->bPlayer)
 		{
@@ -59,13 +87,28 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 			RecoilYaw = RangedData->RecoilYaw;
 		}
 	}
-
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 }
 
 void UGA_PlayerFire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	if (PlayerCharacter) 
+	//쿨타임 관리
+	if (ActorInfo->IsNetAuthority())
+	{
+		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+
+		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(CooldownEffect, 1.0f, Context);
+		if (SpecHandle.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(
+				TAG_Data_Fire_Cooldown,
+				FireDelay
+			);
+
+			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
+
+	if (PlayerCharacter)
 	{
 		PlayerCharacter->SetbIsFiring(false);
 	}

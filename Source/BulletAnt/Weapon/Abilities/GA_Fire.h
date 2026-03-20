@@ -32,7 +32,7 @@ protected:
 		bool bReplicateEndAbility, 
 		bool bWasCancelled) override;
 
-	virtual void FireOnce(const FGameplayAbilityActorInfo* ActorInfo);
+	virtual void FireOnce();
 
 	void StartAutoFireLoop();
 
@@ -54,4 +54,5 @@ protected:
 	int32 ContinuousBullet;
 	float CurrentRecoilPitch;
 	float CurrentRecoilYaw;
+	float FireDelay;
 };

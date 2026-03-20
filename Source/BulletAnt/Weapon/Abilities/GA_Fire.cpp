@@ -72,7 +72,7 @@ void UGA_Fire::ActivateAbility(
 	}
 	else 
 	{
-		FireOnce(ActorInfo);
+		FireOnce();
 		EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
 	}	
 }
@@ -87,27 +87,20 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
+void UGA_Fire::FireOnce()
 {
-	if (!ActorInfo || !ActorInfo->IsNetAuthority()) return;
+	if (!CurrentActorInfo || !CurrentActorInfo->IsNetAuthority()) return;
 
-	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(ActorInfo->AvatarActor.Get());
-	FVector Dir = IFireStartInterface::Execute_GetFireDirection(ActorInfo->AvatarActor.Get());
+	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(CurrentActorInfo->AvatarActor.Get());
+	FVector Dir = IFireStartInterface::Execute_GetFireDirection(CurrentActorInfo->AvatarActor.Get());
 	
 	//총알 발사시 발생하는 이펙트 큐
-	if (RangedData->FireCueEffect)
-	{
-		FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
-		Context.AddSourceObject(RangedData);
-		Context.AddOrigin(Start);
-		
 
-		FGameplayEffectSpecHandle SpecHandle = CachedASC->MakeOutgoingSpec(RangedData->FireCueEffect, 1.0f, Context);
-		if (SpecHandle.IsValid())
-		{
-			CachedASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
-	}
+	FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+	Context.AddSourceObject(RangedData);
+	Context.AddOrigin(Start);
+
+	CachedASC->ExecuteGameplayCue(TAG_GameplayCue_Weapon_Fire, Context);
 
 	ContinuousBullet++;
 
@@ -143,35 +136,15 @@ void UGA_Fire::FireOnce(const FGameplayAbilityActorInfo* ActorInfo)
 
 void UGA_Fire::StartAutoFireLoop()
 {
-	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-
-	CachedASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!CachedASC)
-	{
-		EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-		return;
-	}
-
-	const UAmmoAttributeSet* AmmoSet = CachedASC->GetSet<UAmmoAttributeSet>();
-	if (AmmoSet)
-	{
-		if (AmmoSet->GetCurrentAmmo() <= 0.f)
-		{
-			EndAbility(CurrentSpecHandle, ActorInfo, CurrentActivationInfo, true, false);
-			return;
-		}
-	}
-
-	FireOnce(ActorInfo);
-
-	float FireDelay = 60.f / RangedData->RoundPerMinute;
+	FireDelay = 60.f / RangedData->RoundPerMinute;
 
 	GetWorld()->GetTimerManager().SetTimer(
 		FireTimerHandler,
 		this,
-		&UGA_Fire::StartAutoFireLoop,
+		&UGA_Fire::FireOnce,
 		FireDelay,
-		false
+		true,
+		0.f
 	);
 }
 

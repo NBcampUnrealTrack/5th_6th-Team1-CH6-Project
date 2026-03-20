@@ -10,7 +10,10 @@
 void UUW_PlayerHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+}
 
+void UUW_PlayerHUDWidget::InitPlayerHUD()
+{
 	if (!OwnerCharacter.IsValid())
 		return;
 

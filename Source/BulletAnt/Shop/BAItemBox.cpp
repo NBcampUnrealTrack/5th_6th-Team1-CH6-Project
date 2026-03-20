@@ -57,7 +57,7 @@ void ABAItemBox::Use_Implementation(AActor* User)
 		PC->Server_RequestDeleteBox(this);
 
 		ABaseWeapon* WeaponCDO = Cast<ABaseWeapon>(Item->GetDefaultObject());
-		PC->Server_RequestWeaponLog(WeaponCDO->GetWeaponData());
+		Player->Server_RequestWeaponLog(WeaponCDO->GetWeaponData());
 	}
 }
 

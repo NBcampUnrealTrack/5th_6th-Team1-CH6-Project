@@ -5,6 +5,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "GameFrameWork/CharacterMovementComponent.h"
+#include "AIController.h"
 
 UFlyToLoc::UFlyToLoc(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer)
@@ -38,20 +39,30 @@ EStateTreeRunStatus UFlyToLoc::EnterState(FStateTreeExecutionContext& Context, c
 		ActiveGEHandle = ASC->ApplyGameplayEffectToSelf(ContextEnemy->BaseEnemyDataAsset->MoveEffect->GetDefaultObject<UGameplayEffect>(), 1.0f, EffectContext);
 	}
 
-	UFlyDataAsset* DAFly = Cast<UFlyDataAsset>(ContextEnemy->BaseEnemyDataAsset);
-	if (!ensureMsgf(IsValid(DAFly), TEXT("UFlyToLoc : DAFly Error")))
+	FlyDataAsset = Cast<UFlyDataAsset>(ContextEnemy->BaseEnemyDataAsset);
+	if (!ensureMsgf(IsValid(FlyDataAsset), TEXT("UFlyToLoc : DAFly Error")))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
-	TurnSpeed = DAFly->TurnSpeed;
-	AccelerationRate = DAFly->AccelerationRate;
+
+	if (!ensureMsgf(IsValid(TargetActor), TEXT("UFlyToLoc : TargetActor Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	FindDestLoc();
+
+	AAIController* AIController = ContextEnemy->GetController<AAIController>();
+	if (!ensureMsgf(IsValid(AIController), TEXT("UFlyToLoc : AIController Error")))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	AIController->SetFocus(TargetActor);
 
 	return res;
 }
 
 EStateTreeRunStatus UFlyToLoc::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
 {
-	// 1. 필요한 데이터 가져오기
 	if (!ensureMsgf(IsValid(ContextEnemy), TEXT("UFlyToLoc Tick : ContextEnemy Error")))
 	{
 		return EStateTreeRunStatus::Failed;
@@ -60,41 +71,31 @@ EStateTreeRunStatus UFlyToLoc::Tick(FStateTreeExecutionContext& Context, const f
 	{
 		return EStateTreeRunStatus::Failed;
 	}
-	FVector CurrentLocation = ContextEnemy->GetActorLocation();
-	FVector TargetLocation = TargetActor->GetActorLocation();
-	TargetLocation.Z = CurrentLocation.Z;
-
-	float Dist = FVector::DistSquared2D(CurrentLocation, TargetLocation);
-	if (AcceptanceRadius * AcceptanceRadius >= Dist)
+	if (!ensureMsgf(IsValid(FlyDataAsset), TEXT("UFlyToLoc Tick : FlyDataAsset Error")))
 	{
-		return EStateTreeRunStatus::Succeeded;
+		return EStateTreeRunStatus::Failed;
 	}
-
-	// 2. 방향 계산
 	if (!CMC.IsValid())
 	{
 		return EStateTreeRunStatus::Failed;
 	}
-	FVector CurrentVel = CMC->Velocity;
-	FVector DesiredDir = (TargetLocation - CurrentLocation).GetSafeNormal();
 
-	// 3. 속도 크기(Speed) 결정
-	// 현재 속도가 너무 느리면 최소 속도로 시작, 아니면 MaxFlySpeed까지 가속
-	float CurrentSpeed = CurrentVel.Size();
-	if (CurrentSpeed < 10.f) CurrentSpeed = 100.f;
-	float TargetSpeed = CMC->MaxFlySpeed;
-	float NewSpeed = FMath::FInterpTo(CurrentSpeed, TargetSpeed, DeltaTime, AccelerationRate);
+	FVector CurrentLocation = ContextEnemy->GetActorLocation();
 
-	// 4. 핵심: 방향 보간 (VInterpTo)
-	// 현재 속도의 '방향'을 타겟 방향으로 TurnSpeed만큼 서서히 꺾음
-	FVector CurrentDir = CurrentVel.GetSafeNormal();
-	if (CurrentDir.IsNearlyZero()) CurrentDir = ContextEnemy->GetActorForwardVector();
+	float Dist = FVector::DistSquared2D(CurrentLocation, DestLocation);
+	float HorizontalThreshold = FlyDataAsset->DestHorizontalThreshold;
+	if (FMath::Abs(Dist) <= HorizontalThreshold * HorizontalThreshold && FMath::Abs(CurrentLocation.Z - DestLocation.Z) <= FlyDataAsset->DestHeightThreshold)
+	{
+		return EStateTreeRunStatus::Succeeded;
+	}
 
-	FVector NewDir = FMath::VInterpTo(CurrentDir, DesiredDir, DeltaTime, TurnSpeed);
+	bool bCan = false;
+	FlyToProperLoc(CurrentLocation, DestLocation, DeltaTime, bCan);
 
-	// 5. 최종 Velocity 적용 및 동기화
-	// CMC의 Velocity를 직접 수정하면 CMC가 다음 프레임에 위치를 계산하고 복제(Replicate)함
-	CMC->Velocity = NewDir.GetSafeNormal() * NewSpeed;
+	if (!bCan)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 
 	return EStateTreeRunStatus::Running;
 }
@@ -113,4 +114,51 @@ void UFlyToLoc::ExitState(FStateTreeExecutionContext& Context, const FStateTreeT
 	}
 
 	Super::ExitState(Context, Transition);
+}
+
+void UFlyToLoc::FindDestLoc()
+{
+	FHitResult HitResult;
+
+	FVector Start = ContextEnemy->GetActorLocation();
+	FVector End = TargetActor->GetActorLocation();
+
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel1);
+	ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel3);
+	ObjectParams.AddObjectTypesToQuery(ECC_GameTraceChannel9);
+
+	bool bHit = GetWorld()->LineTraceSingleByObjectType(
+		HitResult,
+		Start,
+		End,
+		ObjectParams
+	);
+
+	if (bHit)
+	{
+		DestLocation = HitResult.ImpactPoint;
+	}
+	else
+	{
+		DestLocation = TargetActor->GetActorLocation();
+	}
+	DestLocation.Z += FlyDataAsset->FlyHeight;
+
+	Start.Z = DestLocation.Z;
+	FVector DirToStart = (Start - DestLocation).GetSafeNormal();
+	DestLocation = DestLocation + (DirToStart * AcceptanceRadius);
+}
+
+void UFlyToLoc::FlyToProperLoc(const FVector& Current, const FVector& Dest, const float DeltaTime, bool& bCan)
+{
+	bCan = false;
+	if (!CMC.IsValid())
+	{
+		return;
+	}
+
+	FVector DesiredDir = (Dest - Current).GetSafeNormal();
+	ContextEnemy->AddMovementInput(DesiredDir, 1.f);
+	bCan = true;
 }

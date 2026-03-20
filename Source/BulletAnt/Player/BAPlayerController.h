@@ -99,12 +99,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDeleteBox(ABAItemBox* InItemBox);
 
-	UFUNCTION(Server, Reliable)
-	void Server_RequestWeaponLog(UWeaponDataAsset* InData);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);
-
 	UFUNCTION()
 	void ShowShopUI();
 
