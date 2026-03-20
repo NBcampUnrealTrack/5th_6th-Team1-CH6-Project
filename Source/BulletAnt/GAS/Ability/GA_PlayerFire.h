@@ -11,9 +11,11 @@ class BULLETANT_API UGA_PlayerFire : public UGA_Fire
 {
 	GENERATED_BODY()
 
+public:
+
 	UGA_PlayerFire();
 
-	virtual void FireOnce(const FGameplayAbilityActorInfo* ActorInfo) override;
+	virtual void FireOnce() override;
 
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
@@ -29,8 +31,16 @@ class BULLETANT_API UGA_PlayerFire : public UGA_Fire
 		bool bReplicateEndAbility,
 		bool bWasCancelled) override;
 
+protected:
+
 	UPROPERTY()
 	TObjectPtr<ABACharacter> PlayerCharacter;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UGameplayEffect> CooldownEffect;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UGameplayEffect> CostEffect;
 
 	float RecoilPitch;
 	float RecoilYaw;

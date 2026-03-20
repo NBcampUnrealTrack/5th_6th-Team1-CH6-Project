@@ -3,12 +3,12 @@
 #include "Weapon/Data/MeleeWeaponDataAsset.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
 #include "GameFramework/Character.h"
 #include "Engine/OverlapResult.h"
-
 
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
@@ -45,14 +45,46 @@ void UGA_MeleeAttack::ActivateAbility(
 	}
 
 	Data = Cast<UMeleeWeaponDataAsset>(Interface->GetDataAsset());
+	if (!Data)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
-	UAbilityTask_WaitGameplayEvent* WaitStartTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_StartAttack);
-	WaitStartTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnStartEventReceived);
-	WaitStartTask->ReadyForActivation();
+	OwnerActor = Cast<ACharacter>(CurrentActorInfo->AvatarActor.Get());
+	if (!OwnerActor)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
-	UAbilityTask_WaitGameplayEvent* WaitEndTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_EndAttack);
-	WaitEndTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnEndEventReceived);
-	WaitEndTask->ReadyForActivation();
+	MeshComp = OwnerActor->GetMesh();
+	if (!MeshComp)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
+	if (IsLocallyControlled())
+	{
+		UAbilityTask_WaitGameplayEvent* WaitStartTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_StartAttack);
+		WaitStartTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnStartEventReceived);
+		WaitStartTask->ReadyForActivation();
+
+		UAbilityTask_WaitGameplayEvent* WaitEndTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_EndAttack);
+		WaitEndTask->EventReceived.AddDynamic(this, &UGA_MeleeAttack::OnEndEventReceived);
+		WaitEndTask->ReadyForActivation();	
+	}
+
+	if (ActorInfo->IsNetAuthority())
+	{
+		UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+		ASC->AbilityTargetDataSetDelegate(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey()
+		).AddUObject(this, &UGA_MeleeAttack::OnTargetDataReadyCallback);
+	}
 
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->AttackMontage);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MeleeAttack::OnMontageFinished);
@@ -68,6 +100,14 @@ void UGA_MeleeAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 void UGA_MeleeAttack::OnStartEventReceived(FGameplayEventData Payload)
 {
+	if (Data->SocketName.IsNone())
+	{
+		StartLocation = OwnerActor->GetActorLocation() + OwnerActor->GetActorForwardVector() * 50.f;
+	}
+	else
+	{
+		StartLocation = MeshComp->GetSocketLocation(Data->SocketName);
+	}
 	HitActors.Empty();
 	GetWorld()->GetTimerManager().SetTimer(
 		HitCheckTimer,
@@ -90,64 +130,89 @@ void UGA_MeleeAttack::OnMontageFinished()
 
 void UGA_MeleeAttack::PerformHitCheck()
 {
-	if (!CurrentActorInfo->IsNetAuthority()) return;
-	OwnerActor = Cast<ACharacter>(CurrentActorInfo->AvatarActor.Get());
-	USkeletalMeshComponent* MeshComp = OwnerActor->GetMesh();
-
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	if (!ASC) return;
 
-	FVector Origin;
-
 	if (Data->SocketName.IsNone())
 	{
-		Origin = OwnerActor->GetActorLocation() + OwnerActor->GetActorForwardVector() * 50.f;
+		EndLocation = OwnerActor->GetActorLocation() + OwnerActor->GetActorForwardVector() * 50.f;
 	}
 	else
 	{
-		Origin = MeshComp->GetSocketLocation(Data->SocketName);
+		EndLocation = MeshComp->GetSocketLocation(Data->SocketName);
 	}
 
-	TArray<FOverlapResult> Overlaps;
+	TArray<FHitResult> Hits;
 	FCollisionQueryParams Params(NAME_None, false, OwnerActor);
 	Params.AddIgnoredActors(HitActors);
 
-	bool bHit = OwnerActor->GetWorld()->OverlapMultiByChannel(
-		Overlaps,
-		Origin,
+	bool bHit = OwnerActor->GetWorld()->SweepMultiByChannel(
+		Hits,
+		StartLocation,
+		EndLocation,
 		FQuat::Identity,
 		ECC_GameTraceChannel2,
 		FCollisionShape::MakeSphere(Data->AttackRadius),
 		Params
 	);
 
-	DrawDebugSphere(
-		OwnerActor->GetWorld(),
-		Origin,
-		Data->AttackRadius,
-		12,
-		bHit ? FColor::Green : FColor::Red,
-		false,
-		-1.f                         // 1frame
-	);
-
 	if (bHit)
 	{
-		for (const FOverlapResult& Overlap : Overlaps)
+		for (const FHitResult& Hit : Hits)
 		{
-			if (AActor* OverlapActor = Overlap.GetActor())
+			if (AActor* HitActor = Hit.GetActor())
 			{
-				if (HitActors.Contains(OverlapActor)) continue;
-				if (OverlapActor == OwnerActor) continue;
+				if (HitActors.Contains(HitActor)) continue;
+				if (HitActor == OwnerActor) continue;
 
-				HitActors.Add(OverlapActor);
+				HitActors.Add(HitActor);
 
-				ApplyDamage(CurrentActorInfo, OverlapActor);
+				FGameplayAbilityTargetDataHandle TargetData;
+
+				FGameplayAbilityTargetData_ActorArray* DataHandle =
+					new FGameplayAbilityTargetData_ActorArray();
+
+				DataHandle->TargetActorArray.Add(HitActor);
+				TargetData.Add(DataHandle);
+
+				GetAbilitySystemComponentFromActorInfo()->ServerSetReplicatedTargetData(
+					GetCurrentAbilitySpecHandle(),
+					GetCurrentActivationInfo().GetActivationPredictionKey(),
+					TargetData,
+					FGameplayTag(),
+					GetAbilitySystemComponentFromActorInfo()->ScopedPredictionKey
+				);
+			}
+		}
+	}
+	StartLocation = EndLocation;
+}
+
+void UGA_MeleeAttack::OnTargetDataReadyCallback(
+	const FGameplayAbilityTargetDataHandle& InData,
+	FGameplayTag ActivationTag)
+{
+	if (!CurrentActorInfo->IsNetAuthority()) return;
+
+	for (int32 i = 0; i < InData.Num(); ++i)
+	{
+		FGameplayAbilityTargetData* TargetData = const_cast<FGameplayAbilityTargetData*>(InData.Get(i));
+
+		FGameplayAbilityTargetData_ActorArray* ActorArray =
+			static_cast<FGameplayAbilityTargetData_ActorArray*>(TargetData);
+
+		if (ActorArray)
+		{
+			for (TWeakObjectPtr<AActor> TargetPtr : ActorArray->TargetActorArray)
+			{
+				if (AActor* Target = TargetPtr.Get())
+				{
+					ApplyDamage(CurrentActorInfo, Target);
+				}
 			}
 		}
 	}
 }
-
 
 void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target)
 {

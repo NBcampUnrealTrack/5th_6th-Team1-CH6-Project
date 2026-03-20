@@ -30,6 +30,7 @@ ABATransportShip::ABATransportShip()
 	ProjectileMovement->bInterpMovement = true;
 	ProjectileMovement->bAutoActivate = false;
 	ProjectileMovement->ProjectileGravityScale = 0.f;
+	ProjectileMovement->SetInterpolatedComponent(Root);
 }
 
 void ABATransportShip::InitItemPlane(FVector& InDropLocation, TSubclassOf<ABaseWeapon> InItem)

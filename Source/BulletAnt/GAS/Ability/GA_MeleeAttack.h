@@ -39,6 +39,9 @@ protected:
 	UFUNCTION()
 	void OnEndEventReceived(FGameplayEventData Payload);
 
+	void OnTargetDataReadyCallback(
+		const FGameplayAbilityTargetDataHandle& InData, FGameplayTag ActivationTag);
+
 	UFUNCTION()
 	void OnMontageFinished();
 
@@ -49,6 +52,10 @@ protected:
 	UMeleeWeaponDataAsset* Data;
 
 	ACharacter* OwnerActor;
+	USkeletalMeshComponent* MeshComp;
 
 	FTimerHandle HitCheckTimer;
+
+	FVector StartLocation;
+	FVector EndLocation;
 };

@@ -15,6 +15,7 @@ class UAbilitySystemComponent;
 class UHealthAttributeSet;
 class UGeometryCollection;
 class UGeometryCollectionComponent;
+class UBuildManagerComponent;
 
 USTRUCT()
 struct FBuildingEdge
@@ -60,8 +61,8 @@ protected:
 public:
 	virtual void Use_Implementation(AActor* User) override;
 
-	UFUNCTION(Server, Reliable)
-	void Server_RequestDemolish();
+	UFUNCTION()
+	void RequestDemolish(AActor* User);
 
 	virtual void OnDeath();
 

@@ -24,6 +24,7 @@ class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
 class USceneCaptureComponent2D;
+class UUISubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
@@ -87,6 +88,7 @@ public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual void OnRep_Controller() override;
+    virtual void OnRep_PlayerState() override;
 
 
     //TEST
@@ -387,6 +389,9 @@ public:
     void StartAiming();
     void EndAiming();
 
+    UFUNCTION(Server,Reliable)
+    void Server_SetChangeWeapon(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex);
+
     UFUNCTION()
     void OnRep_bIsFiring();
 
@@ -394,6 +399,12 @@ public:
     void Server_EquipWeapon(TSubclassOf<ABaseWeapon> WeaponClass);
 
     void SetbIsFiring(bool InIsFiring);
+
+    UFUNCTION()
+    void RequestWeaponLog(UWeaponDataAsset* InData);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);
 
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
@@ -450,6 +461,11 @@ public:
     void RotateScannerParent(const FVector2D& Input);
     void ChangeScannerDistance(float Input);
     void SwitchGroundScanner();
+
+    void InitializeSceneCapture();
+    void UpdateShowComponents();
+    
+    void SetArrowPlayerColor();
         
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
@@ -476,6 +492,10 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
     TObjectPtr<UStaticMeshComponent> ArrowMesh;
+
+    FDelegateHandle ArrowColorChangeHandle;
+
+    static TWeakObjectPtr<USceneCaptureComponent2D> LocalSceneCapture;      // 해당 클라이언트에서 제어 중인 플레이어의 SceneCapture2D 
 
 #pragma endregion
 

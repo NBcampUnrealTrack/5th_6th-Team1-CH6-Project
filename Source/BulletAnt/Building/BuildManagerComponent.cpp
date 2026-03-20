@@ -7,11 +7,13 @@
 #include <InputActionValue.h>
 #include "Framework/BAGameMode.h" 
 #include "Components/PrimitiveComponent.h"
+#include "GameFramework/Pawn.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = true;
     SetComponentTickEnabled(false);
+    SetIsReplicatedByDefault(true);
 }
 
 void UBuildManagerComponent::BeginPlay()
@@ -193,6 +195,60 @@ void UBuildManagerComponent::ToggleBuildMenu()
 
     UIS->ApplyGameAndUIInputMode(BuildMenuWidget);
     bBuildMenuOpen = true;
+}
+
+void UBuildManagerComponent::RequestDemolish(ABaseBuilding* TargetBuilding)
+{
+    if (!IsValid(TargetBuilding))
+    {
+        return;
+    }
+
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
+    {
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[BuildManager] RequestDemolish OwnerAuthority=%d Target=%s"),
+        OwnerActor->HasAuthority() ? 1 : 0,
+        *TargetBuilding->GetName());
+
+    if (OwnerActor->HasAuthority())
+    {
+        TargetBuilding->RequestDemolish(OwnerActor);
+    }
+    else
+    {
+        Server_RequestDemolish(TargetBuilding);
+    }
+}
+
+void UBuildManagerComponent::Server_RequestDemolish_Implementation(ABaseBuilding* TargetBuilding)
+{
+    if (!IsValid(TargetBuilding))
+    {
+        return;
+    }
+
+    AActor* OwnerActor = GetOwner();
+    APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+    if (!OwnerPawn)
+    {
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[BuildManager] Server_RequestDemolish_Implementation Target=%s"),
+        *TargetBuilding->GetName());
+
+    const float MaxUseDist = 500.f;
+    if (FVector::DistSquared(OwnerPawn->GetActorLocation(), TargetBuilding->GetActorLocation()) > FMath::Square(MaxUseDist))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[BuildManager] Demolish rejected: too far"));
+        return;
+    }
+
+    TargetBuilding->RequestDemolish(OwnerActor);
 }
 
 void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass)

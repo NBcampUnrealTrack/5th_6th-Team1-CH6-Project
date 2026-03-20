@@ -18,6 +18,9 @@ ABaseWeapon::ABaseWeapon()
 	WeaponMesh->SetupAttachment(RootComp);
 
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	WeaponMesh->SetRenderCustomDepth(true);
+	WeaponMesh->CustomDepthStencilValue = 1;
 }
 
 void ABaseWeapon::EquipWeapon(UAbilitySystemComponent* ASC)
