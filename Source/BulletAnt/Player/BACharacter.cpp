@@ -108,7 +108,10 @@ ABACharacter::ABACharacter()
 	ArrowMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	ArrowMesh->SetGenerateOverlapEvents(false);
 	ArrowMesh->SetRenderCustomDepth(true);
-	ArrowMesh->CustomDepthStencilValue = 1;
+
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	CharacterMesh->SetRenderCustomDepth(true);
+	CharacterMesh->CustomDepthStencilValue = 1;
 }
 
 // Called when the game starts or when spawned
