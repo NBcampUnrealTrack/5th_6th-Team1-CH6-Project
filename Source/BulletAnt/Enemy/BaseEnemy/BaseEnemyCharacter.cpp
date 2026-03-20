@@ -381,7 +381,7 @@ void ABaseEnemyCharacter::Multicast_ApplyTribeMaterial_Implementation()
 		}
 
 		UMaterialInstanceDynamic* SharedMID = TribeMaterialManagerSubsystem->GetTribeMaterial(BaseMat, TribeType->TribeColor);
-		if (SharedMID)
+		if (IsValid(SharedMID))
 		{
 			GetMesh()->SetMaterial(0, SharedMID);
 		}
