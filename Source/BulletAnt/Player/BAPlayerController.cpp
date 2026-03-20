@@ -281,8 +281,11 @@ void ABAPlayerController::SetupForMain()
 		UISubsystem->InitRootHUD();
 
 		HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
-		HUD->OwnerCharacter = Cast<ABACharacter>(GetPawn());
-		HUD->InitPlayerHUD();
+		if (HUD)
+		{
+			HUD->OwnerCharacter = Cast<ABACharacter>(GetPawn());
+			HUD->InitPlayerHUD();
+		}
 
 		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 
