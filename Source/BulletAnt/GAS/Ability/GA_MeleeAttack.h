@@ -31,7 +31,7 @@ public:
 		bool bWasCancelled) override;
 
 protected:
-	void ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target);
+	void ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, FHitResult& InHit);
 
 	UFUNCTION()
 	void OnStartEventReceived(FGameplayEventData Payload);
@@ -49,13 +49,17 @@ protected:
 
 	TArray<AActor*> HitActors;
 
-	UMeleeWeaponDataAsset* Data;
+	const UMeleeWeaponDataAsset* Data;
 
 	ACharacter* OwnerActor;
-	USkeletalMeshComponent* MeshComp;
+	const USkeletalMeshComponent* MeshComp;
 
 	FTimerHandle HitCheckTimer;
 
 	FVector StartLocation;
 	FVector EndLocation;
+
+	FGameplayAbilitySpecHandle CachedHandle;
+	UAbilitySystemComponent* CachedASC;
+	FGameplayAbilityActivationInfo CachedActivationInfo;
 };

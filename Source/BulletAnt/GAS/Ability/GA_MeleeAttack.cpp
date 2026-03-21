@@ -65,6 +65,10 @@ void UGA_MeleeAttack::ActivateAbility(
 		return;
 	}
 
+	CachedASC = ActorInfo->AbilitySystemComponent.Get();
+	CachedActivationInfo = ActivationInfo;
+	CachedHandle = Handle;
+
 	if (IsLocallyControlled())
 	{
 		UAbilityTask_WaitGameplayEvent* WaitStartTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Combat_StartAttack);
@@ -108,6 +112,7 @@ void UGA_MeleeAttack::OnStartEventReceived(FGameplayEventData Payload)
 	{
 		StartLocation = MeshComp->GetSocketLocation(Data->SocketName);
 	}
+
 	HitActors.Empty();
 	GetWorld()->GetTimerManager().SetTimer(
 		HitCheckTimer,
@@ -130,9 +135,6 @@ void UGA_MeleeAttack::OnMontageFinished()
 
 void UGA_MeleeAttack::PerformHitCheck()
 {
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	if (!ASC) return;
-
 	if (Data->SocketName.IsNone())
 	{
 		EndLocation = OwnerActor->GetActorLocation() + OwnerActor->GetActorForwardVector() * 50.f;
@@ -155,7 +157,8 @@ void UGA_MeleeAttack::PerformHitCheck()
 		FCollisionShape::MakeSphere(Data->AttackRadius),
 		Params
 	);
-
+	FGameplayAbilityTargetDataHandle TargetData;
+	
 	if (bHit)
 	{
 		for (const FHitResult& Hit : Hits)
@@ -167,22 +170,22 @@ void UGA_MeleeAttack::PerformHitCheck()
 
 				HitActors.Add(HitActor);
 
-				FGameplayAbilityTargetDataHandle TargetData;
+				FGameplayAbilityTargetData_SingleTargetHit* HitData =
+					new FGameplayAbilityTargetData_SingleTargetHit(Hit);
 
-				FGameplayAbilityTargetData_ActorArray* DataHandle =
-					new FGameplayAbilityTargetData_ActorArray();
-
-				DataHandle->TargetActorArray.Add(HitActor);
-				TargetData.Add(DataHandle);
-
-				GetAbilitySystemComponentFromActorInfo()->ServerSetReplicatedTargetData(
-					GetCurrentAbilitySpecHandle(),
-					GetCurrentActivationInfo().GetActivationPredictionKey(),
-					TargetData,
-					FGameplayTag(),
-					GetAbilitySystemComponentFromActorInfo()->ScopedPredictionKey
-				);
+				TargetData.Add(HitData);
+				
 			}
+		}
+		if (TargetData.Num() > 0)
+		{
+			GetAbilitySystemComponentFromActorInfo()->ServerSetReplicatedTargetData(
+				CachedHandle,
+				CachedActivationInfo.GetActivationPredictionKey(),
+				TargetData,
+				FGameplayTag(),
+				CachedASC->ScopedPredictionKey
+			);
 		}
 	}
 	StartLocation = EndLocation;
@@ -196,27 +199,23 @@ void UGA_MeleeAttack::OnTargetDataReadyCallback(
 
 	for (int32 i = 0; i < InData.Num(); ++i)
 	{
-		FGameplayAbilityTargetData* TargetData = const_cast<FGameplayAbilityTargetData*>(InData.Get(i));
+		FGameplayAbilityTargetData* TargetData =
+			const_cast<FGameplayAbilityTargetData*>(InData.Get(i));
 
-		FGameplayAbilityTargetData_ActorArray* ActorArray =
-			static_cast<FGameplayAbilityTargetData_ActorArray*>(TargetData);
-
-		if (ActorArray)
+		if (TargetData->GetScriptStruct() == FGameplayAbilityTargetData_SingleTargetHit::StaticStruct())
 		{
-			for (TWeakObjectPtr<AActor> TargetPtr : ActorArray->TargetActorArray)
-			{
-				if (AActor* Target = TargetPtr.Get())
-				{
-					ApplyDamage(CurrentActorInfo, Target);
-				}
-			}
+			auto* HitData = (FGameplayAbilityTargetData_SingleTargetHit*)TargetData;
+
+			ApplyDamage(CurrentActorInfo, HitData->HitResult);
 		}
 	}
 }
 
-void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AActor* Target)
+void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, FHitResult& InHit)
 {
-	if (!ActorInfo || !Target) return;
+	if (!ActorInfo) return;
+
+	AActor* Target = InHit.GetActor();
 
 	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
@@ -227,12 +226,9 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, AA
 
 		if (Data->OnUseStateHitEffect)
 		{
-			FHitResult Hit;
-			Hit.ImpactPoint = Target->GetActorLocation();
-
 			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 			Context.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
-			Context.AddHitResult(Hit);
+			Context.AddHitResult(InHit);
 
 			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(Data->OnUseStateHitEffect, GetAbilityLevel(), Context);
 

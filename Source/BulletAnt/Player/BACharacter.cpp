@@ -849,15 +849,6 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 		Params
 	);
 
-	DrawDebugLine(
-		GetWorld(),
-		Start,
-		End,
-		FColor::Red,
-		false,
-		10.f
-	);
-
 	if (bHit)
 	{
 		AActor* HitActor = HitResult.GetActor();
