@@ -5,7 +5,7 @@
 #include "UW_OreCount.generated.h"
 
 class UTextBlock;
-enum class EOreType;
+enum class EOreType : uint8;
 
 UCLASS()
 class BULLETANT_API UUW_OreCount : public UUserWidget

@@ -8,7 +8,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOkayButtonClicked, int32, GachaCo
 
 class UButton;
 class UTextBlock;
-enum class EOreType;
+enum class EOreType : uint8;
 
 UCLASS()
 class BULLETANT_API UUW_GachaUI : public UUserWidget
