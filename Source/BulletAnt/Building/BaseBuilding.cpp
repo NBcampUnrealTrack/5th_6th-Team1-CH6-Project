@@ -549,12 +549,6 @@ void ABaseBuilding::ApplyBuildingRow(const FBuildingRow& Row)
 	MinSupportCoverage = Row.MinSupportCoverage;
 	SupportSampleSpacing = Row.SupportSampleSpacing;
 	DefaultHealth = Row.Health;
-
-	if (HasAuthority() && HealthSet)
-	{
-		HealthSet->SetMaxHealth(DefaultHealth);
-		HealthSet->SetHealth(DefaultHealth);
-	}
 }
 
 void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const
