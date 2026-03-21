@@ -610,6 +610,48 @@ UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
 
 }
 
+void ABACharacter::ShowAmmo()
+{
+	if (IsLocallyControlled())
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (!GetWorld()) return;
+		ULocalPlayer* LP = PC->GetLocalPlayer();
+		if (!LP) return;
+
+		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+		if (IsValid(UISubsystem))
+		{
+			UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+			if (HUD)
+			{
+				HUD->ShowAmmoText();
+			}
+		}
+	}
+}
+
+void ABACharacter::HideAmmo()
+{
+	if (IsLocallyControlled())
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (!GetWorld()) return;
+		ULocalPlayer* LP = PC->GetLocalPlayer();
+		if (!LP) return;
+
+		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+		if (IsValid(UISubsystem))
+		{
+			UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+			if (HUD)
+			{
+				HUD->HideAmmoText();
+			}
+		}
+	}
+}
+
 void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
@@ -622,7 +664,6 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 
 	if (EquippedWeapon)
 	{
-		/*EquippedWeapon->UnequipWeapon(AbilitySystemComponent);*/
 		EquippedWeapon->Destroy();
 		EquippedWeapon = nullptr;
 	}
@@ -781,8 +822,6 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
-	
-
 	StartAiming();
 }
 
@@ -807,8 +846,6 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 	{
 		ASC->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
 	}
-
-	
 }
 
 
@@ -937,6 +974,15 @@ void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
 	int32 Index = (int32)Value.Get<float>() - 1;
 	if (!OwnedEquipment.IsValidIndex(Index)) return;
+
+	if (Index == 0)
+	{
+		ShowAmmo();
+	}
+	else
+	{
+		HideAmmo();
+	}
 
 	Server_EquipWeapon(OwnedEquipment[Index]);
 }

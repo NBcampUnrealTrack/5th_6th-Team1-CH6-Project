@@ -27,6 +27,9 @@ public:
 	UPROPERTY()
 	TWeakObjectPtr<ABACharacter> OwnerCharacter;
 
+	void ShowAmmoText();
+	void HideAmmoText();
+
 protected:
 	UFUNCTION()
 	void UpdateHealth(float Current, float Max);

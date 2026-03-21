@@ -61,6 +61,22 @@ void UUW_PlayerHUDWidget::AddWeaponLog(UWeaponDataAsset* InData)
 	}
 }
 
+void UUW_PlayerHUDWidget::ShowAmmoText()
+{
+	if (AmmoText)
+	{
+		AmmoText->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UUW_PlayerHUDWidget::HideAmmoText()
+{
+	if (AmmoText)
+	{
+		AmmoText->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
 void UUW_PlayerHUDWidget::UpdateHealth(float Current, float Max)
 {
 	if (!HealthBar || Max <= 0.f)

@@ -361,6 +361,9 @@ public:
 
     virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+    void ShowAmmo();
+    void HideAmmo();
+
 protected:
     UAbilitySystemComponent* ASC;
 

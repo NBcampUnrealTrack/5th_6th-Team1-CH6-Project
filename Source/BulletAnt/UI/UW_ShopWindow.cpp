@@ -124,6 +124,7 @@ void UUW_ShopWindow::RequestEquipWeapon()
 	ABACharacter* Player = Cast<ABACharacter>(GetOwningPlayerPawn());
 	if (!Player) return;
 
+	Player->ShowAmmo();
 	Player->Server_SetChangeWeapon(WeaponClass, 0);
 }
 
