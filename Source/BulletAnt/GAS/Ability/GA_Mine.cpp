@@ -111,11 +111,38 @@ void UGA_Mine::OnMontageFinished()
 
 				if (IsValid(Ground) == true)
 				{
-					Ground->DigGround(HitResult.Location, MiningData->DigRadius);
+					TMap<EOreType, int32> MinedOreMap;
+					Ground->DigGround(MinedOreMap, HitResult.Location, MiningData->DigRadius);
+					int32 MostMinedOre = static_cast<int32>(EOreType::None);
+					int32 MostCount = 0;
+					if (MinedOreMap.IsEmpty() == true)
+					{
+						MostMinedOre = -1;
+					}
+					else
+					{
+						for (const auto& Pair : MinedOreMap)
+						{
+							if (Pair.Key == EOreType::None)
+								continue;
+
+							if (Pair.Value > MostCount)
+							{
+								MostMinedOre = static_cast<int32>(Pair.Key);
+								MostCount = Pair.Value;
+							}
+						}
+					}
+
 					UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 					FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 					Context.AddHitResult(HitResult);
-					ASC->ExecuteGameplayCue(TAG_GameplayCue_Mining_Hit, Context);
+
+					FGameplayCueParameters Parameters;
+					Parameters.EffectContext = Context;
+					Parameters.GameplayEffectLevel = MostMinedOre;
+					Parameters.Location = HitResult.ImpactPoint;
+					ASC->ExecuteGameplayCue(TAG_GameplayCue_Mining_Hit, Parameters);
 				}
 			}		
 		}
