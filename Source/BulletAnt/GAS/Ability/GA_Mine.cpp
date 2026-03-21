@@ -8,6 +8,8 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "GAS/BAGameplayTags.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Character.h"
 
 UGA_Mine::UGA_Mine()
 {
@@ -22,16 +24,6 @@ UGA_Mine::UGA_Mine()
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Attacking);
 }
 
-void UGA_Mine::StartAutoDigLoop()
-{
-	if (bEndInput)
-	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
-		return;
-	}
-	MiningOnce();
-}
-
 void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
@@ -40,7 +32,7 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 		return;
 	}
 
-	SourceActor = Cast<AActor>(ActorInfo->AvatarActor);
+	SourceActor = Cast<ACharacter>(ActorInfo->AvatarActor);
 	if (!SourceActor)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -69,10 +61,10 @@ void UGA_Mine::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	float BaseMontageLength = CachedMiningAM->GetPlayLength();
 	Playrate = FMath::Clamp(BaseMontageLength / TargetDuration,0.8f,1.8f);
 
-	StartAutoDigLoop();
+	MiningOnce();
 }
 
-void UGA_Mine::OnMontageFinished()
+void UGA_Mine::DigGround(FGameplayEventData Payload)
 {
 	if (CurrentActorInfo->IsNetAuthority()) 
 	{
@@ -120,11 +112,11 @@ void UGA_Mine::OnMontageFinished()
 			}		
 		}
 	}
-	StartAutoDigLoop();
 }
 
 void UGA_Mine::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
+	SourceActor->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -135,10 +127,23 @@ void UGA_Mine::CancelAbility(const FGameplayAbilitySpecHandle Handle, const FGam
 
 void UGA_Mine::MiningOnce()
 {
+	if (bEndInput)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}
+
 	if (MiningData && CachedMiningAM)
 	{
+		SourceActor->GetCharacterMovement()->DisableMovement();
+
+		UAbilityTask_WaitGameplayEvent* Task = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, TAG_Event_Mining_Hit);
+		Task->EventReceived.AddDynamic(this, &UGA_Mine::DigGround);
+		Task->ReadyForActivation();
+
 		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, CachedMiningAM, Playrate);
-		MontageTask->OnCompleted.AddDynamic(this, &UGA_Mine::OnMontageFinished);
+		MontageTask->OnCompleted.AddDynamic(this, &UGA_Mine::MiningOnce);
+		MontageTask->OnBlendOut.AddDynamic(this, &UGA_Mine::EndMining);
 		MontageTask->OnInterrupted.AddDynamic(this, &UGA_Mine::EndMining);
 		MontageTask->OnCancelled.AddDynamic(this, &UGA_Mine::EndMining);
 		MontageTask->ReadyForActivation();
@@ -147,6 +152,7 @@ void UGA_Mine::MiningOnce()
 
 void UGA_Mine::EndMining()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Montage Cancelled"));
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
