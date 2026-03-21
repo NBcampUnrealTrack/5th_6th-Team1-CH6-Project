@@ -1,6 +1,52 @@
 ﻿#include "Player/BAPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GAS/BAGameplayTags.h"
+#include "AbilitySystemComponent.h"
+
+ABAPlayerState::ABAPlayerState()
+{
+	//GAS
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
+	AmmoAttributeSet = CreateDefaultSubobject<UAmmoAttributeSet>(TEXT("AmmoSet"));
+
+}
+
+void ABAPlayerState::InitAbility()
+{
+	if (HasAuthority())
+	{
+		for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
+		{
+			if (AbilityClass)
+			{
+				FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
+				AbilitySystemComponent->GiveAbility(Spec);
+			}
+		}
+	}
+}
+
+UAbilitySystemComponent* ABAPlayerState::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+const UHealthAttributeSet* ABAPlayerState::GetHealthAttributeSet() const
+{
+	return AbilitySystemComponent ? AbilitySystemComponent->GetSet<UHealthAttributeSet>() : nullptr;
+}
+
+const UAmmoAttributeSet* ABAPlayerState::GetAmmoAttributeSet() const
+{
+	return AbilitySystemComponent ? AbilitySystemComponent->GetSet<UAmmoAttributeSet>() : nullptr;
+}
 
 void ABAPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -50,3 +96,4 @@ void ABAPlayerState::OnRep_PlayerColorIdx()
 {
 	OnChangedPlayerColor.Broadcast(GetPlayerColor());
 }
+

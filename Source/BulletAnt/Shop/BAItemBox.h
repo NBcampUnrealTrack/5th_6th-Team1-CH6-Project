@@ -10,6 +10,7 @@
 class UProjectileMovementComponent;
 class ABaseWeapon;
 class USoundBase;
+class UNiagaraSystem;
 
 UCLASS()
 class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
@@ -21,6 +22,9 @@ class BULLETANT_API ABAItemBox : public AActor, public IBAItemInterface
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UProjectileMovementComponent* ProjectileMovement;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UNiagaraSystem* DropEffect;
 
 public:	
 	ABAItemBox();
@@ -44,8 +48,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UFUNCTION()
-	void PlayDropSound(const FHitResult& ImpactPoint);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multi_PlayDropSound(const FHitResult& ImpactPoint);
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	TSubclassOf<ABaseWeapon> Item;

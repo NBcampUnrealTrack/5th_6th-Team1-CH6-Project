@@ -14,14 +14,13 @@
 #include "BAParkourComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/UW_PlayerHUDWidget.h"
-#include "GAS/AttributeSet/AmmoAttributeSet.h"
-#include "GAS/BAGameplayTags.h"
-#include "AbilitySystemComponent.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "UI/UISubsystem.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
+#include "GAS/BAGameplayTags.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
-#include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Weapon/BaseRangedWeapon.h"
 #include "Weapon/Data/WeaponDataAsset.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -77,14 +76,6 @@ ABACharacter::ABACharacter()
 
 	//파쿠르
 	ParkourComponent = CreateDefaultSubobject<UBAParkourComponent>(TEXT("ParkourComponent"));
-
-	//GAS
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
-
-	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
-	AmmoAttributeSet = CreateDefaultSubobject<UAmmoAttributeSet>(TEXT("AmmoSet"));
 
 	//Test
 	//앉기 기능 활성화
@@ -402,38 +393,38 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
-	if (IsLocallyControlled())
-	{
-		if (AbilitySystemComponent)
-		{
-			AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
-			{
-				if (AbilityClass)
-				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
-					AbilitySystemComponent->GiveAbility(Spec);
-				}
-			}
-
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-
-			AbilitySystemComponent->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
-		}
-	}
 }
 
 void ABACharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
+
+	if (IsLocallyControlled())
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (PS)
+		{
+			ASC = PS->GetAbilitySystemComponent();
+			ASC->InitAbilityActorInfo(PS, this);
+
+			HealthAttributeSet = PS->GetHealthAttributeSet();
+			AmmoAttributeSet = PS->GetAmmoAttributeSet();
+
+			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+
+			if (IsLocallyControlled())
+			{
+				ASC->RegisterGameplayTagEvent(
+					TAG_State_Combat_Dead,
+					EGameplayTagEventType::NewOrRemoved
+				).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			}
+		}
+	}
 
 	SetArrowPlayerColor();
 }
@@ -537,7 +528,7 @@ void ABACharacter::Look(const FInputActionValue& Value)
 
 void ABACharacter::StartAttack(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 	if (!EquippedWeapon) return;
 
 	FGameplayTagContainer Tag;
@@ -546,22 +537,22 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!WeaponData) return;
 	Tag.AddTag(WeaponData->WeaponTag);
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
 void ABACharacter::Reload(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Ability_Active_Reload);
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
 void ABACharacter::StopAttack(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
@@ -570,13 +561,10 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	IgnoreTags.AddTag(TAG_Ability_Active_Reload);
 	IgnoreTags.AddTag(TAG_Ability_Active_ADS);
 
-	AbilitySystemComponent->CancelAbilities(&CancelTags,&IgnoreTags);
+	ASC->CancelAbilities(&CancelTags,&IgnoreTags);
 }
 
-UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
-}
+
 
 void ABACharacter::PossessedBy(AController* NewController)
 {
@@ -584,30 +572,24 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 	SetArrowPlayerColor();
 
-	if (AbilitySystemComponent)
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (PS)
 	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		ASC = PS->GetAbilitySystemComponent();		
+		ASC->InitAbilityActorInfo(PS, this);
+		PS->InitAbility();
 
-		if (HasAuthority())
-		{
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
-			{
-				if (AbilityClass)
-				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
-					AbilitySystemComponent->GiveAbility(Spec);
-				}
-			}
-		}
+		HealthAttributeSet = PS->GetHealthAttributeSet();
+		AmmoAttributeSet = PS->GetAmmoAttributeSet();
 
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+		ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 
 		if (IsLocallyControlled())
 		{
-			AbilitySystemComponent->RegisterGameplayTagEvent(
+			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,
 				EGameplayTagEventType::NewOrRemoved
 			).AddUObject(this, &ABACharacter::HandleRespawnUI);
@@ -618,6 +600,14 @@ void ABACharacter::PossessedBy(AController* NewController)
 	{
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
+}
+
+
+UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
+{
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	return PS ? PS->GetAbilitySystemComponent() : nullptr;
+
 }
 
 void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
@@ -654,7 +644,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 		TEXT("WeaponSocket")
 	);
 	NewWeapon->SetActorRelativeTransform(NewWeapon->GripOffset);
-	NewWeapon->EquipWeapon(AbilitySystemComponent);
+	NewWeapon->EquipWeapon(ASC);
 
 	EquippedWeapon = NewWeapon;
 }
@@ -680,7 +670,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+			if (ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 			{
 				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
@@ -701,7 +691,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 
 void ABACharacter::StartAiming()
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
+	if (!ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
@@ -723,9 +713,9 @@ void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon
 	OwnedEquipment[WeaponIndex] = InWeapon;
 	Server_EquipWeapon(InWeapon);
 
-	if (AbilitySystemComponent)
+	if (ASC)
 	{
-		const UAmmoAttributeSet* AmmoSet = AbilitySystemComponent->GetSet<UAmmoAttributeSet>();
+		const UAmmoAttributeSet* AmmoSet = ASC->GetSet<UAmmoAttributeSet>();
 		if (!AmmoSet) return;
 
 		ABaseRangedWeapon* CDOWeapon = Cast<ABaseRangedWeapon>(InWeapon->GetDefaultObject());
@@ -736,12 +726,12 @@ void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon
 
 		int32 NewMaxAmmo = Data->MaxAmmo;
 
-		AbilitySystemComponent->SetNumericAttributeBase(
+		ASC->SetNumericAttributeBase(
 			UAmmoAttributeSet::GetMaxAmmoAttribute(),
 			NewMaxAmmo
 		);
 
-		AbilitySystemComponent->SetNumericAttributeBase(
+		ASC->SetNumericAttributeBase(
 			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
 			NewMaxAmmo
 		);
@@ -804,18 +794,18 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 
 void ABACharacter::ADSStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 	if (!EquippedWeapon) return;
 
 	FGameplayEventData Payload;
 	Payload.OptionalObject = EquippedWeapon;
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
-		AbilitySystemComponent->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
+		ASC->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
 	}
 	else
 	{
-		AbilitySystemComponent->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
+		ASC->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
 	}
 
 	
@@ -967,13 +957,13 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 }
 void ABACharacter::ExecutePing(const FInputActionValue& Value)
 {
-	if (IsValid(AbilitySystemComponent) == false)
+	if (IsValid(ASC) == false)
 		return;
 
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Event_Communicate_Ping);
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

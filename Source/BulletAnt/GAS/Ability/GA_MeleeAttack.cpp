@@ -227,7 +227,7 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, FH
 		if (Data->OnUseStateHitEffect)
 		{
 			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-			Context.AddInstigator(ActorInfo->OwnerActor.Get(), ActorInfo->AvatarActor.Get());
+			Context.AddInstigator(ActorInfo->AvatarActor.Get(), ActorInfo->AvatarActor.Get());
 			Context.AddHitResult(InHit);
 
 			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(Data->OnUseStateHitEffect, GetAbilityLevel(), Context);

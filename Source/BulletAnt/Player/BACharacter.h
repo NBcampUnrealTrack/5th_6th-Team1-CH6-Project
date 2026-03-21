@@ -3,14 +3,17 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
-#include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h"
 #include "Common/OnDeathInterface.h"
+#include "AbilitySystemInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/DataTable.h"
 #include "BACharacter.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 
 class UCapsuleComponent;
 class USpringArmComponent;
@@ -25,9 +28,6 @@ class UBAParkourComponent;
 class UAmmoAttributeSet;
 class USceneCaptureComponent2D;
 class UUISubsystem;
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -69,7 +69,7 @@ struct FAnimChoice : public FTableRowBase
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IDataAssetInterface, public IFireStartInterface, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -276,9 +276,6 @@ public:
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
 
-    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
-    bool bIsADS;
-
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsRunning;
@@ -354,28 +351,25 @@ public:
     ETurnType TurnType;
 #pragma endregion
 
-#pragma region GAS 
-
+#pragma region GAS
 public:
-    virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnHealthAttributeChangedDelegate OnHealthChanged;
 
     UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
-    FOnAttributeChangedDelegate OnHealthChanged;
+    FOnAmmoChangedDelegate OnAmmoChanged;
+
+    virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UAbilitySystemComponent* AbilitySystemComponent;
+    UAbilitySystemComponent* ASC;
 
-    UPROPERTY()
-    UHealthAttributeSet* HealthAttributeSet;
-
-    UPROPERTY(EditAnywhere, Category = "GAS")
-    TArray<TSubclassOf<UGameplayAbility>> DefaultAbility;
-
-    UPROPERTY()
-    FGameplayTag CurrentWeaponAbilityTag;
+    const UHealthAttributeSet* HealthAttributeSet;
+    const UAmmoAttributeSet* AmmoAttributeSet;
 
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
+
+    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
 
 #pragma endregion
 
@@ -411,14 +405,6 @@ public:
 
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
-
-    UPROPERTY()
-    UAmmoAttributeSet* AmmoAttributeSet;
-
-    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
-    FOnAmmoChangedDelegate OnAmmoChanged;
-
-    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;

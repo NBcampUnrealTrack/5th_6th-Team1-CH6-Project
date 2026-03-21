@@ -5,6 +5,7 @@
 #include "Player/BAParkourComponent.h"
 #include "GAS/BAGameplayTags.h"
 #include "Weapon/BaseRangedWeapon.h"
+#include "Player/BAPlayerState.h"
 
 void UBAAnimInstance::NativeInitializeAnimation()
 {
@@ -22,7 +23,7 @@ void UBAAnimInstance::NativeInitializeAnimation()
 			ParkourComp = Character->FindComponentByClass<UBAParkourComponent>();
 			GrabLeftHand = 1.f;
 			OwningActor = GetOwningActor();
-			ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor);
+			
 		}
 	}
 
@@ -33,6 +34,14 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Super::NativeUpdateAnimation(DeltaSeconds);
 	//캐릭터 없으면 nullptr 반환
 	if (Character == nullptr || Movement == nullptr) return;
+	if (!ASC)
+	{
+		ABAPlayerState* PS = Cast<ABAPlayerState>(Character->GetPlayerState());
+		if (PS)
+		{
+			ASC = PS->GetAbilitySystemComponent();
+		}
+	}
 
 	CurrentEquipmentType = Character->CurrentEquipmentType;
 
@@ -62,14 +71,14 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
 	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
-	if (bIsAiming && !Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		DeltaRot = CameraTargetOffset();
 	}
 	TargetPitch = (FMath::Abs(DeltaRot.Pitch) > 90.0f) ? 0.0f : DeltaRot.Pitch;
 	TargetYaw = (FMath::Abs(DeltaRot.Yaw) > 90.0f) ? 0.0f : DeltaRot.Yaw;
 
-	if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 0.f);
 		AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 0.f);
@@ -151,6 +160,7 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 
 void UBAAnimInstance::IsGrabLeftHand(float DeltaSeconds)
 {
+	if (!ASC) return;
 	float TargetAlpha = (bIsParkour|| ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) ? 0.f : 1.f;
 
 	GrabLeftHand = FMath::FInterpTo(GrabLeftHand, TargetAlpha, DeltaSeconds, 15.f);

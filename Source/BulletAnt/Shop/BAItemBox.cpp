@@ -5,6 +5,8 @@
 #include "Player/BAPlayerController.h"
 #include "Weapon/BaseWeapon.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 ABAItemBox::ABAItemBox()
 {
@@ -73,10 +75,10 @@ void ABAItemBox::BeginPlay()
 
 		ProjectileMovement->Activate();
 	}
-	ProjectileMovement->OnProjectileStop.AddDynamic(this, &ABAItemBox::PlayDropSound);
+	ProjectileMovement->OnProjectileStop.AddDynamic(this, &ABAItemBox::Multi_PlayDropSound);
 }
 
-void ABAItemBox::PlayDropSound(const FHitResult& ImpactPoint)
+void ABAItemBox::Multi_PlayDropSound_Implementation(const FHitResult& ImpactPoint)
 {
 	if (DropSound)
 	{
@@ -84,6 +86,16 @@ void ABAItemBox::PlayDropSound(const FHitResult& ImpactPoint)
 			GetWorld(),
 			DropSound,
 			GetActorLocation()
+		);
+	}
+
+	if (DropEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			DropEffect,
+			ImpactPoint.ImpactPoint,
+			ImpactPoint.ImpactNormal.Rotation()
 		);
 	}
 }
