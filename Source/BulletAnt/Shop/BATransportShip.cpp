@@ -8,6 +8,8 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "NiagaraComponent.h"
+#include "Components/AudioComponent.h"
 
 ABATransportShip::ABATransportShip()
 {
@@ -31,6 +33,14 @@ ABATransportShip::ABATransportShip()
 	ProjectileMovement->bAutoActivate = false;
 	ProjectileMovement->ProjectileGravityScale = 0.f;
 	ProjectileMovement->SetInterpolatedComponent(Root);
+
+	TrailEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("TrailEffect"));
+	TrailEffect->SetupAttachment(PlaneMesh);
+	TrailEffect->bAutoActivate = true;
+
+	EngineSound = CreateDefaultSubobject<UAudioComponent>(TEXT("EngineSound"));
+	EngineSound->SetupAttachment(PlaneMesh);
+	EngineSound->bAutoActivate = true;
 }
 
 void ABATransportShip::InitItemPlane(FVector& InDropLocation, TSubclassOf<ABaseWeapon> InItem)
