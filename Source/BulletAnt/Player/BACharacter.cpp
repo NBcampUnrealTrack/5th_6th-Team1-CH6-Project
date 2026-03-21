@@ -61,7 +61,7 @@ ABACharacter::ABACharacter()
 	DetectedCapsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->SetupAttachment(GetMesh(), FName("spine_03"));
 	SpringArm->bUsePawnControlRotation = true;
 	// 카메라 생성 및 설정
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -145,7 +145,7 @@ void ABACharacter::BeginPlay()
 
 #pragma endregion
 
-	LastBodyYaw = GetMesh()->GetComponentRotation().Yaw;
+	LastBodyYaw = GetActorRotation().Yaw;
 
 	if (IsLocallyControlled() == true)
 	{
@@ -179,6 +179,7 @@ void ABACharacter::BeginPlay()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
+	PC = Cast<ABAPlayerController>(GetController());
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -215,7 +216,7 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming))
+	if (Speed > 1.f||GetCharacterMovement()->IsFalling())
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
 		GetCharacterMovement()->bUseControllerDesiredRotation = false;
@@ -230,11 +231,6 @@ void ABACharacter::Tick(float DeltaTime)
 		}
 	}
 
-	IdleTurning(DeltaTime);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
-	}
 	if (IsLocallyControlled())
 	{
 		if (!FMath::IsNearlyZero(CurrentRecoilPitch))
@@ -259,6 +255,17 @@ void ABACharacter::Tick(float DeltaTime)
 			}
 		}
 	}
+	if(ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	{
+		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, AimingTALength, DeltaTime, TALengthChangeSpeed);
+		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
+	}
+	else if(!bIsAiming)
+	{
+		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, 233.f, DeltaTime, TALengthChangeSpeed);
+		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+	}
+	IdleTurning(DeltaTime);
 }
 
 // 입력 바인딩
@@ -670,7 +677,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			if (ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+			if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 			{
 				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
@@ -771,7 +778,6 @@ void ABACharacter::SetRecoil(float InPitch, float InYaw)
 
 void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 {
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (NewCount >= 1)
 	{
 		PC->StartRespawnBar(RespawnTime);
@@ -781,8 +787,6 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
-	
-
 	StartAiming();
 }
 
@@ -807,8 +811,6 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 	{
 		ASC->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
 	}
-
-	
 }
 
 
@@ -855,6 +857,7 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 	}
 }
 
+
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 {
 	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
@@ -866,7 +869,6 @@ void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 	{
 		BuildManager->ExitBuildMode();
 	}
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
 		PC->SwitchingMode();
@@ -881,7 +883,6 @@ void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
 	}
 
 	BuildManager->ExitBuildMode();
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
 		PC->SwitchingMode();
@@ -945,6 +946,7 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 {
 	bool bParkourStarted = false;
 
+	StopMontage();
 	if (ParkourComponent)
 	{
 		bParkourStarted = ParkourComponent->AttemptParkour();
@@ -972,6 +974,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 
 	DOREPLIFETIME(ABACharacter, bIsAiming);
 	DOREPLIFETIME(ABACharacter, bIsRunning);
+	DOREPLIFETIME(ABACharacter, bIsTurning);
 	DOREPLIFETIME(ABACharacter, SyncAimYaw);
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
 	DOREPLIFETIME(ABACharacter, EquippedWeapon);
@@ -1028,63 +1031,18 @@ void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 }
 void ABACharacter::IdleTurning(float DeltaTime)
 {
-	if (!HasAuthority()) return;
+	if (!HasAuthority()&&!IsLocallyControlled()) return;
 
-	if (!bIsTurning)
+	if (GEngine)
 	{
-		RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
-		if (GEngine) GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도 차이: %f"), FMath::Abs(RootYawOffset)));
+		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
 	}
-	else
+	if (ParkourComponent->bIsParkour || GetVelocity().Size2D() > 1.f || GetCharacterMovement()->IsFalling())
 	{
-		float TotalFlickYaw = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - TurnStartYaw);
-
-		if (FMath::Abs(TotalFlickYaw) > 135.f && (TurnType == ETurnType::Right90 || TurnType == ETurnType::Left90))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("180도 감지. 90도 취소하고 180도로 덮어씌움."));
-
-			bool bRight = (TotalFlickYaw < 0); // 방향 다시 계산
-			LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
-			TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
-			if (bIsCrouched)
-			{
-				switch (TurnType)
-				{
-				case ETurnType::Left180:
-					LastBodyYaw -= 90;
-					CurrentTurnMontage = CrouchTurnLeft180Montage;
-					break;
-				case ETurnType::Right180:
-					LastBodyYaw += 90;
-					CurrentTurnMontage = CrouchTurnRight180Montage;
-					break;
-				}
-			}
-			else
-			{
-				switch (TurnType)
-				{
-				case ETurnType::Left180:
-					LastBodyYaw -= 90;
-					CurrentTurnMontage = TurnLeft180Montage;
-					break;
-				case ETurnType::Right180:
-					LastBodyYaw += 90;
-					CurrentTurnMontage = TurnRight180Montage;
-					break;
-				}
-			}
-			CurrentTurnSpeed = 15.f;
-
-			if (CurrentTurnMontage && MotionWarpingComp)
-			{
-				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
-				FTransform TargetTransform(GoalRot, GetActorLocation());
-				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
-			}
-		}
+		LastBodyYaw = GetActorRotation().Yaw;
+		return;
 	}
-
+	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
 	if (!bIsTurning)
 	{
 		if (FMath::Abs(RootYawOffset) > 90.f)
@@ -1093,8 +1051,8 @@ void ABACharacter::IdleTurning(float DeltaTime)
 			if (TurnDelayTimer > 0.1f)
 			{
 				bIsTurning = true;
-
 				TurnStartYaw = LastBodyYaw;
+
 				bool bRight = RootYawOffset > 0;
 				LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
 				TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
@@ -1106,11 +1064,11 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				{
 					switch (TurnType)
 					{
-					case ETurnType::Left90:  
-						CurrentTurnMontage = CrouchTurnLeft90Montage; 
+					case ETurnType::Left90:
+						CurrentTurnMontage = CrouchTurnLeft90Montage;
 						break;
 					case ETurnType::Right90:
-						CurrentTurnMontage = CrouchTurnRight90Montage; 
+						CurrentTurnMontage = CrouchTurnRight90Montage;
 						break;
 					}
 				}
@@ -1118,7 +1076,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				{
 					switch (TurnType)
 					{
-					case ETurnType::Left90: 
+					case ETurnType::Left90:
 						CurrentTurnMontage = TurnLeft90Montage;
 						break;
 					case ETurnType::Right90:
@@ -1139,6 +1097,50 @@ void ABACharacter::IdleTurning(float DeltaTime)
 			TurnDelayTimer = 0.f;
 		}
 	}
+	else
+	{
+		float TotalFlickYaw = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - TurnStartYaw);
+
+		if (FMath::Abs(TotalFlickYaw) > 160.f && (TurnType == ETurnType::Right90 || TurnType == ETurnType::Left90))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("180도 감지. 90도 취소하고 180도로 덮어씌움."));
+			bool bRight = (TotalFlickYaw > 0); // 방향 다시 계산
+			LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
+			TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
+			if (bIsCrouched)
+			{
+				switch (TurnType)
+				{
+				case ETurnType::Left180:
+					CurrentTurnMontage = CrouchTurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					CurrentTurnMontage = CrouchTurnRight180Montage;
+					break;
+				}
+			}
+			else
+			{
+				switch (TurnType)
+				{
+				case ETurnType::Left180:
+					CurrentTurnMontage = TurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					CurrentTurnMontage = TurnRight180Montage;
+					break;
+				}
+			}
+			CurrentTurnSpeed = 15.f;
+
+			if (CurrentTurnMontage && MotionWarpingComp)
+			{
+				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
+				FTransform TargetTransform(GoalRot, GetActorLocation());
+				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
+			}
+		}
+	}
 }
 
 void ABACharacter::SetTurnStatus()
@@ -1147,7 +1149,6 @@ void ABACharacter::SetTurnStatus()
 	TurnType = ETurnType::None;
 	CurrentTurnMontage = nullptr;
 	TurnDelayTimer = 0.f;
-	RootYawOffset = 0.0f;
 }
 
 void ABACharacter::StopMontage()
@@ -1192,7 +1193,6 @@ void ABACharacter::SwitchGroundScanner()
 	SceneCaptureParent->SetRelativeRotation(DefaultRotation);
 	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
 
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
 		PC->SwitchGroundScanner();
@@ -1207,9 +1207,9 @@ void ABACharacter::RequestWeaponLog(UWeaponDataAsset* InData)
 
 void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
 {
-	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
 	if (!GetWorld()) return;
-	ULocalPlayer* LP = PC->GetLocalPlayer();
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
 	if (!LP) return;
 
 	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();

@@ -14,7 +14,7 @@ void UBACharacterAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 		ABACharacter* Character = Cast<ABACharacter>(MeshComp->GetOwner());
 		if (Character)
 		{
-			Character->SetTurnStatus();
+			Character->StopMontage();
 		}
 	}
 }
