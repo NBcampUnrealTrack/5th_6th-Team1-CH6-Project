@@ -9,6 +9,7 @@
 #include "FrameWork/BAGameState.h"
 #include "Building/BaseCore.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GAS/BAGameplayTags.h"
 
 void ABaseSpitterEnemy::StartSpit()
 {
@@ -77,17 +78,41 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 
 	if (bHit)
 	{
+		UMeleeWeaponDataAsset* WeaponData = Cast<UMeleeWeaponDataAsset>(GetDataAsset());
+		if (!IsValid(WeaponData))
+		{
+			return;
+		}
+		FGameplayTag EventTag = WeaponData->HitEventTag;
+
+		TSet<AActor*> ProcessedActors;
+		ProcessedActors.Reserve(OutHits.Num());
 		for (const FHitResult& Hit : OutHits)
 		{
 			AActor* HitActor = Hit.GetActor();
-			if (HitActor)
+			if (IsValid(HitActor) && !ProcessedActors.Contains(HitActor))
 			{
-				FGameplayEventData Payload;
-				Payload.Target = HitActor;
-				Payload.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitActor);
-				FGameplayTag EventTag = Cast<UMeleeWeaponDataAsset>(GetDataAsset())->HitEventTag;
+				ProcessedActors.Add(HitActor);
 
-				AbilitySystemComponent->HandleGameplayEvent(EventTag, &Payload);
+				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
+				if (IsValid(TargetASC)) 
+				{
+					FGameplayEffectContextHandle Context = TargetASC->MakeEffectContext();
+					Context.AddInstigator(this, this);
+					Context.AddHitResult(Hit);
+
+					FGameplayEffectSpecHandle SpecHandle = TargetASC->MakeOutgoingSpec(
+						WeaponData->OnUseStateHitEffect,
+						1.f,
+						Context
+					);
+
+					if (SpecHandle.IsValid())
+					{
+						SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, WeaponData->BaseDamage);
+						TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
 			}
 		}
 	}

@@ -2,6 +2,8 @@
 #include "Mining/VoxelData.h"
 #include "Framework/BAGameState.h"
 #include "Player/BAPlayerController.h"
+#include "Player/BAPlayerState.h"
+#include "Multiplayer/PlayerColorSubsystem.h"
 
 ABAGameMode::ABAGameMode()
 {
@@ -22,6 +24,17 @@ void ABAGameMode::PostLogin(APlayerController* NewPlayer)
 			BAGameState->AddPlayerController(BAPlayerController);
 		}
 	}
+
+    ABAPlayerState* PS = NewPlayer->GetPlayerState<ABAPlayerState>();
+    if (IsValid(PS) == true)
+    {
+        UPlayerColorSubsystem* PlayerColorSubsystem = GetGameInstance()->GetSubsystem<UPlayerColorSubsystem>();
+        if (IsValid(PlayerColorSubsystem) == true)
+        {
+            int32 NewColorIdx = PlayerColorSubsystem->GetColorIndex(PS->GetUniqueId());
+            PS->SetPlayerColorIdx(NewColorIdx);
+        }
+    }
 }
 
 void ABAGameMode::Logout(AController* Exiting)
@@ -34,6 +47,16 @@ void ABAGameMode::Logout(AController* Exiting)
 			BAGameState->RemovePlayerController(BAPlayerController);
 		}
 	}
+
+    ABAPlayerState* PS = Exiting->GetPlayerState<ABAPlayerState>();
+    if (IsValid(PS) == true)
+    {
+        UPlayerColorSubsystem* PlayerColorSubsystem = GetGameInstance()->GetSubsystem<UPlayerColorSubsystem>();
+        if (IsValid(PlayerColorSubsystem) == true)
+        {
+            PlayerColorSubsystem->ReleaseColorIndex(PS->GetUniqueId());
+        }
+    }
 
 	Super::Logout(Exiting);
 }

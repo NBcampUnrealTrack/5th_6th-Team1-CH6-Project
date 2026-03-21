@@ -36,6 +36,9 @@ public:
 	void SetItem(TSubclassOf<ABaseWeapon> InItem);
 
 	UFUNCTION(BlueprintCallable)
+	FORCEINLINE TSubclassOf<ABaseWeapon> GetItem() { return Item; };
+
+	UFUNCTION(BlueprintCallable)
 	void DestroyItemBox();
 
 protected:

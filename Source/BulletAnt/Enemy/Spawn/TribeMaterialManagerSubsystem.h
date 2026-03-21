@@ -11,22 +11,23 @@ struct FTribeMaterialKey
 {
     GENERATED_BODY()
 
-    UPROPERTY()
-    TObjectPtr<UMaterialInterface> BaseMaterial;
+    TWeakObjectPtr<UMaterialInterface> BaseMaterial;
 
-    UPROPERTY()
     FLinearColor TribeColor = FLinearColor(0, 0, 0, 0);
 
     // Key Comparison
     bool operator==(const FTribeMaterialKey& Other) const
     {
-        return (TribeColor == Other.TribeColor && BaseMaterial == Other.BaseMaterial);
+        return (BaseMaterial == Other.BaseMaterial &&TribeColor == Other.TribeColor);
     }
 
     // Hash Function
     friend uint32 GetTypeHash(const FTribeMaterialKey& Key)
     {
-        return HashCombine(GetTypeHash(Key.TribeColor), GetTypeHash(Key.BaseMaterial));
+        uint32 Hash = 0;
+        Hash = HashCombine(Hash, GetTypeHash(Key.BaseMaterial));
+        Hash = HashCombine(Hash, GetTypeHash(Key.TribeColor));
+        return Hash;
     }
 };
 
@@ -39,5 +40,5 @@ public:
     UMaterialInstanceDynamic* GetTribeMaterial(UMaterialInterface* InBaseMat, const FLinearColor& InColor);
 
 private:
-    TMap<FTribeMaterialKey, TObjectPtr<UMaterialInstanceDynamic>> TribeMaterialCache;
+    TMap<FTribeMaterialKey, TWeakObjectPtr<UMaterialInstanceDynamic>> TribeMaterialCache;
 };
