@@ -67,7 +67,7 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		Source->GetCamera()->FieldOfView = 90.f;
 		Source->EndAiming();
 
-		SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+		SpringArm->AttachToComponent(Source->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("spine_03"));
 		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
 		SpringArm->TargetArmLength = 223.f;
 

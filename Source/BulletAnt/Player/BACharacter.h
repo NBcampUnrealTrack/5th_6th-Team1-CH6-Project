@@ -96,20 +96,20 @@ public:
 
 protected:
     // --- 카메라 관련 컴포넌트 ---
-    //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-    //TObjectPtr<USpringArmComponent> CameraBoom;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DetectedCapsule")
-    UCapsuleComponent* DetectedCapsule;
+    TObjectPtr < UCapsuleComponent> DetectedCapsule;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spring Arm")
-    USpringArmComponent* SpringArm;
+    TObjectPtr < USpringArmComponent> SpringArm;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TObjectPtr<UCameraComponent> CameraComponent;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
     TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
+
+    ABAPlayerController* PC;
 
 private:
     UPROPERTY()
@@ -198,7 +198,6 @@ public:
 
     // --- 실제 동작 함수 ---
 public:
-    
 
 protected:
     void Move(const FInputActionValue& Value);
@@ -251,6 +250,7 @@ public:
     float UpdateMovementSpeed();
     void IdleTurning(float DeltaTime);
     void SetTurnStatus();
+    void StopMontage();
 protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_PlayTurnMontage(UAnimMontage* MontageToPlay, FTransform TargetTransform);
@@ -259,7 +259,6 @@ protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StopTurnMontage();
 
-    void StopMontage();
 
     UFUNCTION(Server, Reliable)
     void Server_SetAiming(bool bNewIsAiming);
@@ -276,6 +275,13 @@ public:
 
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsADS;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Camera")
+    float AimingFieldOfView = 80.f;
+    UPROPERTY(BlueprintReadWrite, Category = "SpringArm")
+    float AimingTALength = 100.f;
+    UPROPERTY(BlueprintReadWrite, Category = "SpringArm")
+    float TALengthChangeSpeed = 15.f;
 
     //달리기 상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
