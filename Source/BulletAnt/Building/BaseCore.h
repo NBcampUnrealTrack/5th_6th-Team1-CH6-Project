@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Building/BaseBuilding.h"
+#include "AbilitySystemComponent.h"
 #include "BaseCore.generated.h"
 
-/**
- * 
- */
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
+
 UCLASS()
 class BULLETANT_API ABaseCore : public ABaseBuilding
 {
@@ -25,10 +26,22 @@ protected:
 	virtual void BeginPlay() override;
 
 	void FindAnchors();
+	void InitializeCoreMaterial();
+	void UpdateCoreMaterialHealthRatio();
+
+	void HandleHealthChanged(const FOnAttributeChangeData& ChangeData);
 
 	UPROPERTY(EditDefaultsOnly)
 	int32 ScanCount = 72;
 
 	UPROPERTY(VisibleAnywhere)
 	TArray<FVector> Anchors;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Core|Material")
+	TObjectPtr<UMaterialInterface> CoreMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> CoreMID;
+
+	FDelegateHandle HealthChangedDelegateHandle;
 };

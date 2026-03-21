@@ -16,13 +16,13 @@ enum class EVoxelType : uint8
 	None				UMETA(Hidden)
 };
 
-UENUM()
-enum class EOreType
+UENUM(BlueprintType)
+enum class EOreType : uint8
 {
 	Gold,
 	Mineral,
 
-	None				UMETA(Hidden)
+	None
 };
 
 struct FChunkMeshData

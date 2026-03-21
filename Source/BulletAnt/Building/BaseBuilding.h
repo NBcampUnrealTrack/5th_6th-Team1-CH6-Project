@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "AbilitySystemInterface.h"
 #include "Common/BAItemInterface.h"
+#include "Building/BuildingRow.h"
 #include "BaseBuilding.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnDestroyed);
@@ -84,6 +85,8 @@ public:
 	void Server_UnregisterFromSupports();
 	void Server_ReevaluateSupportAndMaybeDie();
 
+	void ApplyBuildingRow(const FBuildingRow& Row);
+
 protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
 
@@ -130,6 +133,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UHealthAttributeSet> HealthSet;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Stat")
+	float DefaultHealth = 500.f;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Dead)
 	bool bDead = false;

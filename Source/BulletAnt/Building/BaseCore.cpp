@@ -7,12 +7,6 @@
 
 void ABaseCore::Use_Implementation(AActor* User)
 {
-    GEngine->AddOnScreenDebugMessage(
-        -1,
-        3.f,
-        FColor::Yellow,
-        FString::Printf(TEXT("HP: %.1f"), HealthSet->GetHealth())
-    );
 }
 
 const TArray<FVector>& ABaseCore::GetAnchors() const
@@ -30,6 +24,8 @@ void ABaseCore::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitializeCoreMaterial();
+
 	if (HasAuthority())
 	{
 		UWorld* World = GetWorld();
@@ -46,6 +42,9 @@ void ABaseCore::BeginPlay()
 
 		FindAnchors();
 	}
+
+	HealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UHealthAttributeSet::GetHealthAttribute()).AddUObject(this, &ABaseCore::HandleHealthChanged);
+	UpdateCoreMaterialHealthRatio();
 }
 
 void ABaseCore::FindAnchors()
@@ -71,4 +70,43 @@ void ABaseCore::FindAnchors()
             Anchors.Add(HitLocation);
         }
     }
+}
+
+void ABaseCore::InitializeCoreMaterial()
+{
+	if (!StaticMeshComp)
+	{
+		return;
+	}
+
+	if (CoreMaterial)
+	{
+		StaticMeshComp->SetMaterial(0, CoreMaterial);
+	}
+
+	CoreMID = StaticMeshComp->CreateDynamicMaterialInstance(0);
+
+	if (CoreMID)
+	{
+		CoreMID->SetScalarParameterValue(TEXT("HealthRatio"), 1.0f);
+	}
+}
+
+void ABaseCore::UpdateCoreMaterialHealthRatio()
+{
+	if (!CoreMID || !HealthSet)
+	{
+		return;
+	}
+
+	const float MaxHealth = HealthSet->GetMaxHealth();
+	const float CurrentHealth = HealthSet->GetHealth();
+	const float Ratio = (MaxHealth > 0.f) ? (CurrentHealth / MaxHealth) : 0.f;
+
+	CoreMID->SetScalarParameterValue(TEXT("HealthRatio"), Ratio);
+}
+
+void ABaseCore::HandleHealthChanged(const FOnAttributeChangeData& ChangeData)
+{
+	UpdateCoreMaterialHealthRatio();
 }

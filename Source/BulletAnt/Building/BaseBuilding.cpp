@@ -98,8 +98,8 @@ void ABaseBuilding::BeginPlay()
 	if (HasAuthority())
 	{
 		ASC->GiveAbility(FGameplayAbilitySpec(UGA_DestroyBuilding::StaticClass(), 1));
-		HealthSet->SetMaxHealth(500.f);
-		HealthSet->SetHealth(500.f);
+		HealthSet->SetMaxHealth(DefaultHealth);
+		HealthSet->SetHealth(DefaultHealth);
 	}
 
 	if (DestructionCollection)
@@ -541,6 +541,19 @@ void ABaseBuilding::Server_ReevaluateSupportAndMaybeDie()
 	if (Coverage < MinSupportCoverage)
 	{
 		OnDeath();
+	}
+}
+
+void ABaseBuilding::ApplyBuildingRow(const FBuildingRow& Row)
+{
+	MinSupportCoverage = Row.MinSupportCoverage;
+	SupportSampleSpacing = Row.SupportSampleSpacing;
+	DefaultHealth = Row.Health;
+
+	if (HasAuthority() && HealthSet)
+	{
+		HealthSet->SetMaxHealth(DefaultHealth);
+		HealthSet->SetHealth(DefaultHealth);
 	}
 }
 
