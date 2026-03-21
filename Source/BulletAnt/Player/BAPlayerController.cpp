@@ -19,6 +19,7 @@
 #include "UI/UW_Compass.h"
 #include "Player/BAPlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Weapon/BaseWeapon.h"
 
 
 
@@ -138,17 +139,29 @@ void ABAPlayerController::Server_RequestBuyGacha_Implementation(ABaseShop* InSho
 	InShop->BuyGacha(GachaID, Count);
 }
 
-void ABAPlayerController::Server_RequestAddWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeaponClass)
+void ABAPlayerController::Server_RequestAddWeapon_Implementation(ABAItemBox* InItemBox)
 {
 	if (!HasAuthority()) return;
 	
 	ABAGameState* GS = Cast<ABAGameState>(GetWorld()->GetGameState());
 	if (!GS) return;
 
-	GS->AddHaveWeapon(InWeaponClass);
+	if (InItemBox->GetItem())
+	{
+		GS->AddHaveWeapon(InItemBox->GetItem());
+	}
+
+	RequestDeleteBox(InItemBox);
+
+	ABaseWeapon* WeaponCDO = Cast<ABaseWeapon>(InItemBox->GetItem()->GetDefaultObject());
+	if (WeaponCDO)
+	{
+		ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn());
+		PlayerCharacter->RequestWeaponLog(WeaponCDO->GetWeaponData());
+	}
 }
 
-void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InItemBox)
+void ABAPlayerController::RequestDeleteBox(ABAItemBox* InItemBox)
 {
 	if (!InItemBox) return;
 	if (InItemBox->GetbIsUsed()) return;

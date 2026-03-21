@@ -11,9 +11,12 @@ UMaterialInstanceDynamic* UTribeMaterialManagerSubsystem::GetTribeMaterial(UMate
 	}
 
 	FTribeMaterialKey key(InBaseMat, InColor);
-	if (TribeMaterialCache.Contains(key))
+	if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = TribeMaterialCache.Find(key))
 	{
-		return TribeMaterialCache[key];
+		if (FoundPtr->IsValid())
+		{
+			return FoundPtr->Get();
+		}
 	}
 
 	UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(InBaseMat, this);

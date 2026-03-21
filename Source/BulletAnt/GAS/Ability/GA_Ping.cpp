@@ -3,6 +3,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "GAS/BAGameplayTags.h"
 #include "Player/BACharacter.h"
+#include "Player/BAPlayerState.h"
 
 UGA_Ping::UGA_Ping()
 {
@@ -115,13 +116,24 @@ void UGA_Ping::OnTargetDataReady(const FGameplayAbilityTargetDataHandle& Data, F
 	if (IsValid(PC) == false)
 		return;
 
-	FGameplayCueParameters Params;
+	ABAPlayerState* PS = PC->GetPlayerState<ABAPlayerState>();
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+	Context.AddInstigator(PS, nullptr);
+	Context.AddOrigin(PingLocation);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GE_Ping, 1.0f, Context);
+	if (SpecHandle.IsValid())
+	{
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+
+	/*FGameplayCueParameters Params;
+	Params.EffectContext = ASC->MakeEffectContext();
 	Params.Instigator = PC;
 	Params.Location = PingLocation;
 
-	ASC->ExecuteGameplayCue(
-		TAG_GameplayCue_Communicate_Ping,
-		Params);
+	ASC->ExecuteGameplayCue(TAG_GameplayCue_Communicate_Ping, Params);*/
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }

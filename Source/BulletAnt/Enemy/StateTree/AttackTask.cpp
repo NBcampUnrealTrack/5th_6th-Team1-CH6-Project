@@ -47,8 +47,3 @@ EStateTreeRunStatus UAttackTask::EnterState(FStateTreeExecutionContext& Context,
 	
 	return EStateTreeRunStatus::Running;
 }
-
-void UAttackTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
-{	
-	Super::ExitState(Context, Transition);
-}
