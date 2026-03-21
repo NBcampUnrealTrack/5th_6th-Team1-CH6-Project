@@ -13,6 +13,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/SplineComponent.h"
 #include "Components/BoxComponent.h"
+#include "Building/BuildManagerComponent.h"
+#include "Player/BACharacter.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -96,8 +98,8 @@ void ABaseBuilding::BeginPlay()
 	if (HasAuthority())
 	{
 		ASC->GiveAbility(FGameplayAbilitySpec(UGA_DestroyBuilding::StaticClass(), 1));
-		HealthSet->SetMaxHealth(500.f);
-		HealthSet->SetHealth(500.f);
+		HealthSet->SetMaxHealth(DefaultHealth);
+		HealthSet->SetHealth(DefaultHealth);
 	}
 
 	if (DestructionCollection)
@@ -110,11 +112,33 @@ void ABaseBuilding::BeginPlay()
 
 void ABaseBuilding::Use_Implementation(AActor* User)
 {
-	Server_RequestDemolish_Implementation();
+	if (!IsValid(User))
+	{
+		return;
+	}
+
+	ABACharacter* Character = Cast<ABACharacter>(User);
+	if (!Character)
+	{
+		return;
+	}
+
+	UBuildManagerComponent* BuildManager = Character->FindComponentByClass<UBuildManagerComponent>();
+	if (!BuildManager)
+	{
+		return;
+	}
+
+	BuildManager->RequestDemolish(this);
 }
 
-void ABaseBuilding::Server_RequestDemolish_Implementation()
+void ABaseBuilding::RequestDemolish(AActor* User)
 {
+	if (!HasAuthority() || bDead)
+	{
+		return;
+	}
+
 	OnDeath();
 }
 
@@ -518,6 +542,13 @@ void ABaseBuilding::Server_ReevaluateSupportAndMaybeDie()
 	{
 		OnDeath();
 	}
+}
+
+void ABaseBuilding::ApplyBuildingRow(const FBuildingRow& Row)
+{
+	MinSupportCoverage = Row.MinSupportCoverage;
+	SupportSampleSpacing = Row.SupportSampleSpacing;
+	DefaultHealth = Row.Health;
 }
 
 void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const

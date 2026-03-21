@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "AbilitySystemInterface.h"
 #include "Common/BAItemInterface.h"
+#include "Building/BuildingRow.h"
 #include "BaseBuilding.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnDestroyed);
@@ -15,6 +16,7 @@ class UAbilitySystemComponent;
 class UHealthAttributeSet;
 class UGeometryCollection;
 class UGeometryCollectionComponent;
+class UBuildManagerComponent;
 
 USTRUCT()
 struct FBuildingEdge
@@ -60,8 +62,8 @@ protected:
 public:
 	virtual void Use_Implementation(AActor* User) override;
 
-	UFUNCTION(Server, Reliable)
-	void Server_RequestDemolish();
+	UFUNCTION()
+	void RequestDemolish(AActor* User);
 
 	virtual void OnDeath();
 
@@ -82,6 +84,8 @@ public:
 	void Server_RegisterSupports(const TSet<TWeakObjectPtr<ABaseBuilding>>& Supporters);
 	void Server_UnregisterFromSupports();
 	void Server_ReevaluateSupportAndMaybeDie();
+
+	void ApplyBuildingRow(const FBuildingRow& Row);
 
 protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
@@ -129,6 +133,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UHealthAttributeSet> HealthSet;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Build|Stat")
+	float DefaultHealth = 500.f;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Dead)
 	bool bDead = false;

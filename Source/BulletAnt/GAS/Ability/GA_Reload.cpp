@@ -106,7 +106,7 @@ void UGA_Reload::ReloadAmmo()
 		if (Spec.IsValid())
 		{
 			Spec.Data->SetSetByCallerMagnitude(
-				TAG_Data_Ammo_Reload,
+				TAG_Data_Ammo_MaxAmmo,
 				Data->MaxAmmo
 			);
 

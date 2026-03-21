@@ -7,11 +7,14 @@
 #include <InputActionValue.h>
 #include "Framework/BAGameMode.h" 
 #include "Components/PrimitiveComponent.h"
+#include "GameFramework/Pawn.h"
+#include <Kismet/GameplayStatics.h>
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bCanEverTick = true;
     SetComponentTickEnabled(false);
+    SetIsReplicatedByDefault(true);
 }
 
 void UBuildManagerComponent::BeginPlay()
@@ -195,6 +198,60 @@ void UBuildManagerComponent::ToggleBuildMenu()
     bBuildMenuOpen = true;
 }
 
+void UBuildManagerComponent::RequestDemolish(ABaseBuilding* TargetBuilding)
+{
+    if (!IsValid(TargetBuilding))
+    {
+        return;
+    }
+
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
+    {
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[BuildManager] RequestDemolish OwnerAuthority=%d Target=%s"),
+        OwnerActor->HasAuthority() ? 1 : 0,
+        *TargetBuilding->GetName());
+
+    if (OwnerActor->HasAuthority())
+    {
+        TargetBuilding->RequestDemolish(OwnerActor);
+    }
+    else
+    {
+        Server_RequestDemolish(TargetBuilding);
+    }
+}
+
+void UBuildManagerComponent::Server_RequestDemolish_Implementation(ABaseBuilding* TargetBuilding)
+{
+    if (!IsValid(TargetBuilding))
+    {
+        return;
+    }
+
+    AActor* OwnerActor = GetOwner();
+    APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+    if (!OwnerPawn)
+    {
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[BuildManager] Server_RequestDemolish_Implementation Target=%s"),
+        *TargetBuilding->GetName());
+
+    const float MaxUseDist = 500.f;
+    if (FVector::DistSquared(OwnerPawn->GetActorLocation(), TargetBuilding->GetActorLocation()) > FMath::Square(MaxUseDist))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[BuildManager] Demolish rejected: too far"));
+        return;
+    }
+
+    TargetBuilding->RequestDemolish(OwnerActor);
+}
+
 void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass)
 {
     UWorld* World = GetWorld();
@@ -209,19 +266,35 @@ void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingCla
         PreviewActor = nullptr;
     }
 
+    FTransform SpawnTransform(FRotator::ZeroRotator, FVector::ZeroVector);
+
     FActorSpawnParameters Params;
     Params.Owner = GetOwner();
     Params.Instigator = Cast<APawn>(GetOwner());
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    PreviewActor = World->SpawnActor<ABaseBuilding>(BuildingClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
+    PreviewActor = World->SpawnActorDeferred<ABaseBuilding>(
+        BuildingClass,
+        SpawnTransform,
+        Params.Owner,
+        nullptr,
+        Params.SpawnCollisionHandlingOverride
+    );
+
     if (!PreviewActor) 
     {
         return;
     }
 
+    if (CachedBuildingRow)
+    {
+        PreviewActor->ApplyBuildingRow(*CachedBuildingRow);
+    }
+
     PreviewActor->SetReplicates(false);
     PreviewActor->SetPreviewMode(true);
+
+    UGameplayStatics::FinishSpawningActor(PreviewActor, SpawnTransform);
 }
 
 bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface)
@@ -497,32 +570,45 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
         return;
     }
 
+    FTransform SpawnTransform(Rotation, Location);
+
     FActorSpawnParameters Params;
     Params.Owner = GetOwner();
     Params.Instigator = Cast<APawn>(GetOwner());
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    ABaseBuilding* Spawned = World->SpawnActor<ABaseBuilding>(Row->BuildingClass, Location, Rotation, Params);
-    if (Spawned)
-    {
-        Spawned->DrawEdgesDebug(true, -1.f);
-        float Coverage = 0.f;
-        TSet<TWeakObjectPtr<ABaseBuilding>> Supporters;
+    ABaseBuilding* Spawned = World->SpawnActorDeferred<ABaseBuilding>(
+        Row->BuildingClass,
+        SpawnTransform,
+        Params.Owner,
+        Params.Instigator,
+        Params.SpawnCollisionHandlingOverride
+    );
 
-        const bool bOk = Spawned->ComputeSupportCoverage(Spawned->GetActorTransform(), Coverage, Supporters);
-        if (bOk)
-        {
-            Spawned->Server_RegisterSupports(Supporters);
-            if (Coverage < Spawned->MinSupportCoverage)
-            {
-                Spawned->OnDeath();
-            }
-        }
-        else
-        {
-            Spawned->OnDeath();
-        }
+    if (!Spawned)
+    {
+        return;
     }
+
+    Spawned->ApplyBuildingRow(*Row);
+
+    UGameplayStatics::FinishSpawningActor(Spawned, SpawnTransform);
+
+    float Coverage = 0.f;
+    TSet<TWeakObjectPtr<ABaseBuilding>> Supporters;
+    const bool bHasCoverageResult = Spawned->ComputeSupportCoverage(
+        Spawned->GetActorTransform(),
+        Coverage,
+        Supporters
+    );
+
+    if (!bHasCoverageResult || Coverage < Spawned->MinSupportCoverage)
+    {
+        Spawned->OnDeath();
+        return;
+    }
+
+    Spawned->Server_RegisterSupports(Supporters);
 }
 
 bool UBuildManagerComponent::CheckCanPlaceAt() const

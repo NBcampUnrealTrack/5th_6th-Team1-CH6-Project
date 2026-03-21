@@ -5,6 +5,7 @@
 #include "Player/BAParkourComponent.h"
 #include "GAS/BAGameplayTags.h"
 #include "Weapon/BaseRangedWeapon.h"
+#include "Player/BAPlayerState.h"
 
 void UBAAnimInstance::NativeInitializeAnimation()
 {
@@ -22,7 +23,7 @@ void UBAAnimInstance::NativeInitializeAnimation()
 			ParkourComp = Character->FindComponentByClass<UBAParkourComponent>();
 			GrabLeftHand = 1.f;
 			OwningActor = GetOwningActor();
-			ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor);
+			
 		}
 	}
 
@@ -33,6 +34,14 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Super::NativeUpdateAnimation(DeltaSeconds);
 	//캐릭터 없으면 nullptr 반환
 	if (Character == nullptr || Movement == nullptr) return;
+	if (!ASC)
+	{
+		ABAPlayerState* PS = Cast<ABAPlayerState>(Character->GetPlayerState());
+		if (PS)
+		{
+			ASC = PS->GetAbilitySystemComponent();
+		}
+	}
 
 	CurrentEquipmentType = Character->CurrentEquipmentType;
 
@@ -65,7 +74,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	/*FVector AimDir = FRotator(FinalPitch, FinalYaw, 0.f).Vector();
 	FVector LocalAimDir = Rotation.Quaternion().Inverse().RotateVector(AimDir);
 	FRotator DeltaRot = LocalAimDir.Rotation();*/
-	if (bIsAiming && !Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		DeltaRot = CameraTargetOffset();
 	}
@@ -151,6 +160,7 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 
 void UBAAnimInstance::IsGrabLeftHand(float DeltaSeconds)
 {
+	if (!ASC) return;
 	float TargetAlpha = (bIsParkour|| ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) ? 0.f : 1.f;
 
 	GrabLeftHand = FMath::FInterpTo(GrabLeftHand, TargetAlpha, DeltaSeconds, 15.f);

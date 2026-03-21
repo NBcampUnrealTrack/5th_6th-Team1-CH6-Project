@@ -5,6 +5,8 @@
 #include "Player/BAPlayerController.h"
 #include "Weapon/BaseWeapon.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 ABAItemBox::ABAItemBox()
 {
@@ -41,6 +43,8 @@ void ABAItemBox::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifeti
 
 void ABAItemBox::Use_Implementation(AActor* User)
 {
+	if (!IsValid(this)) return;
+
 	if (bIsUsed) return;
 
 	ABACharacter* Player = Cast<ABACharacter>(User);
@@ -49,16 +53,7 @@ void ABAItemBox::Use_Implementation(AActor* User)
 	ABAPlayerController* PC = Cast<ABAPlayerController>(Player->GetController());
 	if (!PC) return;
 
-	if (bIsUsed) return;
-	
-	if (Item)
-	{
-		PC->Server_RequestAddWeapon(Item);
-		PC->Server_RequestDeleteBox(this);
-
-		ABaseWeapon* WeaponCDO = Cast<ABaseWeapon>(Item->GetDefaultObject());
-		PC->Server_RequestWeaponLog(WeaponCDO->GetWeaponData());
-	}
+	PC->Server_RequestAddWeapon(this);
 }
 
 void ABAItemBox::SetItem(TSubclassOf<ABaseWeapon> InItem)
@@ -76,14 +71,14 @@ void ABAItemBox::BeginPlay()
 
 		ProjectileMovement->InitialSpeed = 0.f;
 		ProjectileMovement->MaxSpeed = 0.f;
-		ProjectileMovement->Velocity = FVector::ZeroVector;	
+		ProjectileMovement->Velocity = FVector::ZeroVector;
 
 		ProjectileMovement->Activate();
 	}
-	ProjectileMovement->OnProjectileStop.AddDynamic(this, &ABAItemBox::PlayDropSound);
+	ProjectileMovement->OnProjectileStop.AddDynamic(this, &ABAItemBox::Multi_PlayDropSound);
 }
 
-void ABAItemBox::PlayDropSound(const FHitResult& ImpactPoint)
+void ABAItemBox::Multi_PlayDropSound_Implementation(const FHitResult& ImpactPoint)
 {
 	if (DropSound)
 	{
@@ -93,12 +88,29 @@ void ABAItemBox::PlayDropSound(const FHitResult& ImpactPoint)
 			GetActorLocation()
 		);
 	}
+
+	if (DropEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			DropEffect,
+			ImpactPoint.ImpactPoint,
+			ImpactPoint.ImpactNormal.Rotation()
+		);
+	}
 }
 
 void ABAItemBox::DestroyItemBox()
 {
 	if (!HasAuthority()) return;
-	Destroy();
+	GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
+		{
+			if (IsValid(this))
+			{
+				Destroy();
+			}
+		});
+
 }
 
 

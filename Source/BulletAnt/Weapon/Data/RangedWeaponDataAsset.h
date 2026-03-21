@@ -51,9 +51,6 @@ public:
 	float ReloadTime = 5.f;
 
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayEffect> FireCueEffect;
-
-	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UGameplayEffect> ReloadEffect;
 
 	UPROPERTY(EditDefaultsOnly)

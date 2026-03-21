@@ -17,6 +17,7 @@ enum class EUIType : uint8
     WaveTimer,
     Shop,
     Compass,
+    PlayerHUD,
 };
 
 USTRUCT()

@@ -4,7 +4,7 @@
 #include "GameFramework/GameMode.h"
 #include "BAGameMode.generated.h"
 
-enum class EOreType;
+enum class EOreType : uint8;
 
 UCLASS()
 class BULLETANT_API ABAGameMode : public AGameMode

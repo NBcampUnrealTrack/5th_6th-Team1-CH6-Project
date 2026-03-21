@@ -14,8 +14,6 @@ class BULLETANT_API UGA_Mine : public UGameplayAbility
 public:
 	UGA_Mine();
 
-	void StartAutoDigLoop();
-
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -34,13 +32,14 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		bool bReplicateCancelAbility) override;
 
+	UFUNCTION()
 	void MiningOnce();
 
 	UFUNCTION()
 	void EndMining();
 
 	UFUNCTION()
-	void OnMontageFinished();
+	void DigGround(FGameplayEventData Payload);
 
 protected:
 	UPROPERTY()
@@ -48,7 +47,7 @@ protected:
 	float TargetDuration;
 
 	UPROPERTY()
-	TObjectPtr<AActor> SourceActor;
+	TObjectPtr<ACharacter> SourceActor;
 
 	UPROPERTY()
 	UMiningWeaponDataAsset* MiningData;

@@ -3,14 +3,17 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
-#include "AbilitySystemInterface.h"
 #include "Common/DataAssetInterface.h"
 #include "Common/FireStartInterface.h"
 #include "Common/OnDeathInterface.h"
+#include "AbilitySystemInterface.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/DataTable.h"
 #include "BACharacter.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 
 class UCapsuleComponent;
 class USpringArmComponent;
@@ -24,9 +27,7 @@ class UBuildManagerComponent;
 class UBAParkourComponent;
 class UAmmoAttributeSet;
 class USceneCaptureComponent2D;
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
+class UUISubsystem;
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -68,7 +69,7 @@ struct FAnimChoice : public FTableRowBase
 };
 
 UCLASS()
-class BULLETANT_API ABACharacter : public ACharacter, public IAbilitySystemInterface, public IDataAssetInterface, public IFireStartInterface
+class BULLETANT_API ABACharacter : public ACharacter, public IDataAssetInterface, public IFireStartInterface, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -87,6 +88,7 @@ public:
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual void OnRep_Controller() override;
+    virtual void OnRep_PlayerState() override;
 
 
     //TEST
@@ -358,28 +360,25 @@ public:
     ETurnType TurnType;
 #pragma endregion
 
-#pragma region GAS 
-
+#pragma region GAS
 public:
-    virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnHealthAttributeChangedDelegate OnHealthChanged;
 
     UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
-    FOnAttributeChangedDelegate OnHealthChanged;
+    FOnAmmoChangedDelegate OnAmmoChanged;
+
+    virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-    UAbilitySystemComponent* AbilitySystemComponent;
+    UAbilitySystemComponent* ASC;
 
-    UPROPERTY()
-    UHealthAttributeSet* HealthAttributeSet;
-
-    UPROPERTY(EditAnywhere, Category = "GAS")
-    TArray<TSubclassOf<UGameplayAbility>> DefaultAbility;
-
-    UPROPERTY()
-    FGameplayTag CurrentWeaponAbilityTag;
+    const UHealthAttributeSet* HealthAttributeSet;
+    const UAmmoAttributeSet* AmmoAttributeSet;
 
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
+
+    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
 
 #pragma endregion
 
@@ -393,6 +392,9 @@ public:
     void StartAiming();
     void EndAiming();
 
+    UFUNCTION(Server,Reliable)
+    void Server_SetChangeWeapon(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex);
+
     UFUNCTION()
     void OnRep_bIsFiring();
 
@@ -401,19 +403,17 @@ public:
 
     void SetbIsFiring(bool InIsFiring);
 
+    UFUNCTION()
+    void RequestWeaponLog(UWeaponDataAsset* InData);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);
+
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
 
     UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
-
-    UPROPERTY()
-    UAmmoAttributeSet* AmmoAttributeSet;
-
-    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
-    FOnAmmoChangedDelegate OnAmmoChanged;
-
-    void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
@@ -456,6 +456,11 @@ public:
     void RotateScannerParent(const FVector2D& Input);
     void ChangeScannerDistance(float Input);
     void SwitchGroundScanner();
+
+    void InitializeSceneCapture();
+    void UpdateShowComponents();
+    
+    void SetArrowPlayerColor();
         
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
@@ -482,6 +487,10 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
     TObjectPtr<UStaticMeshComponent> ArrowMesh;
+
+    FDelegateHandle ArrowColorChangeHandle;
+
+    static TWeakObjectPtr<USceneCaptureComponent2D> LocalSceneCapture;      // 해당 클라이언트에서 제어 중인 플레이어의 SceneCapture2D 
 
 #pragma endregion
 

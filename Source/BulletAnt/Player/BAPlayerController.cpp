@@ -19,6 +19,7 @@
 #include "UI/UW_Compass.h"
 #include "Player/BAPlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Weapon/BaseWeapon.h"
 
 
 
@@ -142,17 +143,29 @@ void ABAPlayerController::Server_RequestBuyGacha_Implementation(ABaseShop* InSho
 	InShop->BuyGacha(GachaID, Count);
 }
 
-void ABAPlayerController::Server_RequestAddWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeaponClass)
+void ABAPlayerController::Server_RequestAddWeapon_Implementation(ABAItemBox* InItemBox)
 {
 	if (!HasAuthority()) return;
 	
 	ABAGameState* GS = Cast<ABAGameState>(GetWorld()->GetGameState());
 	if (!GS) return;
 
-	GS->AddHaveWeapon(InWeaponClass);
+	if (InItemBox->GetItem())
+	{
+		GS->AddHaveWeapon(InItemBox->GetItem());
+	}
+
+	RequestDeleteBox(InItemBox);
+
+	ABaseWeapon* WeaponCDO = Cast<ABaseWeapon>(InItemBox->GetItem()->GetDefaultObject());
+	if (WeaponCDO)
+	{
+		ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn());
+		PlayerCharacter->RequestWeaponLog(WeaponCDO->GetWeaponData());
+	}
 }
 
-void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InItemBox)
+void ABAPlayerController::RequestDeleteBox(ABAItemBox* InItemBox)
 {
 	if (!InItemBox) return;
 	if (InItemBox->GetbIsUsed()) return;
@@ -165,19 +178,6 @@ void ABAPlayerController::Server_RequestDeleteBox_Implementation(ABAItemBox* InI
 		FGameplayCueParameters Params;
 		Params.SourceObject = InItemBox;
 		ASC->ExecuteGameplayCue(TAG_GameplayCue_Shop_UseItemBox, Params);
-	}
-}
-
-void ABAPlayerController::Server_RequestWeaponLog_Implementation(UWeaponDataAsset* InData)
-{
-	Multicast_ShowWeaponLog(InData);
-}
-
-void ABAPlayerController::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
-{
-	if (HUD)
-	{
-		HUD->AddWeaponLog(InData);
 	}
 }
 
@@ -288,17 +288,6 @@ void ABAPlayerController::SetupForMain()
 
 	bIsBuildMode = false;
 
-	if (ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn()))
-	{
-		if (HUDClass)
-		{
-			HUD = CreateWidget<UUW_PlayerHUDWidget>(this, HUDClass);
-
-			HUD->OwnerCharacter = PlayerCharacter;
-			HUD->AddToViewport(0);
-		}
-	}
-
 	ULocalPlayer* LP = GetLocalPlayer();
 	if (!LP) return;
 
@@ -307,6 +296,13 @@ void ABAPlayerController::SetupForMain()
 	{
 		UISubsystem->ResetAllUI();
 		UISubsystem->InitRootHUD();
+
+		HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->OwnerCharacter = Cast<ABACharacter>(GetPawn());
+			HUD->InitPlayerHUD();
+		}
 
 		UUW_Compass* CompassUI = UISubsystem->ShowUI<UUW_Compass>(EUIType::Compass);
 

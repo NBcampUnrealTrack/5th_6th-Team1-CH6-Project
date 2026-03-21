@@ -59,9 +59,9 @@ void UGA_ADS::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	Source->GetCharacterMovement()->bUseControllerDesiredRotation = true;
+	Source->bUseControllerRotationYaw = false;
 	if (IsLocallyControlled())
 	{
-		Source->bUseControllerRotationYaw = false;
 		USpringArmComponent* SpringArm = Source->GetSpringArm();
 		SpringArm->bUsePawnControlRotation = true;
 		Source->GetCamera()->FieldOfView = 90.f;
@@ -80,19 +80,12 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 void UGA_ADS::StartADS()
 {
 	Source->GetCharacterMovement()->bUseControllerDesiredRotation = false;
+	Source->bUseControllerRotationYaw = true;
 	if (IsLocallyControlled())
-	{
-		
-		Source->bUseControllerRotationYaw = true;
+	{	
 		SavedTargetPoint = ADSLineTrace();
 		FVector SightLoc = CachedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
 		FRotator SightRot = CachedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
-
-		/*FRotator IdealLookAtRot = UKismetMathLibrary::FindLookAtRotation(SightLoc, SavedTargetPoint);
-		FRotator ErrorDelta = UKismetMathLibrary::NormalizedDeltaRotator(IdealLookAtRot, SightRot);
-
-		FRotator CurrentControlRot = PC->GetControlRotation();
-		FRotator NewControlRot = CurrentControlRot + ErrorDelta;*/
 
 		USpringArmComponent* SpringArm = Source->GetSpringArm();		
 		SpringArm->bUsePawnControlRotation = false;
@@ -102,8 +95,6 @@ void UGA_ADS::StartADS()
 		SavedSpringArmTransform = SpringArm->GetRelativeTransform();
 		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
 		SpringArm->TargetArmLength = 0.f;
-		/*PC->SetControlRotation(Source->EquippedWeapon->GetActorRotation());*/
-
 
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
 		

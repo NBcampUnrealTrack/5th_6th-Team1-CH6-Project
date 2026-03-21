@@ -9,6 +9,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDropFromPlane);
 class UProjectileMovementComponent;
 class ABAItemBox;
 class ABaseWeapon;
+class UNiagaraComponent;
+class UAudioComponent;
 
 UCLASS()
 class BULLETANT_API ABATransportShip : public AActor
@@ -26,6 +28,12 @@ class BULLETANT_API ABATransportShip : public AActor
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<ABAItemBox> ItemBox;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UNiagaraComponent* TrailEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UAudioComponent* EngineSound;
 	
 public:	
 	ABATransportShip();

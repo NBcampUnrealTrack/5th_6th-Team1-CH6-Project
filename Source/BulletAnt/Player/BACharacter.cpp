@@ -14,12 +14,13 @@
 #include "BAParkourComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/UW_PlayerHUDWidget.h"
+#include "Weapon/Data/RangedWeaponDataAsset.h"
+#include "UI/UISubsystem.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
-#include "AbilitySystemComponent.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
-#include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "Weapon/BaseRangedWeapon.h"
 #include "Weapon/Data/WeaponDataAsset.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -27,6 +28,10 @@
 #include "Building/BuildManagerComponent.h"
 #include "Building/BaseShop.h"
 #include "Components/SceneCaptureComponent2D.h"
+#include "Framework/BAGameState.h"
+#include "Player/BAPlayerState.h"
+
+TWeakObjectPtr<USceneCaptureComponent2D> ABACharacter::LocalSceneCapture = nullptr;
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -72,14 +77,6 @@ ABACharacter::ABACharacter()
 	//파쿠르
 	ParkourComponent = CreateDefaultSubobject<UBAParkourComponent>(TEXT("ParkourComponent"));
 
-	//GAS
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
-
-	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
-	AmmoAttributeSet = CreateDefaultSubobject<UAmmoAttributeSet>(TEXT("AmmoSet"));
-
 	//Test
 	//앉기 기능 활성화
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -97,35 +94,6 @@ ABACharacter::ABACharacter()
 	SceneCaptureParent->bInheritRoll = false;
 	SceneCaptureParent->SetRelativeRotation(ScannerDefaultRotation);
 
-	SceneCapture2D = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture2D"));
-	SceneCapture2D->SetupAttachment(SceneCaptureParent);
-	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
-	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
-	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
-	SceneCapture2D->ShowFlags.SetLighting(false);
-	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
-	SceneCapture2D->ShowFlags.SetSkyLighting(false);
-	SceneCapture2D->ShowFlags.SetAtmosphere(false);
-	SceneCapture2D->ShowFlags.SetFog(false);
-	SceneCapture2D->ShowFlags.SetBloom(false);
-	SceneCapture2D->ShowFlags.SetEyeAdaptation(false);
-	SceneCapture2D->ShowFlags.SetMotionBlur(false);
-	SceneCapture2D->ShowFlags.SetAntiAliasing(false);
-	SceneCapture2D->ShowFlags.SetTemporalAA(false);
-	SceneCapture2D->ShowFlags.SetTonemapper(false);
-	SceneCapture2D->ShowFlags.SetTranslucency(false);
-	SceneCapture2D->ShowFlags.SetParticles(false);
-	SceneCapture2D->ShowFlags.SetSkeletalMeshes(false);
-	SceneCapture2D->ShowFlags.SetLandscape(false);
-	SceneCapture2D->ShowFlags.SetGameplayDebug(false);
-	SceneCapture2D->ShowFlags.SetCompositeDebugPrimitives(false);
-	SceneCapture2D->ShowFlags.SetDebugAI(false);
-	SceneCapture2D->ShowFlags.SetCollision(false);
-	SceneCapture2D->ShowFlags.SetBounds(false);
-	SceneCapture2D->ShowFlags.SetMaterials(true);
-	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
-	SceneCapture2D->ShowFlags.SetPostProcessing(true);
-
 	ArrowMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ArrowMesh"));
 	ArrowMesh->SetupAttachment(RootComponent);
 	ArrowMesh->SetVisibleInSceneCaptureOnly(true);
@@ -133,21 +101,54 @@ ABACharacter::ABACharacter()
 	ArrowMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	ArrowMesh->SetGenerateOverlapEvents(false);
 	ArrowMesh->SetRenderCustomDepth(true);
-	ArrowMesh->CustomDepthStencilValue = 1;
-	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
+
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	CharacterMesh->SetRenderCustomDepth(true);
+	CharacterMesh->CustomDepthStencilValue = 1;
 }
 
 // Called when the game starts or when spawned
 void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+#pragma region GroundScanner
+
+	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+	if (IsValid(GS) == true)
+	{
+		GS->AddActiveCharacter(this);
+	}
+
+	if (IsLocallyControlled() == true)
+	{
+		InitializeSceneCapture();
+
+		if (IsValid(GS) == true)
+		{
+			const auto& ActiveCharacters = GS->GetActiveCharacters();
+			for (const auto& ActiveCharacter : ActiveCharacters)
+			{
+				SceneCapture2D->ShowOnlyComponents.Add(ActiveCharacter->ArrowMesh);
+			}
+		}
+
+		LocalSceneCapture = SceneCapture2D;
+	}
+	else
+	{
+		if (LocalSceneCapture.IsValid() == true)
+		{
+			LocalSceneCapture->ShowOnlyComponents.Add(ArrowMesh);
+		}
+	}
+
+#pragma endregion
+
 	LastBodyYaw = GetActorRotation().Yaw;
 
 	if (IsLocallyControlled() == true)
 	{
-		SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
-		SceneCapture2D->TextureTarget = RT_GroundScanner;
-
 		TArray<USceneComponent*> MeshChildren;
 		GetMesh()->GetChildrenComponents(false, MeshChildren);
 
@@ -176,12 +177,29 @@ void ABACharacter::BeginPlay()
 			}
 		}
 	}
+
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 	PC = Cast<ABAPlayerController>(GetController());
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
+	if (IsValid(GS) == true)
+	{
+		GS->RemoveActiveCharacter(this);
+	}
+
+	if (ArrowColorChangeHandle.IsValid() == true)
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (IsValid(PS) == true)
+		{
+			PS->UnbindOnChangedPlayerColor(ArrowColorChangeHandle);
+			ArrowColorChangeHandle.Reset();
+		}
+	}
+
 	if (HasAuthority() && EquippedWeapon)
 	{
 		EquippedWeapon->Destroy();
@@ -382,34 +400,42 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
+
+}
+
+void ABACharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
 	if (IsLocallyControlled())
 	{
-		if (AbilitySystemComponent)
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (PS)
 		{
-			AbilitySystemComponent->InitAbilityActorInfo(this, this);
+			ASC = PS->GetAbilitySystemComponent();
+			ASC->InitAbilityActorInfo(PS, this);
 
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
-			{
-				if (AbilityClass)
-				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
-					AbilitySystemComponent->GiveAbility(Spec);
-				}
-			}
+			HealthAttributeSet = PS->GetHealthAttributeSet();
+			AmmoAttributeSet = PS->GetAmmoAttributeSet();
 
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-
-			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 
-			AbilitySystemComponent->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			if (IsLocallyControlled())
+			{
+				ASC->RegisterGameplayTagEvent(
+					TAG_State_Combat_Dead,
+					EGameplayTagEventType::NewOrRemoved
+				).AddUObject(this, &ABACharacter::HandleRespawnUI);
+			}
 		}
 	}
+
+	SetArrowPlayerColor();
 }
+
 void ABACharacter::SpringArmRot(bool check)
 {
 	SpringArm->bUsePawnControlRotation = check;
@@ -509,7 +535,7 @@ void ABACharacter::Look(const FInputActionValue& Value)
 
 void ABACharacter::StartAttack(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 	if (!EquippedWeapon) return;
 
 	FGameplayTagContainer Tag;
@@ -518,22 +544,22 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!WeaponData) return;
 	Tag.AddTag(WeaponData->WeaponTag);
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
 void ABACharacter::Reload(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Ability_Active_Reload);
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
 void ABACharacter::StopAttack(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 
 	FGameplayTagContainer CancelTags;
@@ -542,42 +568,35 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	IgnoreTags.AddTag(TAG_Ability_Active_Reload);
 	IgnoreTags.AddTag(TAG_Ability_Active_ADS);
 
-	AbilitySystemComponent->CancelAbilities(&CancelTags,&IgnoreTags);
+	ASC->CancelAbilities(&CancelTags,&IgnoreTags);
 }
 
-UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
-}
+
 
 void ABACharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (AbilitySystemComponent)
+	SetArrowPlayerColor();
+
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (PS)
 	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		ASC = PS->GetAbilitySystemComponent();		
+		ASC->InitAbilityActorInfo(PS, this);
+		PS->InitAbility();
 
-		if (HasAuthority())
-		{
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbility)
-			{
-				if (AbilityClass)
-				{
-					FGameplayAbilitySpec Spec(AbilityClass, 1, -1, this);
-					AbilitySystemComponent->GiveAbility(Spec);
-				}
-			}
-		}
+		HealthAttributeSet = PS->GetHealthAttributeSet();
+		AmmoAttributeSet = PS->GetAmmoAttributeSet();
 
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+		ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 
 		if (IsLocallyControlled())
 		{
-			AbilitySystemComponent->RegisterGameplayTagEvent(
+			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,
 				EGameplayTagEventType::NewOrRemoved
 			).AddUObject(this, &ABACharacter::HandleRespawnUI);
@@ -588,6 +607,14 @@ void ABACharacter::PossessedBy(AController* NewController)
 	{
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
+}
+
+
+UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
+{
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	return PS ? PS->GetAbilitySystemComponent() : nullptr;
+
 }
 
 void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
@@ -624,7 +651,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 		TEXT("WeaponSocket")
 	);
 	NewWeapon->SetActorRelativeTransform(NewWeapon->GripOffset);
-	NewWeapon->EquipWeapon(AbilitySystemComponent);
+	NewWeapon->EquipWeapon(ASC);
 
 	EquippedWeapon = NewWeapon;
 }
@@ -650,7 +677,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+			if (ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 			{
 				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
@@ -671,7 +698,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 
 void ABACharacter::StartAiming()
 {
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
+	if (!ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged)) return;
 	bIsAiming = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
@@ -686,6 +713,36 @@ void ABACharacter::EndAiming()
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 
 	Server_SetAiming(false);
+}
+
+void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex)
+{
+	OwnedEquipment[WeaponIndex] = InWeapon;
+	Server_EquipWeapon(InWeapon);
+
+	if (ASC)
+	{
+		const UAmmoAttributeSet* AmmoSet = ASC->GetSet<UAmmoAttributeSet>();
+		if (!AmmoSet) return;
+
+		ABaseRangedWeapon* CDOWeapon = Cast<ABaseRangedWeapon>(InWeapon->GetDefaultObject());
+		if (!CDOWeapon) return;
+
+		URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(CDOWeapon->GetWeaponData());
+		if (!Data) return;
+
+		int32 NewMaxAmmo = Data->MaxAmmo;
+
+		ASC->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetMaxAmmoAttribute(),
+			NewMaxAmmo
+		);
+
+		ASC->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
+			NewMaxAmmo
+		);
+	}
 }
 
 void ABACharacter::OnRep_bIsFiring()
@@ -741,18 +798,18 @@ void ABACharacter::AimStop(const FInputActionValue& Value)
 
 void ABACharacter::ADSStart(const FInputActionValue& Value)
 {
-	if (!AbilitySystemComponent) return;
+	if (!ASC) return;
 	if (!EquippedWeapon) return;
 
 	FGameplayEventData Payload;
 	Payload.OptionalObject = EquippedWeapon;
-	if (!AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
-		AbilitySystemComponent->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
+		ASC->HandleGameplayEvent(TAG_Ability_Active_ADS, &Payload);
 	}
 	else
 	{
-		AbilitySystemComponent->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
+		ASC->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
 	}
 }
 
@@ -902,13 +959,13 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 }
 void ABACharacter::ExecutePing(const FInputActionValue& Value)
 {
-	if (IsValid(AbilitySystemComponent) == false)
+	if (IsValid(ASC) == false)
 		return;
 
 	FGameplayTagContainer Tag;
 	Tag.AddTag(TAG_Event_Communicate_Ping);
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(Tag);
+	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -1139,5 +1196,96 @@ void ABACharacter::SwitchGroundScanner()
 	if (PC)
 	{
 		PC->SwitchGroundScanner();
+	}
+}
+
+void ABACharacter::RequestWeaponLog(UWeaponDataAsset* InData)
+{
+	if (!HasAuthority()) return;
+	Multicast_ShowWeaponLog(InData);
+}
+
+void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
+{
+	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	if (!GetWorld()) return;
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!LP) return;
+
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->AddWeaponLog(InData);
+		}
+	}
+}
+
+void ABACharacter::InitializeSceneCapture()
+{
+	SceneCapture2D = NewObject<USceneCaptureComponent2D>(this, TEXT("SceneCapture2D"));
+	SceneCapture2D->RegisterComponent();
+	SceneCapture2D->AttachToComponent(SceneCaptureParent, FAttachmentTransformRules::KeepRelativeTransform);
+
+	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
+	SceneCapture2D->ShowFlags.SetLighting(false);
+	SceneCapture2D->ShowFlags.SetDynamicShadows(false);
+	SceneCapture2D->ShowFlags.SetSkyLighting(false);
+	SceneCapture2D->ShowFlags.SetAtmosphere(false);
+	SceneCapture2D->ShowFlags.SetFog(false);
+	SceneCapture2D->ShowFlags.SetBloom(false);
+	SceneCapture2D->ShowFlags.SetEyeAdaptation(false);
+	SceneCapture2D->ShowFlags.SetMotionBlur(false);
+	SceneCapture2D->ShowFlags.SetAntiAliasing(false);
+	SceneCapture2D->ShowFlags.SetTemporalAA(false);
+	SceneCapture2D->ShowFlags.SetTonemapper(false);
+	SceneCapture2D->ShowFlags.SetTranslucency(false);
+	SceneCapture2D->ShowFlags.SetParticles(false);
+	SceneCapture2D->ShowFlags.SetSkeletalMeshes(false);
+	SceneCapture2D->ShowFlags.SetLandscape(false);
+	SceneCapture2D->ShowFlags.SetGameplayDebug(false);
+	SceneCapture2D->ShowFlags.SetCompositeDebugPrimitives(false);
+	SceneCapture2D->ShowFlags.SetDebugAI(false);
+	SceneCapture2D->ShowFlags.SetCollision(false);
+	SceneCapture2D->ShowFlags.SetBounds(false);
+	SceneCapture2D->ShowFlags.SetMaterials(true);
+	SceneCapture2D->ShowFlags.SetStaticMeshes(true);
+	SceneCapture2D->ShowFlags.SetPostProcessing(true);
+
+	SceneCapture2D->PostProcessSettings.AddBlendable(M_PostProcessGroundScanner, 1.0f);
+	SceneCapture2D->TextureTarget = RT_GroundScanner;
+}
+
+void ABACharacter::UpdateShowComponents()
+{
+	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
+}
+
+void ABACharacter::SetArrowPlayerColor()
+{
+	if (IsValid(ArrowMesh) == true)
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (IsValid(PS) == true)
+		{
+			FLinearColor PlayerColor = PS->GetPlayerColor();
+			ArrowMesh->SetCustomPrimitiveDataVector4(0, FVector4(PlayerColor));
+
+			if (ArrowColorChangeHandle.IsValid() == true)
+				return;
+
+			ArrowColorChangeHandle = PS->BindOnChangedPlayerColor(FOnChangedPlayerColor::FDelegate::CreateLambda(
+				[WeakThis = TWeakObjectPtr(this)](FLinearColor NewColor)
+				{
+					if (WeakThis.IsValid() == true)
+					{
+						WeakThis->SetArrowPlayerColor();
+					}
+				}));
+		}
 	}
 }

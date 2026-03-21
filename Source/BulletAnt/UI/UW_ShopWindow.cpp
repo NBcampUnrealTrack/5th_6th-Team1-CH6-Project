@@ -124,8 +124,7 @@ void UUW_ShopWindow::RequestEquipWeapon()
 	ABACharacter* Player = Cast<ABACharacter>(GetOwningPlayerPawn());
 	if (!Player) return;
 
-	Player->OwnedEquipment[0] = WeaponClass;
-	Player->Server_EquipWeapon(WeaponClass);
+	Player->Server_SetChangeWeapon(WeaponClass, 0);
 }
 
 void UUW_ShopWindow::NativeConstruct()

@@ -66,7 +66,7 @@ void AVoxelGround::Tick(float DeltaSeconds)
 	}
 }
 
-void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
+void AVoxelGround::DigGround(TMap<EOreType, int32>& MinedOreMap, const FVector& WorldLocation, float Radius)
 {
 	if (GetNetMode() != NM_ListenServer)
 		return;
@@ -84,7 +84,6 @@ void AVoxelGround::DigGround(const FVector& WorldLocation, float Radius)
 	UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
 	ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
 
-	TMap<EOreType, int32> MinedOreMap;
 	for (int32 Z = MinZ; Z <= MaxZ; ++Z)
 	{
 		for (int32 Y = MinY; Y <= MaxY; ++Y)
@@ -170,10 +169,7 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 										break;
 								}
 
-								if (OreType != EOreType::None)
-								{
-									++MinedOreMap.FindOrAdd(OreType);
-								}
+								++MinedOreMap.FindOrAdd(OreType);
 							}
 						}
 					}

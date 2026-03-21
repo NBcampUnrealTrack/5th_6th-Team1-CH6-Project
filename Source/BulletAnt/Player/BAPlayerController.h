@@ -94,16 +94,10 @@ public:
 	void Server_RequestBuyGacha(ABaseShop* InShop, int32 GachaID, int32 Count);
 
 	UFUNCTION(Server, Reliable)
-	void Server_RequestAddWeapon(TSubclassOf<ABaseWeapon> InWeaponClass);
+	void Server_RequestAddWeapon(ABAItemBox* InItemBox);
 
-	UFUNCTION(Server, Reliable)
-	void Server_RequestDeleteBox(ABAItemBox* InItemBox);
-
-	UFUNCTION(Server, Reliable)
-	void Server_RequestWeaponLog(UWeaponDataAsset* InData);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_ShowWeaponLog(UWeaponDataAsset* InData);
+	UFUNCTION()
+	void RequestDeleteBox(ABAItemBox* InItemBox);
 
 	UFUNCTION()
 	void ShowShopUI();

@@ -30,6 +30,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_StartAttack, "Event.Combat.StartAttack")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_EndAttack, "Event.Combat.EndAttack");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Combat_EndADS, "Event.Combat.EndADS");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Communicate_Ping, "Event.Communicate.Ping");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Mining_Hit, "Event.Mining.Hit");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Dead, "GameplayCue.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Weapon_Fire, "GameplayCue.Weapon.Fire");
@@ -38,7 +39,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Shop_UseItemBox, "GameplayCue.Shop.UseIte
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Mining_Hit, "GameplayCue.Mining.Hit");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Communicate_Ping, "GameplayCue.Communicate.Ping");
 
-UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Ammo_Reload, "Data.Ammo.Reload");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Ammo_MaxAmmo, "Data.Ammo.MaxAmmo");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Fire_Cooldown, "Data.Fire.Cooldown");
 
 
 

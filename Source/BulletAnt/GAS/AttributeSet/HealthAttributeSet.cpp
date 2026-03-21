@@ -5,7 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemBlueprintLibrary.h"
-
+#include "Player/BACharacter.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -50,7 +50,26 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 			);
 
 			if (GetHealth() == 0.f)
-			{				
+			{	
+				//ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
+				//if (PlayerCharacter)
+				//{
+				//	UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent();
+				//	if (ASC)
+				//	{
+				//		FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+				//		FGameplayEffectSpecHandle SpecHandle =
+				//			ASC->MakeOutgoingSpec(ExpEffect, 1.f, Context);
+
+				//		if (SpecHandle.IsValid())
+				//		{
+				//			SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Exp, 5.f); // 경험치 값
+
+				//			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				//		}
+				//	}
+				//}
+
 				Payload.EventMagnitude = 5.f;
 				
 				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
