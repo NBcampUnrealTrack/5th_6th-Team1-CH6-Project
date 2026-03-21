@@ -255,7 +255,7 @@ void ABACharacter::Tick(float DeltaTime)
 			}
 		}
 	}
-	if(bIsAiming&&!AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if(ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, AimingTALength, DeltaTime, TALengthChangeSpeed);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
@@ -677,7 +677,7 @@ FVector ABACharacter::GetFireDirection_Implementation() const
 		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
 		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 		{
-			if (ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+			if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 			{
 				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
 			}
@@ -1207,9 +1207,9 @@ void ABACharacter::RequestWeaponLog(UWeaponDataAsset* InData)
 
 void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
 {
-	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
 	if (!GetWorld()) return;
-	ULocalPlayer* LP = PC->GetLocalPlayer();
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
 	if (!LP) return;
 
 	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
