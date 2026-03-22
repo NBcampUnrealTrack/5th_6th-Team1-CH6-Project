@@ -18,8 +18,8 @@
 #include "UI/UISubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
+#include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
-#include "UI/UW_PlayerHUDWidget.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "Weapon/BaseRangedWeapon.h"
@@ -411,18 +411,23 @@ void ABACharacter::OnRep_PlayerState()
 
 			HealthAttributeSet = PS->GetHealthAttributeSet();
 			AmmoAttributeSet = PS->GetAmmoAttributeSet();
-
-			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+			EXPAttributeSet = PS->GetEXPAttributeSet();
 
 			if (IsLocallyControlled())
 			{
+				ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+					.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+				ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+					.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+				ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
+					.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
+				ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+					.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+
 				ASC->RegisterGameplayTagEvent(
 					TAG_State_Combat_Dead,
 					EGameplayTagEventType::NewOrRemoved
-				).AddUObject(this, &ABACharacter::HandleRespawnUI);
+				).AddUObject(this, &ABACharacter::HandleRespawnUI);			
 			}
 		}
 	}
@@ -531,6 +536,7 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 {
 	if (!ASC) return;
 	if (!EquippedWeapon) return;
+	if (ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
 
 	FGameplayTagContainer Tag;
 
@@ -565,8 +571,6 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	ASC->CancelAbilities(&CancelTags,&IgnoreTags);
 }
 
-
-
 void ABACharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
@@ -582,14 +586,20 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 		HealthAttributeSet = PS->GetHealthAttributeSet();
 		AmmoAttributeSet = PS->GetAmmoAttributeSet();
-
-		ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+		EXPAttributeSet = PS->GetEXPAttributeSet();
+		HealthAttributeSet->InitValue(100.f, 10.f);
 
 		if (IsLocallyControlled())
 		{
+			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
+				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+				.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+
 			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,
 				EGameplayTagEventType::NewOrRemoved
@@ -609,11 +619,6 @@ UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	return PS ? PS->GetAbilitySystemComponent() : nullptr;
 
-}
-
-void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
-{
-	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
 }
 
 void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> WeaponClass)
@@ -651,12 +656,15 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 
 FVector ABACharacter::GetFireStartLocation_Implementation() const
 {
-	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+	if (EquippedWeapon)
 	{
-		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
-		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
+		if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 		{
-			return WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+			USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
+			if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
+			{
+				return WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+			}
 		}
 	}
 
@@ -665,24 +673,27 @@ FVector ABACharacter::GetFireStartLocation_Implementation() const
 
 FVector ABACharacter::GetFireDirection_Implementation() const
 {
-	if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
+	if (EquippedWeapon)
 	{
-		USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
-		if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
+		if (ABaseRangedWeapon* Weapon = Cast<ABaseRangedWeapon>(EquippedWeapon))
 		{
-			if (ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+			USkeletalMeshComponent* WeaponMesh = Weapon->GetWeaponMesh();
+			if (WeaponMesh && WeaponMesh->DoesSocketExist(Weapon->GetMuzzleSocketName()))
 			{
-				return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
+				if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+				{
+					return WeaponMesh->GetSocketRotation(Weapon->GetMuzzleSocketName()).Vector().GetSafeNormal();
+				}
+
+				FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
+				FVector ViewLoc;
+				FRotator ViewRot;
+				GetActorEyesViewPoint(ViewLoc, ViewRot);
+
+				FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
+
+				return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 			}
-
-			FVector WeaponSocketLocation = WeaponMesh->GetSocketLocation(Weapon->GetMuzzleSocketName());
-			FVector ViewLoc;
-			FRotator ViewRot;
-			GetActorEyesViewPoint(ViewLoc, ViewRot);
-
-			FVector AimEnd = ViewLoc + ViewRot.Vector() * 1000000.f;
-
-			return (AimEnd - WeaponSocketLocation).GetSafeNormal();
 		}
 	}
 
@@ -757,9 +768,33 @@ void ABACharacter::SetbIsFiring(bool InIsFiring)
 	}
 }
 
+void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
+{
+	OnHealthChanged.Broadcast(HealthAttributeSet->GetHealth(), HealthAttributeSet->GetMaxHealth());
+}
+
+
 void ABACharacter::OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const
 {
-	OnAmmoChanged.Broadcast(Data.NewValue, AmmoAttributeSet->GetMaxAmmo());
+	OnAmmoChanged.Broadcast(AmmoAttributeSet->GetCurrentAmmo(), AmmoAttributeSet->GetMaxAmmo());
+}
+
+void ABACharacter::OnEXPChangedCallback(const FOnAttributeChangeData& Data) const
+{
+	OnEXPChanged.Broadcast(EXPAttributeSet->GetCurrentEXP(), EXPAttributeSet->GetMaxEXP());
+}
+
+void ABACharacter::OnLevelChangedCallback(const FOnAttributeChangeData& Data)
+{
+	OnLevelChanged.Broadcast(Data.NewValue, Data.OldValue);
+
+	if ((int32)Data.NewValue > (int32)Data.OldValue)
+	{
+		for (int32 i = Data.OldValue; i < Data.NewValue; ++i)
+		{
+			LevelUp();
+		}
+	}
 }
 
 void ABACharacter::SetRecoil(float InPitch, float InYaw)
@@ -1311,5 +1346,56 @@ void ABACharacter::SetArrowPlayerColor()
 					}
 				}));
 		}
+	}
+}
+
+void ABACharacter::GetEXP(float InEXP)
+{
+	if (!ASC || !EXPEffectClass) return;
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+
+	FGameplayEffectSpecHandle Spec =
+		ASC->MakeOutgoingSpec(EXPEffectClass, 1.f, Context);
+
+	if (Spec.IsValid())
+	{
+		Spec.Data->SetSetByCallerMagnitude(
+			TAG_Data_Reward_EXP,
+			InEXP
+		);
+
+		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+}
+
+void ABACharacter::LevelUp()
+{
+	if (!ASC || !LevelUpEffectClass) return;
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+
+	FGameplayEffectSpecHandle Spec =
+		ASC->MakeOutgoingSpec(LevelUpEffectClass, 1.f, Context);
+
+	float BaseHealth = HealthAttributeSet->GetHealth();
+	float HealthIncrease = BaseHealth * 0.15;
+
+	float BaseAttackPower = HealthAttributeSet->GetAttackPower();	
+	float AttackPowerIncrease = BaseAttackPower * 0.1f;
+
+	if (Spec.IsValid())
+	{
+		Spec.Data->SetSetByCallerMagnitude(
+			TAG_Data_Reward_IncreaseMaxHealth,
+			HealthIncrease
+		);
+
+		Spec.Data->SetSetByCallerMagnitude(
+			TAG_Data_Reward_IncreaseAttackPower,
+			AttackPowerIncrease
+		);
+
+		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 	}
 }

@@ -26,8 +26,12 @@ public:
 	virtual void OnRep_Health(const FGameplayAttributeData& OldHealth);
 	UFUNCTION()
 	virtual void OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth);
+	UFUNCTION()
+	virtual void OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void InitValue(float InHealth = 100.f, float InAttackPower = 0.f);
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Health", ReplicatedUsing = OnRep_Health)
@@ -37,12 +41,25 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Health", ReplicatedUsing = OnRep_MaxHealth)
 	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, MaxHealth)
-
+	
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Meta")
 	FGameplayAttributeData IncomingDamage;
 	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, IncomingDamage)
 
 	UPROPERTY(BlueprintReadOnly, Category = "Combat|Meta")
+	FGameplayAttributeData IncreaseMaxHP;
+	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, IncreaseMaxHP)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|Meta")
 	FGameplayAttributeData IncomingHeal;
 	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, IncomingHeal)
+
+	//속성추가
+	UPROPERTY(BlueprintReadOnly, Category = "Attack", ReplicatedUsing = OnRep_AttackPower)
+	FGameplayAttributeData AttackPower;
+	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, AttackPower)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|Meta")
+	FGameplayAttributeData IncreaseAttackPower;
+	ATTRIBUTE_ACCESSORS(UHealthAttributeSet, IncreaseAttackPower)
 };

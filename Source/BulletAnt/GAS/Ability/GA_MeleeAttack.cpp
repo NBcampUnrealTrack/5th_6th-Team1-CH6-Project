@@ -9,6 +9,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "GameFramework/Character.h"
 #include "Engine/OverlapResult.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
 
 UGA_MeleeAttack::UGA_MeleeAttack()
 {
@@ -222,7 +223,14 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, FH
 
 	if (SourceASC && TargetASC)
 	{
+		const UHealthAttributeSet* SourceHealthSet = SourceASC->GetSet<UHealthAttributeSet>();
+		float SourceAttackPower = SourceHealthSet ? SourceHealthSet->GetAttackPower() : 0.f;
+
+		float RandomVariance = FMath::FRandRange(0.9f, 1.1f);
+
 		if (!Data) return;
+
+		float FinalDamage = (Data->BaseDamage + SourceAttackPower) * RandomVariance;
 
 		if (Data->OnUseStateHitEffect)
 		{
@@ -234,7 +242,7 @@ void UGA_MeleeAttack::ApplyDamage(const FGameplayAbilityActorInfo* ActorInfo, FH
 
 			if (SpecHandle.IsValid())
 			{
-				SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, Data->BaseDamage);
+				SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, FinalDamage);
 				SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 			}
 		}

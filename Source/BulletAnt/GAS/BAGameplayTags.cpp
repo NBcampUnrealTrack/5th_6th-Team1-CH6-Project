@@ -16,6 +16,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Dead, "State.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Reload, "State.Combat.Reload");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_ADS, "State.Combat.ADS");
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Cooldown, "State.Combat.Cooldown");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Melee, "Weapon.Equipped.Melee");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Mining, "Weapon.Equipped.Mining");
@@ -41,6 +42,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Communicate_Ping, "GameplayCue.Communicat
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Ammo_MaxAmmo, "Data.Ammo.MaxAmmo");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Fire_Cooldown, "Data.Fire.Cooldown");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Reward_EXP, "Data.Reward.EXP");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Reward_IncreaseMaxHealth, "Data.Reward.IncreaseMaxHealth");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Reward_IncreaseAttackPower, "Data.Reward.IncreaseAttackPower");
 
 
 

@@ -8,6 +8,7 @@
 #include "AbilitySystemInterface.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "NiagaraComponent.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
 
 ABaseProjectile::ABaseProjectile()
 {
@@ -100,6 +101,13 @@ void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UP
 
 	if (!IsValid(CachedData)) return;
 
+	const UHealthAttributeSet* SourceHealthSet = SourceASC->GetSet<UHealthAttributeSet>();
+	float SourceAttackPower = SourceHealthSet ? SourceHealthSet->GetAttackPower() : 0.f;
+
+	float RandomVariance = FMath::FRandRange(0.9f, 1.1f);
+
+	float FinalDamage = (CachedDamage + SourceAttackPower) * RandomVariance;
+
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddHitResult(Hit);
 	Context.AddInstigator(CachedOwner,this);
@@ -111,7 +119,7 @@ void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UP
 
 	Spec.Data->SetSetByCallerMagnitude(
 		TAG_Data_Combat_Damage,
-		CachedDamage
+		FinalDamage
 	);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC);

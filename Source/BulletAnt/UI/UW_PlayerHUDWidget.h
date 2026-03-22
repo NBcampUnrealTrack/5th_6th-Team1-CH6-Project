@@ -38,10 +38,16 @@ protected:
 	void UpdateHealth(float Current, float Max);
 
 	UFUNCTION()
+	void UpdateEXP(float Current, float Max);
+
+	UFUNCTION()
 	void UpdateAmmo(float Current, float Max);
 
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* HealthBar;
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* EXPBar;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TotalAmmoText;

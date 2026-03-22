@@ -3,6 +3,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
 
@@ -15,7 +16,7 @@ ABAPlayerState::ABAPlayerState()
 
 	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthSet"));
 	AmmoAttributeSet = CreateDefaultSubobject<UAmmoAttributeSet>(TEXT("AmmoSet"));
-
+	EXPAttributeSet = CreateDefaultSubobject<UEXPAttributeSet>(TEXT("EXPSet"));
 }
 
 void ABAPlayerState::InitAbility()
@@ -38,14 +39,20 @@ UAbilitySystemComponent* ABAPlayerState::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-const UHealthAttributeSet* ABAPlayerState::GetHealthAttributeSet() const
+UHealthAttributeSet* ABAPlayerState::GetHealthAttributeSet()
 {
-	return AbilitySystemComponent ? AbilitySystemComponent->GetSet<UHealthAttributeSet>() : nullptr;
+	if (!AbilitySystemComponent) return nullptr;
+	return HealthAttributeSet;
 }
 
 const UAmmoAttributeSet* ABAPlayerState::GetAmmoAttributeSet() const
 {
 	return AbilitySystemComponent ? AbilitySystemComponent->GetSet<UAmmoAttributeSet>() : nullptr;
+}
+
+const UEXPAttributeSet* ABAPlayerState::GetEXPAttributeSet() const
+{
+	return AbilitySystemComponent ? AbilitySystemComponent->GetSet<UEXPAttributeSet>() : nullptr;
 }
 
 void ABAPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

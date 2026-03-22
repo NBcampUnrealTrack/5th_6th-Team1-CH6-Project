@@ -10,6 +10,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
 
 class UHealthAttributeSet;
 class UAmmoAttributeSet;
+class UEXPAttributeSet;
 
 UCLASS()
 class BULLETANT_API ABAPlayerState : public APlayerState, public IAbilitySystemInterface
@@ -49,8 +50,9 @@ protected:
 
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	const UHealthAttributeSet* GetHealthAttributeSet() const;
+	UHealthAttributeSet* GetHealthAttributeSet();
 	const UAmmoAttributeSet* GetAmmoAttributeSet() const;
+	const UEXPAttributeSet* GetEXPAttributeSet() const;
 
 	void InitAbility();
 
@@ -58,14 +60,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAbilitySystemComponent* AbilitySystemComponent;
 
-	UPROPERTY()
-	UHealthAttributeSet* HealthAttributeSet;
-
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbility;
 
 	UPROPERTY()
 	UAmmoAttributeSet* AmmoAttributeSet;
+
+	UPROPERTY()
+	UHealthAttributeSet* HealthAttributeSet;
+
+	UPROPERTY()
+	UEXPAttributeSet* EXPAttributeSet;
+
 
 #pragma endregion
 };

@@ -28,6 +28,11 @@ void UUW_PlayerHUDWidget::InitPlayerHUD()
 		&UUW_PlayerHUDWidget::UpdateAmmo
 	);
 
+	OwnerCharacter->OnEXPChanged.AddDynamic(
+		this,
+		&UUW_PlayerHUDWidget::UpdateEXP
+	);
+
 	if (IsValid(OreCountUI) == true)
 	{
 		ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
@@ -104,6 +109,16 @@ void UUW_PlayerHUDWidget::UpdateHealth(float Current, float Max)
 		return;
 
 	HealthBar->SetPercent(Current / Max);
+}
+
+void UUW_PlayerHUDWidget::UpdateEXP(float Current, float Max)
+{
+	if (!EXPBar || Max <= 0.f)
+	{
+		return;
+	}
+
+	EXPBar->SetPercent(Current / Max);
 }
 
 void UUW_PlayerHUDWidget::UpdateAmmo(float Current, float Max)

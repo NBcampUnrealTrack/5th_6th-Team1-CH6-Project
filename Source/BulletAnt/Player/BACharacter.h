@@ -14,6 +14,9 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthAttributeChangedDelegate, float, CurrentValue, float, MaxValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEXPChangedDelegate, float, CurrentEXPValue, float, MaxEXPValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLevelChangedDelegate, float, CurrentLevel, float, OldLevel);
+
 
 class UCapsuleComponent;
 class USpringArmComponent;
@@ -22,12 +25,14 @@ class ABAPlayerController;
 class UMotionWarpingComponent;
 class UInputAction;
 class UHealthAttributeSet;
+class UAmmoAttributeSet;
+class UEXPAttributeSet;
 class ABaseWeapon;
 class UBuildManagerComponent;
 class UBAParkourComponent;
-class UAmmoAttributeSet;
 class USceneCaptureComponent2D;
 class UUISubsystem;
+class UGameplayEffect;
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -359,20 +364,40 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
     FOnAmmoChangedDelegate OnAmmoChanged;
 
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnEXPChangedDelegate OnEXPChanged;
+
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnLevelChangedDelegate OnLevelChanged;
+
     virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
     void ShowAmmo();
     void HideAmmo();
 
+    void GetEXP(float InEXP);
+    void LevelUp();
+
 protected:
-    UAbilitySystemComponent* ASC;
-
-    const UHealthAttributeSet* HealthAttributeSet;
-    const UAmmoAttributeSet* AmmoAttributeSet;
-
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
 
     void OnAmmoChangedCallback(const FOnAttributeChangeData& Data) const;
+
+    void OnEXPChangedCallback(const FOnAttributeChangeData& Data) const;
+
+    void OnLevelChangedCallback(const FOnAttributeChangeData& Data);
+
+    UAbilitySystemComponent* ASC;
+
+    UHealthAttributeSet* HealthAttributeSet;
+    const UAmmoAttributeSet* AmmoAttributeSet;
+    const UEXPAttributeSet* EXPAttributeSet;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effect")
+    TSubclassOf<UGameplayEffect> EXPEffectClass;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Effect")
+    TSubclassOf<UGameplayEffect> LevelUpEffectClass;
 
 #pragma endregion
 

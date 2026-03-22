@@ -6,11 +6,13 @@
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Player/BACharacter.h"
+#include "GAS/AttributeSet/EXPAttributeSet.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
 	InitHealth(100.f);
 	InitMaxHealth(100.f);
+	InitAttackPower(0.f);
 }
 
 void UHealthAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -21,12 +23,22 @@ void UHealthAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME_CONDITION_NOTIFY(UHealthAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
 }
 
+void UHealthAttributeSet::InitValue(float InHealth, float InAttackPower)
+{
+	SetMaxHealth(InHealth);
+	SetHealth(InHealth);
+	SetAttackPower(InAttackPower);
+}
+
 void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
 
 	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
 	{
+		UAbilitySystemComponent* TargetASC = Data.Target.AbilityActorInfo->AbilitySystemComponent.Get();
+		if (!TargetASC || TargetASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) return;
+
 		const float LocalIncomingDamage = GetIncomingDamage();
 
 		if (LocalIncomingDamage > 0.f)
@@ -51,24 +63,12 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 			if (GetHealth() == 0.f)
 			{	
-				//ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
-				//if (PlayerCharacter)
-				//{
-				//	UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent();
-				//	if (ASC)
-				//	{
-				//		FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-				//		FGameplayEffectSpecHandle SpecHandle =
-				//			ASC->MakeOutgoingSpec(ExpEffect, 1.f, Context);
-
-				//		if (SpecHandle.IsValid())
-				//		{
-				//			SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Exp, 5.f); // 경험치 값
-
-				//			ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-				//		}
-				//	}
-				//}
+				ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
+				if (PlayerCharacter)
+				{
+					float EXP = 50.f;
+					PlayerCharacter->GetEXP(EXP);
+				}
 
 				Payload.EventMagnitude = 5.f;
 				
@@ -79,8 +79,26 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 				);
 			}
 		}
-
 		SetIncomingDamage(0.f);
+	}
+
+	if (Data.EvaluatedData.Attribute == GetIncreaseMaxHPAttribute())
+	{
+		const float LocalIncreaseMaxHealth = GetIncreaseMaxHP();
+
+		SetMaxHealth(GetMaxHealth() + LocalIncreaseMaxHealth);
+		SetHealth(GetMaxHealth());
+
+		SetIncreaseMaxHP(0.f);
+	}
+
+	if (Data.EvaluatedData.Attribute == GetIncreaseAttackPowerAttribute())
+	{
+		const float LocalIncreaseAttackPower = GetIncreaseAttackPower();
+
+		SetAttackPower(GetAttackPower() + LocalIncreaseAttackPower);
+
+		SetIncreaseAttackPower(0.f);
 	}
 
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
@@ -97,14 +115,14 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 			const float NewHealth = GetHealth() + LocalIncomingHeal;
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
 		}
-
 		SetIncomingHeal(0.f);
 	}
+	
 }
 
 void UHealthAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
-	Super::PreAttributeBaseChange(Attribute, NewValue);
+	Super::PreAttributeChange(Attribute, NewValue);
 
 	if (Attribute == GetHealthAttribute())
 	{
@@ -120,6 +138,11 @@ void UHealthAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
 void UHealthAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& OldMaxHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UHealthAttributeSet, MaxHealth, OldMaxHealth);
+}
+
+void UHealthAttributeSet::OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UHealthAttributeSet, AttackPower, OldAttackPower);
 }
 
 
