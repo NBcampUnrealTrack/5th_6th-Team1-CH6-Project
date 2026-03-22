@@ -13,6 +13,23 @@ void UUW_PlayerHUDWidget::NativeConstruct()
 	Super::NativeConstruct();
 }
 
+void UUW_PlayerHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (HealthBar)
+	{
+		DisplayedHealthPercent = FMath::FInterpTo(DisplayedHealthPercent, TargetHealthPercent, InDeltaTime, HealthLerpSpeed);
+		HealthBar->SetPercent(DisplayedHealthPercent);
+	}
+
+	if (EXPBar)
+	{
+		DisplayedEXPPercent = FMath::FInterpTo(DisplayedEXPPercent, TargetEXPPercent, InDeltaTime, EXPLerpSpeed);
+		EXPBar->SetPercent(DisplayedEXPPercent);
+	}
+}
+
 void UUW_PlayerHUDWidget::InitPlayerHUD()
 {
 	if (!OwnerCharacter.IsValid())
@@ -108,7 +125,7 @@ void UUW_PlayerHUDWidget::UpdateHealth(float Current, float Max)
 	if (!HealthBar || Max <= 0.f)
 		return;
 
-	HealthBar->SetPercent(Current / Max);
+	TargetHealthPercent = Current / Max;
 }
 
 void UUW_PlayerHUDWidget::UpdateEXP(float Current, float Max)
@@ -118,7 +135,7 @@ void UUW_PlayerHUDWidget::UpdateEXP(float Current, float Max)
 		return;
 	}
 
-	EXPBar->SetPercent(Current / Max);
+	TargetEXPPercent = Current / Max;
 }
 
 void UUW_PlayerHUDWidget::UpdateAmmo(float Current, float Max)

@@ -19,6 +19,7 @@ class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	void InitPlayerHUD();
 
@@ -46,8 +47,16 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* HealthBar;
 
+	float DisplayedHealthPercent = 1.f;
+	float TargetHealthPercent = 1.f;
+	float HealthLerpSpeed = 2.f;
+
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* EXPBar;
+
+	float DisplayedEXPPercent = 0.f;
+	float TargetEXPPercent = 0.f;
+	float EXPLerpSpeed = 2.f;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TotalAmmoText;
