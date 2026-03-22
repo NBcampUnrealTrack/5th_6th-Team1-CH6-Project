@@ -65,6 +65,11 @@ EStateTreeRunStatus UDiveTask::EnterState(FStateTreeExecutionContext& Context, c
 
 EStateTreeRunStatus UDiveTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime)
 {
+    if (!IsValid(ContextEnemy) || !IsValid(TargetActor))
+    {
+        return EStateTreeRunStatus::Failed;
+    }
+
     DiveDuration += DeltaTime;
     if (DiveDuration >= DiveTotalTime && ContextEnemy->GetActorLocation().Z >= StartLocation.Z)
     {
@@ -96,9 +101,9 @@ EStateTreeRunStatus UDiveTask::Tick(FStateTreeExecutionContext& Context, const f
     float FinalZ = StartLocation.Z - SineAlpha * Depth;
     FVector FinalLocation(CurrentHorizontalLoc.X, CurrentHorizontalLoc.Y, FinalZ);
 
-    if (DiveAlpha >= 0.3 && DiveAlpha <= 0.7 && !bAttack)
+    if (!bAttack && DiveAlpha >= 0.1f)
     {
-        // Attack();
+        BeginAttack();
         bAttack = true;
     }
 
@@ -159,4 +164,24 @@ FVector UDiveTask::FindAttackPoint()
         Res = TargetActor->GetActorLocation();
     }
     return Res;
+}
+
+void UDiveTask::BeginAttack()
+{
+    if (!IsValid(ContextEnemy))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("UMoveToLoc-OnMoveCompleted : ContextActor"));
+        return;
+    }
+    if (!IsValid(ContextEnemy->GetStateTreeComponent()))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("UMoveToLoc-OnMoveCompleted : StateTree"));
+        return;
+    }
+
+    if (IsValid(TargetActor))
+    {
+        FStateTreeEvent ToAttack(FGameplayTag::RequestGameplayTag(TEXT("State.Combat.Attacking")));
+        ContextEnemy->GetStateTreeComponent()->SendStateTreeEvent(ToAttack);
+    }
 }

@@ -35,4 +35,13 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Dive")
 	float DiveTotalTime = 3.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float AttackBoxHalfWidth = 50.f;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float AttackBoxHalfHeight = 100.f;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	float AttackBoxHalfDepth = 15.f;
 };
