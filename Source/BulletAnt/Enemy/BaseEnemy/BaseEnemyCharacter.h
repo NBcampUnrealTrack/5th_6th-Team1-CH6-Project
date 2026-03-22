@@ -133,7 +133,7 @@ public:
 protected:
 	void InitGAS();
 
-	void OnSpeedMultiplier(const FOnAttributeChangeData& Data);
+	virtual void OnMoveAttributeChange(const FOnAttributeChangeData& Data);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
@@ -191,21 +191,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Config")
 	TObjectPtr<UTribeDataAsset> TribeType;
-
-#pragma endregion
-
-#pragma region Init
-
-public:
-	float GetWalkSpeed() const;
-	void SetWalkSpeed(float InWalkSpeed);
-
-protected:
-	UPROPERTY(Replicated, ReplicatedUsing = OnRep_WalkSpeed)
-	float WalkSpeed;
-
-	UFUNCTION()
-	void OnRep_WalkSpeed();
 
 #pragma endregion
 

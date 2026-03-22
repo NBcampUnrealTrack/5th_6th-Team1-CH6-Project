@@ -349,9 +349,9 @@ void ABaseEnemyCharacter::ApplyTribe()
 		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
 		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
 
-		WalkSpeed = BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul;
-		MoveAttributeSet->SetMoveSpeed(WalkSpeed);
-		OnRep_WalkSpeed();
+		MoveAttributeSet->SetMoveSpeed(BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul);
+		MoveAttributeSet->SetMoveSpeedMultiplier(0);
+		MoveAttributeSet->SetMoveSpeedMultiplier(1);
 	}
 }
 
@@ -423,21 +423,6 @@ UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
 	}
 
 	return nullptr;
-}
-
-float ABaseEnemyCharacter::GetWalkSpeed() const
-{
-	return WalkSpeed;
-}
-
-void ABaseEnemyCharacter::SetWalkSpeed(float InWalkSpeed)
-{
-	WalkSpeed = InWalkSpeed;
-}
-
-void ABaseEnemyCharacter::OnRep_WalkSpeed()
-{
-	GetCharacterMovement()->MaxWalkSpeed = MoveAttributeSet->GetMoveSpeed() * MoveAttributeSet->GetMoveSpeedMultiplier();
 }
 
 void ABaseEnemyCharacter::StartIntrudeAction()
@@ -576,16 +561,21 @@ void ABaseEnemyCharacter::InitGAS()
 		DeadEventHandle = AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(TAG_Event_Combat_Dead)
 			.AddUObject(this, &ABaseEnemyCharacter::OnDeadEventReceived);
 
-		MoveAttributeSet->SetMoveSpeedMultiplier(1);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(MoveAttributeSet->GetMoveSpeedAttribute())
+			.AddUObject(this, &ABaseEnemyCharacter::OnMoveAttributeChange);
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(MoveAttributeSet->GetMoveSpeedMultiplierAttribute())
-			.AddUObject(this, &ABaseEnemyCharacter::OnSpeedMultiplier);
+			.AddUObject(this, &ABaseEnemyCharacter::OnMoveAttributeChange);
+		MoveAttributeSet->SetMoveSpeedMultiplier(1);
 	}
 
 }
 
-void ABaseEnemyCharacter::OnSpeedMultiplier(const FOnAttributeChangeData& Data)
+void ABaseEnemyCharacter::OnMoveAttributeChange(const FOnAttributeChangeData& Data)
 {
-	OnRep_WalkSpeed();
+	if (IsValid(GetCharacterMovement()) && IsValid(MoveAttributeSet))
+	{
+		GetCharacterMovement()->MaxWalkSpeed = MoveAttributeSet->GetMoveSpeed() * MoveAttributeSet->GetMoveSpeedMultiplier();
+	}
 }
 
 void ABaseEnemyCharacter::PossessedBy(AController* NewController)
@@ -608,7 +598,6 @@ void ABaseEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurning);
 	DOREPLIFETIME(ABaseEnemyCharacter, bIsTurningLeft);
-	DOREPLIFETIME(ABaseEnemyCharacter, WalkSpeed);
 	DOREPLIFETIME(ABaseEnemyCharacter, TribeType);
 }
 

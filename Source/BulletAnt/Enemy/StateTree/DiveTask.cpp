@@ -58,7 +58,7 @@ EStateTreeRunStatus UDiveTask::EnterState(FStateTreeExecutionContext& Context, c
         return EStateTreeRunStatus::Failed;
     }
     Fly->SetDiveMode();
-    Fly->SetFlySpeed(CMC->MaxFlySpeed * DAFly->DiveSpeedMultiplier);
+    Fly->SetFlySpeed(Fly->GetFlySpeed()* DAFly->DiveSpeedMultiplier);
 
 	return res;
 }
@@ -126,7 +126,7 @@ void UDiveTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeT
     {
         if (CMC.IsValid())
         {
-            Fly->SetFlySpeed(CMC->MaxFlySpeed / DAFly->DiveSpeedMultiplier);
+            Fly->SetFlySpeed(Fly->GetFlySpeed() / DAFly->DiveSpeedMultiplier);
             CMC->bOrientRotationToMovement = false;
         }
     }

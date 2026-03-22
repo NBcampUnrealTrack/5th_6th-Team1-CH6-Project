@@ -8,6 +8,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
 #include "Components/CapsuleComponent.h"
+#include "GAS/AttributeSet/MoveAttributeSet.h"
+#include "GameplayEffect.h"
 
 void ABaseFlyEnemy::ApplyTribe()
 {
@@ -24,8 +26,7 @@ void ABaseFlyEnemy::ApplyTribe()
 			return;
 		}
 
-		FlySpeed = BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul;
-		OnRep_FlySpeed();
+		MoveAttributeSet->SetMoveSpeed(BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul);
 
 		UFlyDataAsset* FlyDataAsset = Cast<UFlyDataAsset>(BaseEnemyDataAsset);
 		if (!ensureMsgf(IsValid(FlyDataAsset), TEXT("ABaseFlyEnemy BeginPlay : FlyDataAsset Missing")))
@@ -57,10 +58,24 @@ void ABaseFlyEnemy::UnSetDiveMode()
 	}
 }
 
+float ABaseFlyEnemy::GetFlySpeed() const
+{
+	if (IsValid(MoveAttributeSet))
+	{
+		return MoveAttributeSet->GetMoveSpeed();
+	}
+	else
+	{
+		return 700.f;
+	}
+}
+
 void ABaseFlyEnemy::SetFlySpeed(float InSpeed)
 {
-	FlySpeed = InSpeed;
-	OnRep_FlySpeed();
+	if (IsValid(MoveAttributeSet))
+	{
+		MoveAttributeSet->SetMoveSpeed(InSpeed);
+	}
 }
 
 ABaseFlyEnemy::ABaseFlyEnemy()
@@ -108,13 +123,20 @@ void ABaseFlyEnemy::BeginPlay()
 		return;
 	}
 	GetCharacterMovement()->RotationRate = FlyDataAsset->FlyRotationRate;
+
+	if (IsValid(AbilitySystemComponent) && IsValid(MoveAttributeSet))
+	{
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(MoveAttributeSet->GetMoveSpeedMultiplierAttribute())
+			.AddUObject(this, &ABaseFlyEnemy::OnMoveAttributeChange);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(MoveAttributeSet->GetMoveSpeedAttribute())
+			.AddUObject(this, &ABaseFlyEnemy::OnMoveAttributeChange);
+	}
 }
 
 void ABaseFlyEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(ABaseFlyEnemy, FlySpeed);
+	
 	DOREPLIFETIME(ABaseFlyEnemy, Deceleration);
 	DOREPLIFETIME(ABaseFlyEnemy, AccelerationRate);
 }
@@ -133,11 +155,11 @@ void ABaseFlyEnemy::PossessedBy(AController* NewController)
 	}
 }
 
-void ABaseFlyEnemy::OnRep_FlySpeed()
+void ABaseFlyEnemy::OnMoveAttributeChange(const FOnAttributeChangeData& Data)
 {
-	if (IsValid(GetCharacterMovement()))
+	if (IsValid(GetCharacterMovement()) && IsValid(MoveAttributeSet))
 	{
-		GetCharacterMovement()->MaxFlySpeed = FlySpeed;
+		GetCharacterMovement()->MaxFlySpeed = MoveAttributeSet->GetMoveSpeed() * MoveAttributeSet->GetMoveSpeedMultiplier();
 	}
 }
 
@@ -171,6 +193,6 @@ void ABaseFlyEnemy::Multicast_SetDiveMode_Implementation()
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (IsValid(Capsule))
 	{
-		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);	
+		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);	
 	}
 }
