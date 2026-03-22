@@ -309,3 +309,31 @@ void ABAPlayerController::SetupForMain()
 		}
 	}
 }
+
+void ABAPlayerController::ShowAmmo()
+{
+	if (IsLocalController())
+	{
+		if (UISubsystem)
+		{
+			if (HUD)
+			{
+				HUD->ShowAmmoText();
+			}
+		}
+	}
+}
+
+void ABAPlayerController::HideAmmo()
+{
+	if (IsLocalController())
+	{
+		if (UISubsystem)
+		{
+			if (HUD)
+			{
+				HUD->HideAmmoText();
+			}
+		}
+	}
+}

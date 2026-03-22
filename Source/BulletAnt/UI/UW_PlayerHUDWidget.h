@@ -10,6 +10,7 @@ class UTextBlock;
 class UVerticalBox;
 class UUW_WeaponLog;
 class UUW_OreCount;
+class UImage;
 
 UCLASS()
 class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
@@ -30,6 +31,8 @@ public:
 	void ShowAmmoText();
 	void HideAmmoText();
 
+	void SetAutoImage(bool bIsFullAuto);
+
 protected:
 	UFUNCTION()
 	void UpdateHealth(float Current, float Max);
@@ -41,7 +44,19 @@ protected:
 	UProgressBar* HealthBar;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* AmmoText;
+	UTextBlock* TotalAmmoText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* CurrentAmmoText;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* SingleShotImage;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* FullAutoShotImage;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* CurrentShotImage;
 
 	UPROPERTY(meta = (BindWidget))
 	UVerticalBox* WeaponLogBox;

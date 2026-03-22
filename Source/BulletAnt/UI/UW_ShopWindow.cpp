@@ -3,6 +3,7 @@
 #include "Components/Button.h"
 #include "Components/VerticalBox.h"
 #include "UI/UW_WeaponButton.h"
+#include "UI/UW_PlayerHUDWidget.h"
 #include "Framework/BAGameState.h"
 #include "Weapon/BaseWeapon.h"
 #include "Player/BAPlayerController.h"
@@ -124,7 +125,24 @@ void UUW_ShopWindow::RequestEquipWeapon()
 	ABACharacter* Player = Cast<ABACharacter>(GetOwningPlayerPawn());
 	if (!Player) return;
 
-	Player->ShowAmmo();
+	ABAPlayerController* PC = Cast<ABAPlayerController>(GetOwningPlayer());
+	if (!PC) return;
+
+	if (UUW_PlayerHUDWidget* HUD = PC->GetHUD())
+	{
+		ABaseWeapon* WeaponCDO = WeaponClass->GetDefaultObject<ABaseWeapon>();
+		URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(WeaponCDO->GetWeaponData());
+		if (Data)
+		{
+			if (Data->bAutoFire)
+				HUD->SetAutoImage(true);
+			else
+				HUD->SetAutoImage(false);
+
+			PC->ShowAmmo();
+		}
+	}
+
 	Player->Server_SetChangeWeapon(WeaponClass, 0);
 }
 

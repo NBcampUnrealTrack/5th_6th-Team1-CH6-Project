@@ -76,13 +76,16 @@ protected:
 	float CurrentTime;
 
 	FTimerHandle RespawnBarTimer;
-#pragma region ADS
+#pragma region Weapon
 public:
 	UFUNCTION()
 	void StartADSUI();
 
 	UFUNCTION()
 	void StopADSUI();
+
+	void ShowAmmo();
+	void HideAmmo();
 protected:
 
 #pragma endregion

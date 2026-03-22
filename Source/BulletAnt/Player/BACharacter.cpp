@@ -19,6 +19,7 @@
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
+#include "UI/UW_PlayerHUDWidget.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "Weapon/BaseRangedWeapon.h"
@@ -610,48 +611,6 @@ UAbilitySystemComponent* ABACharacter::GetAbilitySystemComponent() const
 
 }
 
-void ABACharacter::ShowAmmo()
-{
-	if (IsLocallyControlled())
-	{
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		if (!GetWorld()) return;
-		ULocalPlayer* LP = PC->GetLocalPlayer();
-		if (!LP) return;
-
-		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-		if (IsValid(UISubsystem))
-		{
-			UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
-			if (HUD)
-			{
-				HUD->ShowAmmoText();
-			}
-		}
-	}
-}
-
-void ABACharacter::HideAmmo()
-{
-	if (IsLocallyControlled())
-	{
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		if (!GetWorld()) return;
-		ULocalPlayer* LP = PC->GetLocalPlayer();
-		if (!LP) return;
-
-		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-		if (IsValid(UISubsystem))
-		{
-			UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
-			if (HUD)
-			{
-				HUD->HideAmmoText();
-			}
-		}
-	}
-}
-
 void ABACharacter::OnHealthChangedCallback(const FOnAttributeChangeData& Data) const
 {
 	OnHealthChanged.Broadcast(Data.NewValue, HealthAttributeSet->GetMaxHealth());
@@ -977,11 +936,30 @@ void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 
 	if (Index == 0)
 	{
-		ShowAmmo();
+		if (ABAPlayerController* PC = Cast<ABAPlayerController>(GetController()))
+		{
+			if (UUW_PlayerHUDWidget* HUD = PC->GetHUD())
+			{
+				ABaseWeapon* WeaponCDO = OwnedEquipment[0]->GetDefaultObject<ABaseWeapon>();
+				URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(WeaponCDO->GetWeaponData());
+				if (Data)
+				{
+					if (Data->bAutoFire)
+						HUD->SetAutoImage(true);
+					else
+						HUD->SetAutoImage(false);
+
+					PC->ShowAmmo();
+				}
+			}
+		}
 	}
 	else
 	{
-		HideAmmo();
+		if (ABAPlayerController* PC = Cast<ABAPlayerController>(GetController()))
+		{
+			PC->HideAmmo();
+		}
 	}
 
 	Server_EquipWeapon(OwnedEquipment[Index]);

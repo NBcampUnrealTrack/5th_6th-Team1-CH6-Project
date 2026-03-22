@@ -6,6 +6,7 @@
 #include "Components/VerticalBox.h"
 #include "UI/UW_OreCount.h"
 #include "Framework/BAGameState.h"
+#include "Components/Image.h"
 
 void UUW_PlayerHUDWidget::NativeConstruct()
 {
@@ -63,17 +64,37 @@ void UUW_PlayerHUDWidget::AddWeaponLog(UWeaponDataAsset* InData)
 
 void UUW_PlayerHUDWidget::ShowAmmoText()
 {
-	if (AmmoText)
+	if (CurrentAmmoText && TotalAmmoText && CurrentShotImage)
 	{
-		AmmoText->SetVisibility(ESlateVisibility::Visible);
+		CurrentAmmoText->SetVisibility(ESlateVisibility::Visible);
+		TotalAmmoText->SetVisibility(ESlateVisibility::Visible);
+		CurrentShotImage->SetVisibility(ESlateVisibility::Visible);
 	}
 }
 
 void UUW_PlayerHUDWidget::HideAmmoText()
 {
-	if (AmmoText)
+	if (CurrentAmmoText && TotalAmmoText && CurrentShotImage)
 	{
-		AmmoText->SetVisibility(ESlateVisibility::Hidden);
+		CurrentAmmoText->SetVisibility(ESlateVisibility::Hidden);
+		TotalAmmoText->SetVisibility(ESlateVisibility::Hidden);
+		CurrentShotImage->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+void UUW_PlayerHUDWidget::SetAutoImage(bool bIsFullAuto)
+{
+	if (!SingleShotImage || !FullAutoShotImage) return;
+
+	if (bIsFullAuto)
+	{
+		CurrentShotImage->SetBrushFromTexture(FullAutoShotImage);
+		CurrentShotImage->SetOpacity(1.f);
+	}
+	else
+	{
+		CurrentShotImage->SetBrushFromTexture(SingleShotImage);
+		CurrentShotImage->SetOpacity(1.f);
 	}
 }
 
@@ -89,10 +110,14 @@ void UUW_PlayerHUDWidget::UpdateAmmo(float Current, float Max)
 {
 	if (!OwnerCharacter.IsValid()) return;
 
-	if (AmmoText)
+	if (CurrentAmmoText)
 	{
-		FString AmmoString = FString::Printf(TEXT("%d/%d"), FMath::RoundToInt(Current), FMath::RoundToInt(Max));
-		AmmoText->SetText(FText::FromString(AmmoString));
+		CurrentAmmoText->SetText(FText::AsNumber(Current));
+	}
+
+	if (TotalAmmoText)
+	{
+		TotalAmmoText->SetText(FText::AsNumber(Max));
 	}
 }
 
