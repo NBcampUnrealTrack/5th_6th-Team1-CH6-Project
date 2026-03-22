@@ -9,11 +9,13 @@
 #include "Enemy/BaseEnemy/BaseEnemyController.h"
 #include "Components/CapsuleComponent.h"
 #include "GAS/AttributeSet/MoveAttributeSet.h"
+#include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GameplayEffect.h"
 
 void ABaseFlyEnemy::ApplyTribe()
 {
-	Super::ApplyTribe();
+	Multicast_ApplyTribeMaterial();
+	// 	ApplyTribePriority();
 
 	if (HasAuthority())
 	{
@@ -25,6 +27,8 @@ void ABaseFlyEnemy::ApplyTribe()
 		{
 			return;
 		}
+		HealthAttributeSet->SetMaxHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
+		HealthAttributeSet->SetHealth(BaseEnemyDataAsset->Health * TribeType->HealthMul);
 
 		MoveAttributeSet->SetMoveSpeed(BaseEnemyDataAsset->MoveSpeed * TribeType->SpeedMul);
 

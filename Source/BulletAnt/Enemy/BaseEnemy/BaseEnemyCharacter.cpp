@@ -47,13 +47,13 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
-	
+
 	HealthAttributeSet = CreateDefaultSubobject<UHealthAttributeSet>(TEXT("HealthAttributeSet"));
 	MoveAttributeSet = CreateDefaultSubobject<UMoveAttributeSet>(TEXT("MoveAttributeSet"));
-	
+
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 	StateTreeComponent->SetStartLogicAutomatically(false);
-	
+
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
@@ -243,7 +243,7 @@ void ABaseEnemyCharacter::InitTarget()
 	}
 
 	TargetActor = BAGameState->GetTargetCore();
-	TargetActorPriority = ETargetPriorityType::Max;		
+	TargetActorPriority = ETargetPriorityType::Max;
 }
 
 //void ABaseEnemyCharacter::OnTargetBuildingDestroy()
@@ -400,7 +400,7 @@ void ABaseEnemyCharacter::ApplyTribePriority()
 		{
 			return;
 		}
-		
+
 		if (TribeType->Building == ETargetPriorityType::Ignore)
 		{
 			DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);	// Building
@@ -408,7 +408,7 @@ void ABaseEnemyCharacter::ApplyTribePriority()
 		if (TribeType->Player == ETargetPriorityType::Ignore)
 		{
 			DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECollisionResponse::ECR_Ignore);	// Character
-		}		
+		}
 	}
 }
 
@@ -499,7 +499,7 @@ void ABaseEnemyCharacter::BeginPlay()
 	InitGAS();
 
 	if (HasAuthority())
-	{		
+	{
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter BeginPlay : DataAsset Missing")))
 		{
 			return;
@@ -630,6 +630,44 @@ void ABaseEnemyCharacter::AfterAttack()
 {
 }
 
+void ABaseEnemyCharacter::Multicast_SetRagDoll_Implementation()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetSimulatePhysics(false);
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (USkeletalMeshComponent* EnemyMesh = GetMesh())
+	{
+		EnemyMesh->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+		EnemyMesh->SetAllBodiesSimulatePhysics(true);
+		EnemyMesh->SetSimulatePhysics(true);
+
+		EnemyMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		EnemyMesh->SetCollisionResponseToChannel(ECC_WorldStatic, ECollisionResponse::ECR_Block);
+		EnemyMesh->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Block);
+
+		EnemyMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		EnemyMesh->SetCollisionObjectType(ECC_PhysicsBody);
+		EnemyMesh->SetAnimInstanceClass(nullptr);
+	}
+
+	if (DetectionSphere)
+	{
+		DetectionSphere->SetSimulatePhysics(false);
+		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+}
+
 void ABaseEnemyCharacter::Multicast_SetNoCollision_Implementation()
 {
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
@@ -638,7 +676,7 @@ void ABaseEnemyCharacter::Multicast_SetNoCollision_Implementation()
 		Movement->DisableMovement();
 	}
 
-	if (UCapsuleComponent* Capsule =  GetCapsuleComponent())
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
 	{
 		Capsule->SetSimulatePhysics(false);
 		Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);

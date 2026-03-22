@@ -58,6 +58,9 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_SetNoCollision();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetRagDoll();
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<AActor> TargetActor;
