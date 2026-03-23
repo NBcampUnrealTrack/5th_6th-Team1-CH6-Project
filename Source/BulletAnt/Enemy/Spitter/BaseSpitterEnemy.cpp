@@ -74,7 +74,7 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 		Params
 	);
 
-	DrawDebugCapsule(GetWorld(), CapsuleCenter, SpitterDataAsset->PoisonCapsuleHalfHeight, SpitterDataAsset->PoisonCapsuleRadius, CapsuleRotation, FColor::Green, false, 0.1f);
+	DrawDebugCapsule(GetWorld(), CapsuleCenter, SpitterDataAsset->PoisonCapsuleHalfHeight, SpitterDataAsset->PoisonCapsuleRadius, CapsuleRotation, bHit ? FColor::Red : FColor::Green, false, 0.1f);
 
 	if (bHit)
 	{

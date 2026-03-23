@@ -117,6 +117,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Death")
 	TObjectPtr<UAnimMontage> DieAnimMontage;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Death")
+	float DeathTime = 5.f;
+
 #pragma endregion
 
 #pragma region Spawn
