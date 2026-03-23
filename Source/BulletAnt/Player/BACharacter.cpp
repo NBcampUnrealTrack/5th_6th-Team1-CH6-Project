@@ -288,7 +288,7 @@ void ABACharacter::Tick(float DeltaTime)
 	}
 	else if(!bIsAiming)
 	{
-		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, 233.f, DeltaTime, TALengthChangeSpeed);
+		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, DefaultArmLength, DeltaTime, TALengthChangeSpeed);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
 	}
 	IdleTurning(DeltaTime);
@@ -1534,6 +1534,7 @@ void ABACharacter::ActivateReturnEffect()
 	{
 		EquippedWeapon->SetActorHiddenInGame(true);
 	}
+	SpringArm->TargetArmLength = ReturnArmLength;
 	ReturnEffect->SetVisibility(true);
 	ReturnEffect->Activate();
 }
@@ -1545,6 +1546,7 @@ void ABACharacter::DeactivateReturnEffect()
 	{
 		EquippedWeapon->SetActorHiddenInGame(false);
 	}
+	SpringArm->TargetArmLength = DefaultArmLength;
 	ReturnEffect->SetVisibility(false);
 	ReturnEffect->Deactivate();
 }

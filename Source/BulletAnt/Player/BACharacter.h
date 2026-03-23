@@ -327,6 +327,8 @@ public:
     float RootYawOffset;
     float TurnStartYaw;
 
+    float DefaultArmLength = 233.0f;
+
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
     TObjectPtr<UAnimMontage> TurnLeft90Montage;
@@ -555,6 +557,8 @@ protected:
     float PathDistThreshold = 50.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
     float ReturnSpeed = 1500.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ReturnArmLength = 50.0f;
     
     float ReturnDistance = 0.0f;
 
