@@ -55,7 +55,7 @@ void AVoxelGround::Tick(float DeltaSeconds)
 		FChunkUpdateResult Result;
 		ChunkUpdateResultQueue.Dequeue(Result);
 
-		UVoxelGroundChunk* TargetChunk = Chunks[Result.TargetChunkIdx];
+		UVoxelGroundChunk* TargetChunk = Result.bOre == true ? ChunkOres[Result.TargetChunkIdx] : Chunks[Result.TargetChunkIdx];
 		if (IsValid(TargetChunk) == false || Result.UpdateID <= TargetChunk->GetLastUpdateID())
 			continue;
 
@@ -73,13 +73,15 @@ void AVoxelGround::DigGround(TMap<EOreType, int32>& MinedOreMap, const FVector& 
 
 	TRACE_CPUPROFILER_EVENT_SCOPE(DigGround);
 	FVector RelativeLocation = WorldLocation - GetActorLocation();
+	const float Falloff = Setting->ChunkVoxelSize * 1.5f;
+	const float CalcRadius = Radius + Falloff;
 
-	int32 MinX = FMath::FloorToInt((RelativeLocation.X - Radius) / ChunkSize);
-	int32 MaxX = FMath::FloorToInt((RelativeLocation.X + Radius) / ChunkSize);
-	int32 MinY = FMath::FloorToInt((RelativeLocation.Y - Radius) / ChunkSize);
-	int32 MaxY = FMath::FloorToInt((RelativeLocation.Y + Radius) / ChunkSize);
-	int32 MinZ = FMath::FloorToInt((RelativeLocation.Z - Radius) / ChunkSize);
-	int32 MaxZ = FMath::FloorToInt((RelativeLocation.Z + Radius) / ChunkSize);
+	int32 MinX = FMath::FloorToInt((RelativeLocation.X - CalcRadius) / ChunkSize);
+	int32 MaxX = FMath::FloorToInt((RelativeLocation.X + CalcRadius) / ChunkSize);
+	int32 MinY = FMath::FloorToInt((RelativeLocation.Y - CalcRadius) / ChunkSize);
+	int32 MaxY = FMath::FloorToInt((RelativeLocation.Y + CalcRadius) / ChunkSize);
+	int32 MinZ = FMath::FloorToInt((RelativeLocation.Z - CalcRadius) / ChunkSize);
+	int32 MaxZ = FMath::FloorToInt((RelativeLocation.Z + CalcRadius) / ChunkSize);
 
 	UVoxelGroundSubsystem* GroundSubsystem = GetWorld()->GetSubsystem<UVoxelGroundSubsystem>();
 	ensureMsgf(IsValid(GroundSubsystem) == true, TEXT("VoxelGroundSubststem is not valid"));
@@ -91,7 +93,8 @@ void AVoxelGround::DigGround(TMap<EOreType, int32>& MinedOreMap, const FVector& 
 			for (int32 X = MinX; X <= MaxX; ++X)
 			{
 				int32 ChunkIdx = GetChunkIndex(X, Y, Z);
-				if (ChunkDatas.IsValidIndex(ChunkIdx) == false || ChunkDatas[ChunkIdx].ChunkState == EChunkState::Air)
+				if ((ChunkDatas.IsValidIndex(ChunkIdx) == false || ChunkDatas[ChunkIdx].ChunkState == EChunkState::Air) &&
+					(ChunkOreDatas.IsValidIndex(ChunkIdx) == false || ChunkOreDatas[ChunkIdx].ChunkState == EChunkState::Air))
 					continue;
 
 				FVector ChunkOffset = FVector(X, Y, Z) * ChunkSize;
@@ -120,9 +123,14 @@ void AVoxelGround::DigGround(TMap<EOreType, int32>& MinedOreMap, const FVector& 
 
 bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EOreType, int32>& MinedOreMap)
 {
+	const float IsoLevel = Setting->IsoLevel;
 	const FVector RelativeLocation = WorldLocation - GetActorLocation();
 	const int32 ChunkPoints = Setting->ChunkGridSize + 1;
-	const float RadiusSquared = Radius * Radius;
+	// Radius 이내 Density만 변화시키면 바깥쪽 정점의 값은 안 바뀌어서 보간이 제대로 안 일어남.
+	// 더 넓은 범위로 잡고 바깥쪽 정점 값을 부드럽게 설정해줘야 함.
+	const float Falloff = Setting->ChunkVoxelSize * 1.5f;
+	const float CalcRadius = Radius + Falloff;
+	const float CalcRadiusSquared = CalcRadius * CalcRadius;
 
 	bool bChunkModified = false;
 
@@ -136,15 +144,16 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 				FVector PointWorldPos = ChunkOffset + FVector(X, Y, Z) * Setting->ChunkVoxelSize;
 				float DistSquared = FVector::DistSquared(RelativeLocation, PointWorldPos);
 
-				if (DistSquared <= RadiusSquared + Setting->ChunkVoxelSize * Setting->ChunkVoxelSize)
+				if (DistSquared <= CalcRadiusSquared)
 				{
 					int32 PointIdx = Z * ChunkPoints * ChunkPoints + Y * ChunkPoints + X;
 
-					float DistRatio = FMath::Clamp(DistSquared / RadiusSquared, 0.0f, 1.0f);
+					float Dist = FMath::Sqrt(DistSquared);
+					float DistRatio = FMath::Clamp((Dist - Radius) / Falloff, 0.0f, 1.0f);
 					uint8 DistDensity = FMath::RoundToInt(DistRatio * 200.0f);
-
+					
 					uint8 CurrentDensity = GetChunkDensityValue(ChunkIdx, PointIdx);
-					uint8 TargetDensity = FMath::Min(CurrentDensity, DistDensity);
+					uint8 TargetDensity = FMath::Min(CurrentDensity, (uint8)FMath::Clamp(DistDensity - 10, 0, 200));
 					// 기반암(> 200)은 Dig 불가
 					if (CurrentDensity <= 200 && TargetDensity < CurrentDensity)
 					{
@@ -153,7 +162,6 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 						if (bChanged == true)
 						{
 							bChunkModified = true;
-							OutData.PointEditDatas.Add({ PointIdx, TargetDensity });
 							if (OutResult.bTypeChanged == true && OutResult.CurrType == EVoxelType::None)
 							{
 								EOreType OreType = EOreType::None;
@@ -173,6 +181,42 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 							}
 						}
 					}
+
+					uint8 CurrOreDensity = GetChunkOreDensity(ChunkIdx, PointIdx);
+					uint8 DistOreDensity = DistDensity + (DistDensity > IsoLevel ? 10 : 0);
+					uint8 TargetOreDensity = FMath::Min(CurrOreDensity, (uint8)FMath::Clamp(DistOreDensity, 0, 200));
+					if (CurrOreDensity <= 200 && TargetOreDensity < CurrOreDensity)
+					{
+						FVoxelChangedResult OutResult;
+						bool bChanged = ChangeChunkOreDensity(ChunkIdx, PointIdx, TargetOreDensity, OutResult);
+						if (bChanged == true)
+						{
+							bChunkModified = true;
+							if (OutResult.bTypeChanged == true && OutResult.CurrType == EVoxelType::None)
+							{
+								EOreType OreType = EOreType::None;
+								switch (OutResult.PrevType)
+								{
+									case EVoxelType::Vein:
+										OreType = Setting->VeinOreType;
+										break;
+									case EVoxelType::Pillar:
+										OreType = Setting->PillarOreType;
+										break;
+									default:
+										break;
+								}
+
+								++MinedOreMap.FindOrAdd(OreType);
+							}
+						}
+					}
+
+					FVoxelPointEditData PointEditData;
+					PointEditData.VoxelIndex = PointIdx;
+					PointEditData.NewDensity = TargetDensity;
+					PointEditData.NewOreDensity = TargetOreDensity;
+					OutData.PointEditDatas.Add(PointEditData);
 				}
 			}
 		}
@@ -180,15 +224,16 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 
 	if (bChunkModified == true)
 	{
-		if (IsValid(Chunks[ChunkIdx]) == false)
+		if (ChunkDatas[ChunkIdx].ChunkState == EChunkState::Complex && IsValid(Chunks[ChunkIdx]) == false)
 		{
 			SpawnChunk(ChunkIdx);
 		}
-
-		if (IsValid(Chunks[ChunkIdx]) == true)
+		if (ChunkOreDatas[ChunkIdx].ChunkState == EChunkState::Complex && IsValid(ChunkOres[ChunkIdx]) == false)
 		{
-			UpdateChunkMeshImmediately(ChunkIdx, false);
+			SpawnOres(ChunkIdx);
 		}
+
+		UpdateChunkMeshImmediately(ChunkIdx, false);
 	}
 
 	return bChunkModified;
@@ -286,8 +331,13 @@ void AVoxelGround::InitializeGround(int32 InSeed, const UGroundSettingPreset* In
 
 	ChunkDatas.SetNum(ChunkCount);
 	Chunks.SetNum(ChunkCount);
+	ChunkOreDatas.SetNum(ChunkCount);
+	ChunkOres.SetNum(ChunkCount);
+	ChunkLODs.SetNum(ChunkCount);
 	ChunkMeshDirties.Init(false, ChunkCount);
 	PriorityChunkMeshDirties.Init(false, ChunkCount);
+	ChunkOreMeshDirties.Init(false, ChunkCount);
+	PriorityChunkOreMeshDirties.Init(false, ChunkCount);
 
 	for (int32 Z = ChunkRangeMin.Z; Z <= ChunkRangeMax.Z; ++Z)
 	{
@@ -309,6 +359,7 @@ void AVoxelGround::InitializeGround(int32 InSeed, const UGroundSettingPreset* In
 			{
 				int32 ChunkIdx = GetChunkIndex(X, Y, Z);
 				SpawnChunk(ChunkIdx);
+				SpawnOres(ChunkIdx);
 				UpdateChunkMeshImmediately(ChunkIdx, false);
 			}
 		}
@@ -342,8 +393,9 @@ void AVoxelGround::InitializeChunkData(int32 ChunkIdx)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(InitializeChunkData);
 
-	ChunkDatas[ChunkIdx].LODLevel = LODDistance.Num();
+	ChunkLODs[ChunkIdx] = LODDistance.Num();
 	ChunkDatas[ChunkIdx].ChunkState = EChunkState::Ground;
+	ChunkOreDatas[ChunkIdx].ChunkState = EChunkState::Ground;
 
 	int32 ChunkPoints = Setting->ChunkGridSize + 1;
 	int32 TotalPoints = ChunkPoints * ChunkPoints * ChunkPoints;
@@ -370,9 +422,15 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 	TempDensities.SetNumUninitialized(TotalPoints);
 	TempVoxelTypes.SetNumUninitialized(TotalPoints);
 
+	TArray<uint8> TempOreDensities;
+	TArray<EVoxelType> TempOreVoxelTypes;
+	TempOreDensities.SetNumUninitialized(TotalPoints);
+	TempOreVoxelTypes.SetNumUninitialized(TotalPoints);
+
 	// 쓰레드 안전을 위해 Atomic 사용
 	std::atomic<int32> AtomicGroundVoxelCount(0);
 	std::atomic<int32> AtomicBedRockCount(0);
+	std::atomic<int32> AtomicOreVoxelCount(0);
 
 	const FVector& GroundSize = Setting->GroundSize;
 	const FVector BoundMinRange = FVector(-GroundSize.X * 0.48f, -GroundSize.Y * 0.48f, -GroundSize.Z);
@@ -388,6 +446,7 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 		{
 			int32 LocalGroundVoxelCount = 0;
 			int32 LocalBedRockCount = 0;
+			int32 LocalOreCount = 0;
 
 			for (int32 Y = 0; Y < ChunkPoints; ++Y)
 			{
@@ -397,6 +456,8 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 					uint8 FinalDensity = 0;
 					EVoxelType VoxelType = EVoxelType::None;
+					uint8 OreFinalDensity = 0;
+					EVoxelType OreVoxelType = EVoxelType::None;
 
 					int32 PointIdx = Z * ChunkPoints * ChunkPoints + Y * ChunkPoints + X;
 
@@ -453,8 +514,8 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 								float RoughNoise = FMath::PerlinNoise3D(WorldPos * 0.02f);
 								float Roughness = RoughNoise * 4.0f;
 
-								VoxelType = EVoxelType::Vein;
-								FinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
+								OreVoxelType = EVoxelType::Vein;
+								OreFinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
 							}
 						};
 
@@ -478,8 +539,8 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 								float Distance = Radial / Data->PillarRadius;
 								float DistanceValue = (1.0f - Distance) * (1.0f - (AlongNormal / Data->PillarHeight) * 0.2f);
 
-								VoxelType = EVoxelType::Pillar;
-								FinalDensity = (uint8)FMath::Clamp(DistanceValue * 200, 0, 200);
+								OreVoxelType = EVoxelType::Pillar;
+								OreFinalDensity = (uint8)FMath::Clamp(DistanceValue * 200, 0, 200);
 							}
 						};
 
@@ -524,15 +585,12 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							if (bGround == true)
 							{
 								VoxelType = EVoxelType::NormalRock;
+							}
 
-								// 땅이라면, Vein 계산
-								ApplyVein(WorldPos);
-							}
-							else
-							{
-								// 공기라면, Pillar 계산
-								ApplyPillar(WorldPos);
-							}
+							// 땅이라면, Vein 계산
+							ApplyVein(WorldPos);
+							// 공기라면, Pillar 계산
+							ApplyPillar(WorldPos);
 						}
 
 						const float EntranceRadius = 400.0f;
@@ -550,6 +608,8 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 					TempDensities[PointIdx] = FinalDensity;
 					TempVoxelTypes[PointIdx] = VoxelType;
+					TempOreDensities[PointIdx] = OreFinalDensity;
+					TempOreVoxelTypes[PointIdx] = OreVoxelType;
 
 					if (FinalDensity > IsoLevel)
 					{
@@ -560,15 +620,22 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							++LocalBedRockCount;
 						}
 					}
+
+					if (OreFinalDensity > IsoLevel)
+					{
+						++LocalOreCount;
+					}
 				}
 			}
 
 			AtomicGroundVoxelCount += LocalGroundVoxelCount;
 			AtomicBedRockCount += LocalBedRockCount;
+			AtomicOreVoxelCount += LocalOreCount;
 		});
 
 	int32 GroundVoxelCount = AtomicGroundVoxelCount.load();
 	int32 BedRockCount = AtomicBedRockCount.load();
+	int32 OreCount = AtomicOreVoxelCount.load();
 
 	// 모두 땅이거나 모두 공기이면(청크가 단일 상태라면) 데이터도 저장 X
 	// 기반암이 섞인 땅이어도 Complex
@@ -583,6 +650,11 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 	ChunkDatas[ChunkIdx].GroundVoxelCount = GroundVoxelCount;
 	ChunkDatas[ChunkIdx].DensityValues = MoveTemp(TempDensities);
 	ChunkDatas[ChunkIdx].VoxelTypes = MoveTemp(TempVoxelTypes);
+
+	ChunkOreDatas[ChunkIdx].ChunkState = EChunkState::Complex;
+	ChunkOreDatas[ChunkIdx].GroundVoxelCount = OreCount;
+	ChunkOreDatas[ChunkIdx].DensityValues = MoveTemp(TempOreDensities);
+	ChunkOreDatas[ChunkIdx].VoxelTypes = MoveTemp(TempOreVoxelTypes);
 }
 
 void AVoxelGround::PlaceObjectsByCell()
@@ -770,7 +842,7 @@ void AVoxelGround::PlaceObjectsByCell()
 				continue;
 
 			FPillarLocationData LocationData;
-			LocationData.PillarLocation = Candidate;
+			LocationData.PillarLocation = Candidate - Normal * 60.0f;
 			LocationData.PillarRadius = PillarRadius;
 			LocationData.PillarHeight = PillarHeight;
 			LocationData.PillarNormal = Normal;
@@ -932,7 +1004,7 @@ void AVoxelGround::UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged)
 	{
 		FIntVector ChunkCoord = GetChunkCoord(ChunkIdx);
 
-		int32 OldLODLevel = ChunkDatas[ChunkIdx].LODLevel;
+		int32 OldLODLevel = ChunkLODs[ChunkIdx];
 		int32 NewLODLevel = LODDistance.Num();
 
 		// LastPlayerCoords 갱신 후이므로 현재 PlayerCoords
@@ -944,7 +1016,7 @@ void AVoxelGround::UpdateNearByChunks(const TSet<FIntVector>& CoordsChanged)
 
 		if (NewLODLevel != OldLODLevel)
 		{
-			ChunkDatas[ChunkIdx].LODLevel = NewLODLevel;
+			ChunkLODs[ChunkIdx] = NewLODLevel;
 			UpdateChunkMesh(ChunkIdx, true);
 		}
 	}
@@ -1125,7 +1197,7 @@ int32 AVoxelGround::GetChunkLODLevel(int32 ChunkIdx)
 	if (ChunkDatas.IsValidIndex(ChunkIdx) == false)
 		return LODDistance.Num();
 
-	return ChunkDatas[ChunkIdx].LODLevel;
+	return ChunkLODs[ChunkIdx];
 }
 
 FNeighborLOD AVoxelGround::GetNeighborLOD(const FIntVector& ChunkCoord)
@@ -1164,6 +1236,7 @@ void AVoxelGround::UpdateChunkMesh(int32 ChunkIdx, bool bIncludeNeighbors)
 {
 	bIsDirty = true;
 	ChunkMeshDirties[ChunkIdx] = true;
+	ChunkOreMeshDirties[ChunkIdx] = true;
 
 	if (bIncludeNeighbors == true)
 	{
@@ -1191,6 +1264,7 @@ void AVoxelGround::UpdateChunkMeshImmediately(int32 ChunkIdx, bool bIncludeNeigh
 	}
 
 	PriorityChunkMeshDirties[ChunkIdx] = true;
+	PriorityChunkOreMeshDirties[ChunkIdx] = true;
 
 	if (bIncludeNeighbors == true)
 	{
@@ -1212,7 +1286,6 @@ void AVoxelGround::UpdateDirtyChunks()
 	if (bIsDirty == false)
 		return;
 
-	int32 Count = 0;
 	bIsDirty = false;
 	for (TBitArray<>::FConstIterator It(ChunkMeshDirties); It; ++It)
 	{
@@ -1221,14 +1294,22 @@ void AVoxelGround::UpdateDirtyChunks()
 		{
 			if (IsValid(Chunks[ChunkIdx]) == true)
 			{
-				Chunks[ChunkIdx]->CalculateMeshDataAsync(NextChunkUpdateID++, this, ChunkDatas[ChunkIdx].DensityValues, ChunkDatas[ChunkIdx].VoxelTypes, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
+				Chunks[ChunkIdx]->CalculateMeshDataAsync(false, NextChunkUpdateID++, this, ChunkDatas[ChunkIdx].DensityValues, ChunkDatas[ChunkIdx].VoxelTypes, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
 			}
+
 			ChunkMeshDirties[ChunkIdx] = false;
-			++Count;
+		}
+
+		if (ChunkOreMeshDirties[ChunkIdx] == true)
+		{
+			if (IsValid(ChunkOres[ChunkIdx]) == true)
+			{
+				ChunkOres[ChunkIdx]->CalculateMeshDataAsync(true, NextChunkUpdateID++, this, ChunkOreDatas[ChunkIdx].DensityValues, ChunkOreDatas[ChunkIdx].VoxelTypes, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
+			}
+
+			ChunkOreMeshDirties[ChunkIdx] = false;
 		}
 	}
-
-	//UKismetSystemLibrary::PrintString(GetWorld(), *FString::FromInt(Count));
 }
 
 void AVoxelGround::UpdatePriorityDirtyChunks()
@@ -1244,9 +1325,18 @@ void AVoxelGround::UpdatePriorityDirtyChunks()
 		{
 			if (IsValid(Chunks[ChunkIdx]) == true)
 			{
-				Chunks[ChunkIdx]->CalculateMeshDataAsync(NextChunkUpdateID++, this, ChunkDatas[ChunkIdx].DensityValues, ChunkDatas[ChunkIdx].VoxelTypes, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
+				Chunks[ChunkIdx]->CalculateMeshDataAsync(false, NextChunkUpdateID++, this, ChunkDatas[ChunkIdx].DensityValues, ChunkDatas[ChunkIdx].VoxelTypes, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
 			}
 			PriorityChunkMeshDirties[ChunkIdx] = false;
+		}
+
+		if (PriorityChunkOreMeshDirties[ChunkIdx] == true)
+		{
+			if (IsValid(ChunkOres[ChunkIdx]) == true)
+			{
+				ChunkOres[ChunkIdx]->CalculateMeshDataAsync(true, NextChunkUpdateID++, this, ChunkOreDatas[ChunkIdx].DensityValues, ChunkOreDatas[ChunkIdx].VoxelTypes, GetNeighborLOD(ChunkIdx), GetChunkLODLevel(ChunkIdx));
+			}
+			PriorityChunkOreMeshDirties[ChunkIdx] = false;
 		}
 	}
 }
@@ -1273,23 +1363,112 @@ void AVoxelGround::EditGroundChunk(const FVoxelChunkEditData& Data)
 	{
 		for (const FVoxelPointEditData& PointData : Data.PointEditDatas)
 		{
+			// OutResult 결과 안 써서 그냥 돌려씀
 			FVoxelChangedResult OutResult;
-			ChangeChunkDensityValue(ChunkIdx, PointData.VoxelIndex, PointData.NewDensityValue, OutResult);
+			ChangeChunkDensityValue(ChunkIdx, PointData.VoxelIndex, PointData.NewDensity, OutResult);
+			ChangeChunkOreDensity(ChunkIdx, PointData.VoxelIndex, PointData.NewOreDensity, OutResult);
 		}
 
-		if (ChunkDatas[ChunkIdx].ChunkState == EChunkState::Complex)
+		if (ChunkDatas[ChunkIdx].ChunkState == EChunkState::Complex && IsValid(Chunks[ChunkIdx]) == false)
 		{
-			if (IsValid(Chunks[ChunkIdx]) == false)
-			{
-				SpawnChunk(ChunkIdx);
-			}
+			SpawnChunk(ChunkIdx);
+		}
+		if (ChunkOreDatas[ChunkIdx].ChunkState == EChunkState::Complex && IsValid(ChunkOres[ChunkIdx]) == false)
+		{
+			SpawnOres(ChunkIdx);
+		}
 
-			if (IsValid(Chunks[ChunkIdx]) == true)
-			{
-				UpdateChunkMeshImmediately(ChunkIdx, false);
-			}
+		UpdateChunkMeshImmediately(ChunkIdx, false);
+	}
+}
+
+void AVoxelGround::SpawnOres(int32 ChunkIdx)
+{
+	if (ChunkOreDatas[ChunkIdx].ChunkState != EChunkState::Complex || ChunkOreDatas[ChunkIdx].DensityValues.IsEmpty() == true)
+		return;
+
+	FIntVector Coord = GetChunkCoord(ChunkIdx);
+	FVector RelativeLocation = GetChunkOffset(Coord.X, Coord.Y, Coord.Z);
+
+	UVoxelGroundChunk* NewChunk = NewObject<UVoxelGroundChunk>(this);
+	NewChunk->SetIsReplicated(false);
+	NewChunk->RegisterComponent();
+	NewChunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	NewChunk->SetMaterial(0, Setting->GroundMaterial);
+	NewChunk->bUseAsyncCooking = true;
+	NewChunk->bCastVolumetricTranslucentShadow = false;
+	NewChunk->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	NewChunk->SetCollisionResponseToAllChannels(ECR_Ignore);
+	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+	NewChunk->SetCollisionResponseToChannel(ECC_GameTraceChannel5, ECR_Block);
+	NewChunk->SetComplexAsSimpleCollisionEnabled(true);
+	NewChunk->SetGenerateOverlapEvents(false);
+	NewChunk->SetRelativeLocation(RelativeLocation);
+	AddInstanceComponent(NewChunk);
+	ChunkOres[ChunkIdx] = NewChunk;
+
+	NewChunk->InitializeChunk(Setting->ChunkGridSize, Setting->ChunkVoxelSize, Setting->IsoLevel);
+	NewChunk->CoordV = Coord;
+	NewChunk->ChunkIdxV = ChunkIdx;
+}
+
+bool AVoxelGround::ChangeChunkOreDensity(int32 ChunkIdx, int32 PointIdx, int32 NewOreDensity, FVoxelChangedResult& OutResult)
+{
+	if (ChunkOreDatas.IsValidIndex(ChunkIdx) == false)
+		return false;
+
+	if (ChunkOreDatas[ChunkIdx].ChunkState != EChunkState::Complex)
+		return false;
+
+	int32 ChunkPoints = Setting->ChunkGridSize + 1;
+	int32 TotalPoints = ChunkPoints * ChunkPoints * ChunkPoints;
+	if (PointIdx < 0 || PointIdx >= TotalPoints)
+		return false;
+
+	const uint8 IsoLevel = Setting->IsoLevel;
+
+	OutResult.PrevDensity = ChunkOreDatas[ChunkIdx].DensityValues[PointIdx];
+	OutResult.CurrDensity = NewOreDensity;
+	OutResult.PrevType = ChunkOreDatas[ChunkIdx].VoxelTypes[PointIdx];
+	OutResult.CurrType = NewOreDensity <= IsoLevel ? EVoxelType::None : OutResult.PrevType;
+	OutResult.bTypeChanged = OutResult.PrevType != OutResult.CurrType;
+
+	bool bIsGroundOld = ChunkOreDatas[ChunkIdx].DensityValues[PointIdx] > IsoLevel;
+	bool bIsGroundNew = NewOreDensity > Setting->IsoLevel;
+	ChunkOreDatas[ChunkIdx].DensityValues[PointIdx] = NewOreDensity;
+	if (bIsGroundOld != bIsGroundNew)
+	{
+		ChunkOreDatas[ChunkIdx].GroundVoxelCount += bIsGroundNew == true ? 1 : -1;
+		if (ChunkOreDatas[ChunkIdx].GroundVoxelCount != 0 && ChunkOreDatas[ChunkIdx].GroundVoxelCount != TotalPoints)
+		{
+			ChunkOreDatas[ChunkIdx].ChunkState = EChunkState::Complex;
+		}
+		else
+		{
+			ChunkOreDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
+			ChunkOreDatas[ChunkIdx].DensityValues.Empty(0);
+			ChunkOreDatas[ChunkIdx].VoxelTypes.Empty(0);
 		}
 	}
+
+	return true;
+}
+
+uint8 AVoxelGround::GetChunkOreDensity(int32 ChunkIdx, int32 PointIdx)
+{
+	if (ChunkOreDatas.IsValidIndex(ChunkIdx) == false)
+		return 0;
+
+	if (ChunkOreDatas[ChunkIdx].DensityValues.IsValidIndex(PointIdx) == true)
+		return ChunkOreDatas[ChunkIdx].DensityValues[PointIdx];
+
+	if (ChunkOreDatas[ChunkIdx].ChunkState == EChunkState::Ground)
+		return 200;
+
+	return 0;
 }
 
 void AVoxelGround::SetBoundBox()
@@ -1328,8 +1507,8 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 
 	OriginMieScatterScale = SkyComp->MieScatteringScale;
 	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
-	SkyComp->SetMieScatteringScale(0.0f);
-	SkyComp->SetRayleighScatteringScale(0.0f);
+	//SkyComp->SetMieScatteringScale(0.0f);
+	//SkyComp->SetRayleighScatteringScale(0.0f);
 
 	Character->Server_StartRecordingPath();
 }

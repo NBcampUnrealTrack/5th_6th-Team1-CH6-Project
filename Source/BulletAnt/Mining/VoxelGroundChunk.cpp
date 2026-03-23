@@ -14,7 +14,7 @@ void UVoxelGroundChunk::InitializeChunk(int32 InGridSize, float InVoxelSize, uin
 	IsoLevel = InIsoLevel;
 }
 
-void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel)
+void UVoxelGroundChunk::CalculateMeshDataAsync(bool bOre, int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(CalculateMeshDataAsync);
 
@@ -40,7 +40,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 	const int32 LocalChunkIdx = ChunkIdxV;
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
-		[UpdateID, LocalChunkIdx, WeakThis, WeakGround, LocalDensity = MoveTemp(LocalDensity), LocalVoxelTypes = MoveTemp(LocalVoxelTypes), NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
+		[bOre, UpdateID, LocalChunkIdx, WeakThis, WeakGround, LocalDensity = MoveTemp(LocalDensity), LocalVoxelTypes = MoveTemp(LocalVoxelTypes), NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
 		{
 			FChunkMeshData MeshData;
 			TMap<uint64, int32> VertexCache;
@@ -50,11 +50,15 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 
 			// -X, +X, -Y, +Y, -Z, +Z 방향 TransitionCell 존재 여부
 			uint8 NeighborMask = 0;
-			for (int32 Idx = 0; Idx < 6; ++Idx)
+			// 광물 레이어는 Transvoxel 필요없음. 인접 셀과 무관하기 때문에 MarchingCube로 RegularCell만 만들어도 됨.
+			if (bOre == false)
 			{
-				if (LocalLODLevel > NeighborLOD.LODs[Idx])
+				for (int32 Idx = 0; Idx < 6; ++Idx)
 				{
-					NeighborMask |= (1 << Idx);
+					if (LocalLODLevel > NeighborLOD.LODs[Idx])
+					{
+						NeighborMask |= (1 << Idx);
+					}
 				}
 			}
 
@@ -116,6 +120,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 				UpdateResult.UpdateID = UpdateID;
 				UpdateResult.TargetChunkIdx = LocalChunkIdx;
 				UpdateResult.MeshData = MoveTemp(MeshData);
+				UpdateResult.bOre = bOre;
 
 				WeakGround->EnqueueChunkUpdateResult(MoveTemp(UpdateResult));
 			}

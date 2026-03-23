@@ -31,8 +31,6 @@ struct FVoxelGroundChunkData
 	TArray<uint8> DensityValues;						// 200 초과: 기반암
 	UPROPERTY()
 	TArray<EVoxelType> VoxelTypes;
-	UPROPERTY()
-	int32 LODLevel = 0;									// 0이 가장 정밀한 LOD
 
 	UPROPERTY()
 	int32 GroundVoxelCount = 0;
@@ -173,6 +171,11 @@ protected:
 
 	void EditGroundChunk(const FVoxelChunkEditData& Data);
 
+	// 광물 레이어 분리
+	void SpawnOres(int32 ChunkIdx);
+	bool ChangeChunkOreDensity(int32 ChunkIdx, int32 PointIdx, int32 NewOreDensity, FVoxelChangedResult& OutResult);
+	uint8 GetChunkOreDensity(int32 ChunkIdx, int32 PointIdx);
+
 #pragma region GroundSetting
 
 protected:
@@ -193,6 +196,13 @@ protected:
 	TArray<FVoxelGroundChunkData> ChunkDatas;
 	UPROPERTY()
 	TArray<TObjectPtr<UVoxelGroundChunk>> Chunks;
+	UPROPERTY()
+	TArray<FVoxelGroundChunkData> ChunkOreDatas;
+	UPROPERTY()
+	TArray<TObjectPtr<UVoxelGroundChunk>> ChunkOres;
+
+	UPROPERTY()
+	TArray<int32> ChunkLODs;
 
 	int32 Seed = 0;
 
@@ -215,6 +225,9 @@ protected:
 	uint8 bIsDirty : 1 = false;
 	TBitArray<> PriorityChunkMeshDirties;
 	uint8 bIsPriorityDirty : 1 = false;
+	// Ore는 ChunkDirty일 때만 체크하며, 이웃 LOD랑 관계없이 Transvoxel 하지 않음 (Chunk를 더 자세히 나눈 Cell 단위로 생성하기 때문)
+	TBitArray<> ChunkOreMeshDirties;
+	TBitArray<> PriorityChunkOreMeshDirties;
 
 	TQueue<FChunkUpdateResult, EQueueMode::Mpsc> ChunkUpdateResultQueue;
 	int32 NextChunkUpdateID = 0;

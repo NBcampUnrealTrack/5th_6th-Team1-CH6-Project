@@ -57,7 +57,7 @@ class BULLETANT_API UVoxelGroundChunk : public UDynamicMeshComponent
 
 public:
 	void InitializeChunk(int32 InGridSize, float InVoxelSize, uint8 InIsoLevel);
-	void CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel = -1);
+	void CalculateMeshDataAsync(bool bOre, int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel = -1);
 	void UpdateChunk(int32 UpdateID, const FChunkMeshData& MeshData, bool bUpdatePhysics = false);
 
 	FORCEINLINE int32 GetCurrentLODLevel() const { return CurrentLODLevel; }

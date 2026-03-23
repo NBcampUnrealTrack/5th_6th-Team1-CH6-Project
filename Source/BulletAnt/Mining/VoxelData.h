@@ -37,6 +37,7 @@ struct FChunkUpdateResult
 	int32 UpdateID;
 	int32 TargetChunkIdx;
 	FChunkMeshData MeshData;
+	uint8 bOre : 1 = false;
 };
 
 USTRUCT()
@@ -47,7 +48,9 @@ struct FVoxelPointEditData
 	UPROPERTY()
 	int32 VoxelIndex = 0;
 	UPROPERTY()
-	uint8 NewDensityValue = 0;
+	uint8 NewDensity = 0;
+	UPROPERTY()
+	uint8 NewOreDensity = 0;
 };
 
 USTRUCT()
