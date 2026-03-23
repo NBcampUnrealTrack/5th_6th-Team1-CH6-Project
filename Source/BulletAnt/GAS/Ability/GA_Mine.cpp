@@ -135,6 +135,8 @@ void UGA_Mine::DigGround(FGameplayEventData Payload)
 					Parameters.GameplayEffectLevel = MostMinedOre;
 					Parameters.Location = HitResult.ImpactPoint;
 					ASC->ExecuteGameplayCue(TAG_GameplayCue_Mining_Hit, Parameters);
+
+					Owner->GetEXP(10.f);
 				}
 			}		
 		}

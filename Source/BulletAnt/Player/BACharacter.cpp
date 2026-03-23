@@ -625,7 +625,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 		HealthAttributeSet = PS->GetHealthAttributeSet();
 		AmmoAttributeSet = PS->GetAmmoAttributeSet();
 		EXPAttributeSet = PS->GetEXPAttributeSet();
-		HealthAttributeSet->InitValue(100.f, 10.f);
+		HealthAttributeSet->InitValue(100.f, 150.f);
 
 		if (IsLocallyControlled())
 		{

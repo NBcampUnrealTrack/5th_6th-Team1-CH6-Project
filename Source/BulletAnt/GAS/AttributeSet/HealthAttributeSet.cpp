@@ -66,7 +66,7 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 				ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
 				if (PlayerCharacter)
 				{
-					float EXP = 50.f;
+					float EXP = 30.f;
 					PlayerCharacter->GetEXP(EXP);
 				}
 
