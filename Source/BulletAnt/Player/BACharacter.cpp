@@ -420,6 +420,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(PingAction, ETriggerEvent::Started, this, &ABACharacter::ExecutePing);
 		}
+
+		if (ReturnAction)
+		{
+			EnhancedInputComponent->BindAction(ReturnAction, ETriggerEvent::Started, this, &ABACharacter::SwitchReturnMode);
+		}
 	}
 }
 
@@ -886,15 +891,7 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 {
-	if (bIsReturning == false)
-	{
-		StartReturning();
-	}
-	else
-	{
-		StopReturning();
-	}
-	/*UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
+	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
 	if (!BuildManager->IsBuildMode())
 	{
 		BuildManager->EnterBuildMode();
@@ -906,7 +903,7 @@ void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 	if (PC)
 	{
 		PC->SwitchingMode();
-	}*/
+	}
 }
 
 void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
@@ -1000,6 +997,18 @@ void ABACharacter::ExecutePing(const FInputActionValue& Value)
 	Tag.AddTag(TAG_Event_Communicate_Ping);
 
 	ASC->TryActivateAbilitiesByTag(Tag);
+}
+
+void ABACharacter::SwitchReturnMode(const FInputActionValue& Value)
+{
+	if (bIsReturning == false)
+	{
+		StartReturning();
+	}
+	else
+	{
+		StopReturning();
+	}
 }
 
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

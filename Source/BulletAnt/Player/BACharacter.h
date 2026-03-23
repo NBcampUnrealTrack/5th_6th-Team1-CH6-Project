@@ -196,6 +196,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Communicate")
     UInputAction* PingAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundReturner")
+    UInputAction* ReturnAction;
+
 #pragma endregion
 
 #pragma region Action Function
@@ -230,6 +233,7 @@ protected:
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
     void ExecutePing(const FInputActionValue& Value);
+    void SwitchReturnMode(const FInputActionValue& Value);
 
 
 public:
