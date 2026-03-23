@@ -3,6 +3,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffectExtension.h"
 #include "AbilitySystemComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 UEXPAttributeSet::UEXPAttributeSet()
 {
@@ -35,6 +36,8 @@ void UEXPAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbac
 				if (GetCurrentLevel() >= MaxLevel)
 				{
 					SetCurrentEXP(GetMaxEXP());
+					FGameplayCueParameters Params;
+					Data.Target.ExecuteGameplayCue(TAG_GameplayCue_Reward_LevelUp, Params);
 					break;
 				}
 				Safety++;
@@ -77,7 +80,7 @@ void UEXPAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 void UEXPAttributeSet::LevelUp()
 {
-	SetCurrentLevel(GetCurrentLevel() + 1.f);
+	SetCurrentLevel(GetCurrentLevel() + 1.f);	
 
 	UpdateMaxEXP();
 }
