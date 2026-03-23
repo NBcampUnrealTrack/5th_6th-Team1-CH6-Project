@@ -28,6 +28,8 @@ class UBAParkourComponent;
 class UAmmoAttributeSet;
 class USceneCaptureComponent2D;
 class UUISubsystem;
+class USplineComponent;
+class UNiagaraComponent;
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -194,6 +196,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Communicate")
     UInputAction* PingAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|GroundReturner")
+    UInputAction* ReturnAction;
+
 #pragma endregion
 
 #pragma region Action Function
@@ -228,6 +233,7 @@ protected:
     void StartSwitchWeapon(const FInputActionValue& Value);
     void JumpHandler(const FInputActionValue& Value);
     void ExecutePing(const FInputActionValue& Value);
+    void SwitchReturnMode(const FInputActionValue& Value);
 
 
 public:
@@ -324,6 +330,8 @@ public:
     float LastBodyYaw;
     float RootYawOffset;
     float TurnStartYaw;
+
+    float DefaultArmLength = 233.0f;
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
@@ -460,7 +468,7 @@ public:
     void InitializeSceneCapture();
     void UpdateShowComponents();
     
-    void SetArrowPlayerColor();
+    void SetPlayerColor();
         
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
@@ -488,9 +496,82 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
     TObjectPtr<UStaticMeshComponent> ArrowMesh;
 
-    FDelegateHandle ArrowColorChangeHandle;
+    FDelegateHandle PlayerColorChangeHandle;
 
     static TWeakObjectPtr<USceneCaptureComponent2D> LocalSceneCapture;      // 해당 클라이언트에서 제어 중인 플레이어의 SceneCapture2D 
+
+#pragma endregion
+
+#pragma region GroundReturner
+
+public:
+    UFUNCTION(Server, Reliable)
+    void Server_ResetPath();
+    UFUNCTION(Server, Reliable)
+    void Server_StartRecordingPath();
+    UFUNCTION(Server, Reliable)
+    void Server_StopRecordingPath();
+
+    FORCEINLINE bool GetIsReturning() const { return bIsReturning; }
+
+protected:
+    void ResetPath();
+    void StartRecordingPath();
+    void StopRecordingPath();
+    void UpdateSplinePath();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_ResetPath();
+
+    void AddPathPoint(FVector NewPoint);
+    void RemovePathPoints(int32 LastIdx);
+    int32 GetRemainedPathIdx(float FinalDistance);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_AddPathPoint(FVector NewPoint);
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_RemovePoints(int32 LastIdx);
+
+    void SetIsReturning(bool bInReturning);
+    void StartReturning();
+    void HandleReturnMovement(float DeltaTime);
+    void StopReturning();
+    UFUNCTION(Server, Reliable)
+    void Server_StartReturning();
+    UFUNCTION(Server, Reliable)
+    void Server_StopReturning();
+
+    void ActivateReturnEffect();
+    void DeactivateReturnEffect();
+
+    UFUNCTION()
+    void OnRep_IsReturning();
+
+protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    TObjectPtr<USplineComponent> PathSpline;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    TObjectPtr<UNiagaraComponent> ReturnEffect;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    TObjectPtr<UNiagaraComponent> ReturnPathEffect;
+
+    FTimerHandle PathUpdateTimer;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float PathDistThreshold = 50.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ReturnSpeed = 1500.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ReturnArmLength = 50.0f;
+    
+    float ReturnDistance = 0.0f;
+
+    UPROPERTY(ReplicatedUsing = OnRep_IsReturning)
+    uint8 bIsReturning : 1 = false;
+
+    static const FName NameReturnEffectColor;
+    static const FName NameReturnPathEffectColor;
+    static const FName NameReturnPathEffectSpawnRate;
 
 #pragma endregion
 
