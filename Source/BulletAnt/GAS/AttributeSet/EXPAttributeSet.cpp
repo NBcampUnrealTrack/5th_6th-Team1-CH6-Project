@@ -32,12 +32,12 @@ void UEXPAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbac
 			{
 				NewCurrentEXP -= GetMaxEXP();
 				LevelUp();
+				FGameplayCueParameters Params;
+				Data.Target.ExecuteGameplayCue(TAG_GameplayCue_Reward_LevelUp, Params);
 
 				if (GetCurrentLevel() >= MaxLevel)
 				{
 					SetCurrentEXP(GetMaxEXP());
-					FGameplayCueParameters Params;
-					Data.Target.ExecuteGameplayCue(TAG_GameplayCue_Reward_LevelUp, Params);
 					break;
 				}
 				Safety++;

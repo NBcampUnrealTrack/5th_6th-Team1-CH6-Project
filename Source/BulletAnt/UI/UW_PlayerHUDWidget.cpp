@@ -11,6 +11,8 @@
 void UUW_PlayerHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	UpdateLevel(1.f, 1.f);
 }
 
 void UUW_PlayerHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -48,6 +50,11 @@ void UUW_PlayerHUDWidget::InitPlayerHUD()
 	OwnerCharacter->OnEXPChanged.AddDynamic(
 		this,
 		&UUW_PlayerHUDWidget::UpdateEXP
+	);
+
+	OwnerCharacter->OnLevelChanged.AddDynamic(
+		this,
+		&UUW_PlayerHUDWidget::UpdateLevel
 	);
 
 	if (IsValid(OreCountUI) == true)
@@ -126,6 +133,7 @@ void UUW_PlayerHUDWidget::UpdateHealth(float Current, float Max)
 		return;
 
 	TargetHealthPercent = Current / Max;
+	ActualHealthBar->SetPercent(Current / Max);
 }
 
 void UUW_PlayerHUDWidget::UpdateEXP(float Current, float Max)
@@ -151,5 +159,13 @@ void UUW_PlayerHUDWidget::UpdateAmmo(float Current, float Max)
 	{
 		TotalAmmoText->SetText(FText::AsNumber(Max));
 	}
+}
+
+void UUW_PlayerHUDWidget::UpdateLevel(float Current, float OldLevel)
+{
+	if (!CurrentLevelText) return;
+
+	FString LevelStr = FString::Printf(TEXT("LV %d"), (int32)Current);
+	CurrentLevelText->SetText(FText::FromString(LevelStr));
 }
 

@@ -107,7 +107,7 @@ void UGA_Respawn::HandleRespawn()
 			Plane->InitPlayerPlane(SpawnLocation, Source);
 
 			Source->AttachToComponent(
-				Plane->GetMesh(),
+				Plane->GetRootComponent(),
 				FAttachmentTransformRules::SnapToTargetIncludingScale,
 				TEXT("SeatSocket")
 			);

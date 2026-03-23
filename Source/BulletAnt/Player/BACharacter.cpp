@@ -1007,7 +1007,7 @@ void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 
 	if (Index == 0)
 	{
-		if (ABAPlayerController* PC = Cast<ABAPlayerController>(GetController()))
+		if (IsValid(PC))
 		{
 			if (UUW_PlayerHUDWidget* HUD = PC->GetHUD())
 			{
@@ -1027,7 +1027,7 @@ void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 	}
 	else
 	{
-		if (ABAPlayerController* PC = Cast<ABAPlayerController>(GetController()))
+		if (IsValid(PC))
 		{
 			PC->HideAmmo();
 		}

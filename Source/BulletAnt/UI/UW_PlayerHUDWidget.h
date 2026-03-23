@@ -44,6 +44,12 @@ protected:
 	UFUNCTION()
 	void UpdateAmmo(float Current, float Max);
 
+	UFUNCTION()
+	void UpdateLevel(float Current, float OldLevel);
+
+	UPROPERTY(meta = (BindWidget))
+	UProgressBar* ActualHealthBar;
+
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* HealthBar;
 
@@ -57,6 +63,9 @@ protected:
 	float DisplayedEXPPercent = 0.f;
 	float TargetEXPPercent = 0.f;
 	float EXPLerpSpeed = 2.f;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* CurrentLevelText;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TotalAmmoText;
