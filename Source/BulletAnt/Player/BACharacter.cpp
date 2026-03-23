@@ -31,8 +31,13 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "Framework/BAGameState.h"
 #include "Player/BAPlayerState.h"
+#include "Components/SplineComponent.h"
+#include "NiagaraComponent.h"
 
 TWeakObjectPtr<USceneCaptureComponent2D> ABACharacter::LocalSceneCapture = nullptr;
+const FName ABACharacter::NameReturnEffectColor("User.Color");
+const FName ABACharacter::NameReturnPathEffectColor("User.Color");
+const FName ABACharacter::NameReturnPathEffectSpawnRate("SpawnRate");
 
 // Sets default values
 ABACharacter::ABACharacter()
@@ -62,7 +67,7 @@ ABACharacter::ABACharacter()
 	DetectedCapsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->SetupAttachment(GetMesh(), FName("spine_03"));
 	SpringArm->bUsePawnControlRotation = true;
 	// 카메라 생성 및 설정
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -106,6 +111,18 @@ ABACharacter::ABACharacter()
 	USkeletalMeshComponent* CharacterMesh = GetMesh();
 	CharacterMesh->SetRenderCustomDepth(true);
 	CharacterMesh->CustomDepthStencilValue = 1;
+
+	PathSpline = CreateDefaultSubobject<USplineComponent>(TEXT("PathSpline"));
+	PathSpline->SetupAttachment(RootComponent);
+	PathSpline->SetAbsolute(true, true, true);
+
+	ReturnEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("ReturnEffect"));
+	ReturnEffect->SetupAttachment(RootComponent);
+	ReturnEffect->SetVisibility(false);
+	ReturnEffect->bAutoActivate = false;
+
+	ReturnPathEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("ReturnPathEffect"));
+	ReturnPathEffect->SetupAttachment(PathSpline);
 }
 
 // Called when the game starts or when spawned
@@ -113,7 +130,9 @@ void ABACharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-#pragma region GroundScanner
+#pragma region Ground
+
+	ResetPath();
 
 	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
 	if (IsValid(GS) == true)
@@ -146,7 +165,7 @@ void ABACharacter::BeginPlay()
 
 #pragma endregion
 
-	LastBodyYaw = GetMesh()->GetComponentRotation().Yaw;
+	LastBodyYaw = GetActorRotation().Yaw;
 
 	if (IsLocallyControlled() == true)
 	{
@@ -180,6 +199,7 @@ void ABACharacter::BeginPlay()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
+	PC = Cast<ABAPlayerController>(GetController());
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -190,13 +210,13 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GS->RemoveActiveCharacter(this);
 	}
 
-	if (ArrowColorChangeHandle.IsValid() == true)
+	if (PlayerColorChangeHandle.IsValid() == true)
 	{
 		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 		if (IsValid(PS) == true)
 		{
-			PS->UnbindOnChangedPlayerColor(ArrowColorChangeHandle);
-			ArrowColorChangeHandle.Reset();
+			PS->UnbindOnChangedPlayerColor(PlayerColorChangeHandle);
+			PlayerColorChangeHandle.Reset();
 		}
 	}
 
@@ -213,10 +233,17 @@ void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (bIsReturning == true)
+	{
+		if (HasAuthority() == true || IsLocallyControlled() == true)
+		{
+			HandleReturnMovement(DeltaTime);
+		}
+	}
 
 	float Speed = GetVelocity().Size2D();
 
-	if ((Speed > 1.f||GetCharacterMovement()->IsFalling()||bIsAiming))
+	if (Speed > 1.f||GetCharacterMovement()->IsFalling())
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
 		GetCharacterMovement()->bUseControllerDesiredRotation = false;
@@ -231,11 +258,6 @@ void ABACharacter::Tick(float DeltaTime)
 		}
 	}
 
-	IdleTurning(DeltaTime);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
-	}
 	if (IsLocallyControlled())
 	{
 		if (!FMath::IsNearlyZero(CurrentRecoilPitch))
@@ -260,6 +282,17 @@ void ABACharacter::Tick(float DeltaTime)
 			}
 		}
 	}
+	if(ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	{
+		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, AimingTALength, DeltaTime, TALengthChangeSpeed);
+		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
+	}
+	else if(!bIsAiming)
+	{
+		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, DefaultArmLength, DeltaTime, TALengthChangeSpeed);
+		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+	}
+	IdleTurning(DeltaTime);
 }
 
 // 입력 바인딩
@@ -388,6 +421,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(PingAction, ETriggerEvent::Started, this, &ABACharacter::ExecutePing);
 		}
+
+		if (ReturnAction)
+		{
+			EnhancedInputComponent->BindAction(ReturnAction, ETriggerEvent::Started, this, &ABACharacter::SwitchReturnMode);
+		}
 	}
 }
 
@@ -432,7 +470,7 @@ void ABACharacter::OnRep_PlayerState()
 		}
 	}
 
-	SetArrowPlayerColor();
+	SetPlayerColor();
 }
 
 void ABACharacter::SpringArmRot(bool check)
@@ -575,7 +613,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	SetArrowPlayerColor();
+	SetPlayerColor();
 
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (PS)
@@ -806,7 +844,6 @@ void ABACharacter::SetRecoil(float InPitch, float InYaw)
 
 void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 {
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (NewCount >= 1)
 	{
 		PC->StartRespawnBar(RespawnTime);
@@ -886,6 +923,7 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 	}
 }
 
+
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 {
 	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
@@ -897,7 +935,6 @@ void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 	{
 		BuildManager->ExitBuildMode();
 	}
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
 		PC->SwitchingMode();
@@ -912,7 +949,6 @@ void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
 	}
 
 	BuildManager->ExitBuildMode();
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
 		PC->SwitchingMode();
@@ -1004,6 +1040,7 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 {
 	bool bParkourStarted = false;
 
+	StopMontage();
 	if (ParkourComponent)
 	{
 		bParkourStarted = ParkourComponent->AttemptParkour();
@@ -1025,15 +1062,29 @@ void ABACharacter::ExecutePing(const FInputActionValue& Value)
 	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
+void ABACharacter::SwitchReturnMode(const FInputActionValue& Value)
+{
+	if (bIsReturning == false)
+	{
+		StartReturning();
+	}
+	else
+	{
+		StopReturning();
+	}
+}
+
 void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABACharacter, bIsAiming);
 	DOREPLIFETIME(ABACharacter, bIsRunning);
+	DOREPLIFETIME(ABACharacter, bIsTurning);
 	DOREPLIFETIME(ABACharacter, SyncAimYaw);
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
 	DOREPLIFETIME(ABACharacter, EquippedWeapon);
+	DOREPLIFETIME(ABACharacter, bIsReturning);
 }
 
 void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)
@@ -1087,63 +1138,18 @@ void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 }
 void ABACharacter::IdleTurning(float DeltaTime)
 {
-	if (!HasAuthority()) return;
+	if (!HasAuthority()&&!IsLocallyControlled()) return;
 
-	if (!bIsTurning)
+	if (GEngine)
 	{
-		RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
-		if (GEngine) GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도 차이: %f"), FMath::Abs(RootYawOffset)));
+		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
 	}
-	else
+	if (ParkourComponent->bIsParkour || GetVelocity().Size2D() > 1.f || GetCharacterMovement()->IsFalling())
 	{
-		float TotalFlickYaw = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - TurnStartYaw);
-
-		if (FMath::Abs(TotalFlickYaw) > 135.f && (TurnType == ETurnType::Right90 || TurnType == ETurnType::Left90))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("180도 감지. 90도 취소하고 180도로 덮어씌움."));
-
-			bool bRight = (TotalFlickYaw < 0); // 방향 다시 계산
-			LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
-			TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
-			if (bIsCrouched)
-			{
-				switch (TurnType)
-				{
-				case ETurnType::Left180:
-					LastBodyYaw -= 90;
-					CurrentTurnMontage = CrouchTurnLeft180Montage;
-					break;
-				case ETurnType::Right180:
-					LastBodyYaw += 90;
-					CurrentTurnMontage = CrouchTurnRight180Montage;
-					break;
-				}
-			}
-			else
-			{
-				switch (TurnType)
-				{
-				case ETurnType::Left180:
-					LastBodyYaw -= 90;
-					CurrentTurnMontage = TurnLeft180Montage;
-					break;
-				case ETurnType::Right180:
-					LastBodyYaw += 90;
-					CurrentTurnMontage = TurnRight180Montage;
-					break;
-				}
-			}
-			CurrentTurnSpeed = 15.f;
-
-			if (CurrentTurnMontage && MotionWarpingComp)
-			{
-				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
-				FTransform TargetTransform(GoalRot, GetActorLocation());
-				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
-			}
-		}
+		LastBodyYaw = GetActorRotation().Yaw;
+		return;
 	}
-
+	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
 	if (!bIsTurning)
 	{
 		if (FMath::Abs(RootYawOffset) > 90.f)
@@ -1152,8 +1158,8 @@ void ABACharacter::IdleTurning(float DeltaTime)
 			if (TurnDelayTimer > 0.1f)
 			{
 				bIsTurning = true;
-
 				TurnStartYaw = LastBodyYaw;
+
 				bool bRight = RootYawOffset > 0;
 				LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
 				TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
@@ -1165,11 +1171,11 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				{
 					switch (TurnType)
 					{
-					case ETurnType::Left90:  
-						CurrentTurnMontage = CrouchTurnLeft90Montage; 
+					case ETurnType::Left90:
+						CurrentTurnMontage = CrouchTurnLeft90Montage;
 						break;
 					case ETurnType::Right90:
-						CurrentTurnMontage = CrouchTurnRight90Montage; 
+						CurrentTurnMontage = CrouchTurnRight90Montage;
 						break;
 					}
 				}
@@ -1177,7 +1183,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				{
 					switch (TurnType)
 					{
-					case ETurnType::Left90: 
+					case ETurnType::Left90:
 						CurrentTurnMontage = TurnLeft90Montage;
 						break;
 					case ETurnType::Right90:
@@ -1198,6 +1204,50 @@ void ABACharacter::IdleTurning(float DeltaTime)
 			TurnDelayTimer = 0.f;
 		}
 	}
+	else
+	{
+		float TotalFlickYaw = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - TurnStartYaw);
+
+		if (FMath::Abs(TotalFlickYaw) > 160.f && (TurnType == ETurnType::Right90 || TurnType == ETurnType::Left90))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("180도 감지. 90도 취소하고 180도로 덮어씌움."));
+			bool bRight = (TotalFlickYaw > 0); // 방향 다시 계산
+			LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
+			TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
+			if (bIsCrouched)
+			{
+				switch (TurnType)
+				{
+				case ETurnType::Left180:
+					CurrentTurnMontage = CrouchTurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					CurrentTurnMontage = CrouchTurnRight180Montage;
+					break;
+				}
+			}
+			else
+			{
+				switch (TurnType)
+				{
+				case ETurnType::Left180:
+					CurrentTurnMontage = TurnLeft180Montage;
+					break;
+				case ETurnType::Right180:
+					CurrentTurnMontage = TurnRight180Montage;
+					break;
+				}
+			}
+			CurrentTurnSpeed = 15.f;
+
+			if (CurrentTurnMontage && MotionWarpingComp)
+			{
+				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
+				FTransform TargetTransform(GoalRot, GetActorLocation());
+				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
+			}
+		}
+	}
 }
 
 void ABACharacter::SetTurnStatus()
@@ -1206,7 +1256,6 @@ void ABACharacter::SetTurnStatus()
 	TurnType = ETurnType::None;
 	CurrentTurnMontage = nullptr;
 	TurnDelayTimer = 0.f;
-	RootYawOffset = 0.0f;
 }
 
 void ABACharacter::StopMontage()
@@ -1251,7 +1300,6 @@ void ABACharacter::SwitchGroundScanner()
 	SceneCaptureParent->SetRelativeRotation(DefaultRotation);
 	SceneCapture2D->SetRelativeLocation(FVector(-DefaultScannerDistance, 0.0f, 0.0f));
 
-	ABAPlayerController* PC = Cast<ABAPlayerController>(GetController());
 	if (PC)
 	{
 		PC->SwitchGroundScanner();
@@ -1266,9 +1314,9 @@ void ABACharacter::RequestWeaponLog(UWeaponDataAsset* InData)
 
 void ABACharacter::Multicast_ShowWeaponLog_Implementation(UWeaponDataAsset* InData)
 {
-	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
 	if (!GetWorld()) return;
-	ULocalPlayer* LP = PC->GetLocalPlayer();
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
 	if (!LP) return;
 
 	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
@@ -1324,28 +1372,276 @@ void ABACharacter::UpdateShowComponents()
 	SceneCapture2D->ShowOnlyComponents.Add(ArrowMesh);
 }
 
-void ABACharacter::SetArrowPlayerColor()
+void ABACharacter::SetPlayerColor()
 {
-	if (IsValid(ArrowMesh) == true)
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == true)
 	{
-		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
-		if (IsValid(PS) == true)
+		FLinearColor PlayerColor = PS->GetPlayerColor();
+		if (IsValid(ArrowMesh) == true)
 		{
-			FLinearColor PlayerColor = PS->GetPlayerColor();
 			ArrowMesh->SetCustomPrimitiveDataVector4(0, FVector4(PlayerColor));
-
-			if (ArrowColorChangeHandle.IsValid() == true)
-				return;
-
-			ArrowColorChangeHandle = PS->BindOnChangedPlayerColor(FOnChangedPlayerColor::FDelegate::CreateLambda(
-				[WeakThis = TWeakObjectPtr(this)](FLinearColor NewColor)
-				{
-					if (WeakThis.IsValid() == true)
-					{
-						WeakThis->SetArrowPlayerColor();
-					}
-				}));
 		}
+
+		if (IsValid(ReturnEffect) == true)
+		{
+			ReturnEffect->SetVariableLinearColor(NameReturnEffectColor, PlayerColor * 3.0f);
+		}
+
+		if (IsValid(ReturnPathEffect) == true)
+		{
+			ReturnPathEffect->SetVariableLinearColor(NameReturnPathEffectColor, PlayerColor * 3.0f);
+		}
+
+		if (PlayerColorChangeHandle.IsValid() == true)
+			return;
+
+		PlayerColorChangeHandle = PS->BindOnChangedPlayerColor(FOnChangedPlayerColor::FDelegate::CreateLambda(
+			[WeakThis = TWeakObjectPtr(this)](FLinearColor NewColor)
+			{
+				if (WeakThis.IsValid() == true)
+				{
+					WeakThis->SetPlayerColor();
+				}
+			}));
+	}
+}
+
+void ABACharacter::ResetPath()
+{
+	PathSpline->ClearSplinePoints();
+
+	PathSpline->UpdateSpline();
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	ReturnPathEffect->SetVariableFloat(NameReturnPathEffectSpawnRate, TotalPoints);
+}
+
+void ABACharacter::StartRecordingPath()
+{
+	Server_StartRecordingPath();
+}
+
+void ABACharacter::StopRecordingPath()
+{
+	Server_StopRecordingPath();
+}
+
+void ABACharacter::UpdateSplinePath()
+{
+	if (bIsReturning == true || HasAuthority() == false)
+		return;
+
+	FVector CurrLocation = GetActorLocation();
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	if (TotalPoints == 0)
+	{
+		Multicast_AddPathPoint(CurrLocation);
+		return;
+	}
+;
+	FVector LastPointLocation = PathSpline->GetLocationAtSplinePoint(TotalPoints - 1, ESplineCoordinateSpace::World);
+
+	float ThresholdSquared = PathDistThreshold * PathDistThreshold;
+	if (FVector::DistSquared(CurrLocation, LastPointLocation) > ThresholdSquared)
+	{
+		Multicast_AddPathPoint(CurrLocation);
+	}
+}
+
+void ABACharacter::Server_ResetPath_Implementation()
+{
+	Multicast_ResetPath();
+}
+
+void ABACharacter::Multicast_ResetPath_Implementation()
+{
+	ResetPath();
+}
+
+void ABACharacter::Server_StartRecordingPath_Implementation()
+{
+	Multicast_AddPathPoint(GetActorLocation());
+
+	GetWorldTimerManager().SetTimer(
+		PathUpdateTimer,
+		this,
+		&ThisClass::UpdateSplinePath,
+		0.2f,
+		true);
+}
+
+void ABACharacter::Server_StopRecordingPath_Implementation()
+{
+	GetWorldTimerManager().ClearTimer(PathUpdateTimer);
+}
+
+void ABACharacter::AddPathPoint(FVector NewPoint)
+{
+	PathSpline->AddSplinePoint(NewPoint, ESplineCoordinateSpace::World, false);
+
+	PathSpline->UpdateSpline();
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	ReturnPathEffect->SetVariableFloat(NameReturnPathEffectSpawnRate, TotalPoints);
+}
+
+void ABACharacter::RemovePathPoints(int32 LastIdx)
+{
+	if (LastIdx < 0)
+	{
+		ResetPath();
+	}
+	else
+	{
+		int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+		for (int32 Idx = TotalPoints - 1; Idx > LastIdx; --Idx)
+		{
+			PathSpline->RemoveSplinePoint(Idx, false);
+		}
+
+		PathSpline->UpdateSpline();
+		TotalPoints = PathSpline->GetNumberOfSplinePoints();
+		ReturnPathEffect->SetVariableFloat(NameReturnPathEffectSpawnRate, TotalPoints);
+	}
+}
+
+int32 ABACharacter::GetRemainedPathIdx(float FinalDistance)
+{
+	if (FinalDistance == 0.0f)
+		return -1;
+
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	for (int32 Idx = TotalPoints - 1; Idx >= 0; --Idx)
+	{
+		float PointDistance = PathSpline->GetDistanceAlongSplineAtSplinePoint(Idx);
+
+		if (PointDistance <= FinalDistance)
+			return Idx + 1;
+	}
+
+	return TotalPoints;
+}
+
+void ABACharacter::Multicast_AddPathPoint_Implementation(FVector NewPoint)
+{
+	AddPathPoint(NewPoint);
+}
+
+void ABACharacter::Multicast_RemovePoints_Implementation(int32 LastIdx)
+{
+	RemovePathPoints(LastIdx);
+}
+
+void ABACharacter::SetIsReturning(bool bInReturning)
+{
+	bIsReturning = bInReturning;
+	OnRep_IsReturning();
+}
+
+void ABACharacter::StartReturning()
+{
+	if (bIsReturning == true || PathSpline->GetNumberOfSplinePoints() < 2)
+		return;
+
+	ReturnDistance = PathSpline->GetSplineLength();
+	
+	SetIsReturning(true);		// 미리 ReturnPoint 더 기록되는 거 막음
+	Server_StartReturning();
+}
+
+void ABACharacter::HandleReturnMovement(float DeltaTime)
+{
+	ReturnDistance -= ReturnSpeed * DeltaTime;
+	if (ReturnDistance <= 0.0f)
+	{
+		ReturnDistance = 0.0f;
+		if (HasAuthority() == true)
+		{
+			Server_StopReturning();
+		}
+	}
+
+	FVector TargetLoc = PathSpline->GetLocationAtDistanceAlongSpline(ReturnDistance, ESplineCoordinateSpace::World);
+	FRotator TargetRot = PathSpline->GetRotationAtDistanceAlongSpline(ReturnDistance, ESplineCoordinateSpace::World);
+	TargetRot.Pitch = 0.0f;
+	TargetRot.Roll = 0.0f;
+
+	SetActorLocationAndRotation(TargetLoc, TargetRot, false, nullptr, ETeleportType::TeleportPhysics);
+
+	if (HasAuthority() == true)
+	{
+		int32 LastIdx = GetRemainedPathIdx(ReturnDistance);
+		Multicast_RemovePoints(LastIdx);
+	}
+}
+
+void ABACharacter::StopReturning()
+{
+	if (bIsReturning == false)
+		return;
+
+	SetIsReturning(false);
+	Server_StopReturning();
+}
+
+void ABACharacter::Server_StartReturning_Implementation()
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (IsValid(Movement) == false)
+		return;
+
+	ReturnDistance = PathSpline->GetSplineLength();
+
+	SetIsReturning(true);
+}
+
+void ABACharacter::Server_StopReturning_Implementation()
+{
+	SetIsReturning(false);
+}
+
+void ABACharacter::ActivateReturnEffect()
+{
+	GetMesh()->SetVisibility(false);
+	if (IsValid(EquippedWeapon) == true)
+	{
+		EquippedWeapon->SetActorHiddenInGame(true);
+	}
+	SpringArm->TargetArmLength = ReturnArmLength;
+	ReturnEffect->SetVisibility(true);
+	ReturnEffect->Activate();
+}
+
+void ABACharacter::DeactivateReturnEffect()
+{
+	GetMesh()->SetVisibility(true);
+	if (IsValid(EquippedWeapon) == true)
+	{
+		EquippedWeapon->SetActorHiddenInGame(false);
+	}
+	SpringArm->TargetArmLength = DefaultArmLength;
+	ReturnEffect->SetVisibility(false);
+	ReturnEffect->Deactivate();
+}
+
+void ABACharacter::OnRep_IsReturning()
+{
+	if (bIsReturning == true)
+	{
+		ActivateReturnEffect();
+		GetCharacterMovement()->NetworkSimulatedSmoothLocationTime = 0.15f;
+		GetCharacterMovement()->bIgnoreClientMovementErrorChecksAndCorrection = true;
+		GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+		//GetCharacterMovement()->bCheatFlying = true;
+		SetActorEnableCollision(false);
+	}
+	else
+	{
+		DeactivateReturnEffect();
+		GetCharacterMovement()->NetworkSimulatedSmoothLocationTime = 0.05f;		// 기본값
+		GetCharacterMovement()->bIgnoreClientMovementErrorChecksAndCorrection = false;
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+		//GetCharacterMovement()->bCheatFlying = false;
+		SetActorEnableCollision(true);
 	}
 }
 

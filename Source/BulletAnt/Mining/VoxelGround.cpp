@@ -1328,8 +1328,10 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 
 	OriginMieScatterScale = SkyComp->MieScatteringScale;
 	OriginReighScatterScale = SkyComp->RayleighScatteringScale;
-	//SkyComp->SetMieScatteringScale(0.0f);
-	//SkyComp->SetRayleighScatteringScale(0.0f);
+	SkyComp->SetMieScatteringScale(0.0f);
+	SkyComp->SetRayleighScatteringScale(0.0f);
+
+	Character->Server_StartRecordingPath();
 }
 
 void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -1348,6 +1350,12 @@ void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor
 
 	SkyComp->SetMieScatteringScale(OriginMieScatterScale);
 	SkyComp->SetRayleighScatteringScale(OriginReighScatterScale);
+
+	if (Character->GetIsReturning() == false)
+	{
+		Character->Server_StopRecordingPath();
+		Character->Server_ResetPath();
+	}
 }
 
 ASkyAtmosphere* AVoxelGround::GetSkyAtmosphere() const

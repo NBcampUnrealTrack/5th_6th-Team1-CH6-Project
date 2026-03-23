@@ -38,7 +38,11 @@ void ABAPlayerController::BeginPlay()
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
 	}
-
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->ViewPitchMin = -60.0f; // 아래 제한
+		PlayerCameraManager->ViewPitchMax = 85.0f;  // 위 제한
+	}
 	SetupForMain();
 }
 

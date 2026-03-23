@@ -71,22 +71,22 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
 	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
+	/*FVector AimDir = FRotator(FinalPitch, FinalYaw, 0.f).Vector();
+	FVector LocalAimDir = Rotation.Quaternion().Inverse().RotateVector(AimDir);
+	FRotator DeltaRot = LocalAimDir.Rotation();*/
 	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		DeltaRot = CameraTargetOffset();
 	}
-	TargetPitch = (FMath::Abs(DeltaRot.Pitch) > 90.0f) ? 0.0f : DeltaRot.Pitch;
-	TargetYaw = (FMath::Abs(DeltaRot.Yaw) > 90.0f) ? 0.0f : DeltaRot.Yaw;
-
-	if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (bIsAiming)
 	{
-		AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 0.f);
-		AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 0.f);
+		AOPitch = -1*FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
+		AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, 0.f);
 	}
 	else
 	{
-		AOPitch = FMath::FInterpTo(AOPitch, TargetPitch, DeltaSeconds, 15.f);
-		AOYaw = FMath::FInterpTo(AOYaw, TargetYaw, DeltaSeconds, 15.f);
+		AOPitch = FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 15.f);
+		AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, 15.f);
 	}
 	//if(ParkourComp&&!ParkourComp->bisParkour
 	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("LeftHandSocket"))
