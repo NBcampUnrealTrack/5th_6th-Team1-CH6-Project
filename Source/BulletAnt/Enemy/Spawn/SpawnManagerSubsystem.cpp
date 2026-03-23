@@ -136,6 +136,7 @@ void USpawnManagerSubsystem::PrepareWave()
 	CachedGameState->SetInitWavePreparationTime(Row->WavePreparationTime);
 	CachedGameState->SetWavePreparationTime(Row->WavePreparationTime);
 	CachedGameState->OnRep_WavePreparationTime();
+	OnInitWaveTimeChanged.Broadcast(Row->WavePreparationTime);
 
 	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::UpdatePreparationTime, 1.f, true);
 }
@@ -175,6 +176,8 @@ void USpawnManagerSubsystem::StartWave()
 	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), WaveIndex + 1));
 	EnemySpawnHandle.RowName = RowName;
 
+	GetWorld()->GetTimerManager().SetTimer(NextWaveTimer, this, &USpawnManagerSubsystem::ChangeWave, 100.f, false);
+
 	SpawnEnemies();
 }
 
@@ -200,13 +203,6 @@ void USpawnManagerSubsystem::SpawnEnemies()
 
 	if (SpawnEnemyDataIdx >= Row->SpawnEnemyDataArray.Num())
 	{
-		SpawnEnemyDataIdx = 0;
-
-		WaveIndex++;
-		if (CanStartWave())
-		{
-			PrepareWave();
-		}
 		return;
 	}
 
@@ -323,4 +319,15 @@ bool USpawnManagerSubsystem::CanSpawnEnemy(FVector& InSpawnLocation)
 	}
 
 	return false;
+}
+
+void USpawnManagerSubsystem::ChangeWave()
+{
+	SpawnEnemyDataIdx = 0;
+
+	WaveIndex++;
+	if (CanStartWave())
+	{
+		PrepareWave();
+	}
 }

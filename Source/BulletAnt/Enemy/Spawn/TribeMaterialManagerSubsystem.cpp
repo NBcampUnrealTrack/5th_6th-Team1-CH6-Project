@@ -31,7 +31,7 @@ UMaterialInstanceDynamic* UTribeMaterialManagerSubsystem::GetTribeMaterial(UMate
 		}
 		else
 		{
-			Alpha = 0.3f;
+			Alpha = 0.6f;
 		}
 		MID->SetScalarParameterValue(TEXT("Alpha"), Alpha);
 		TribeMaterialCache.Add(key, MID);
