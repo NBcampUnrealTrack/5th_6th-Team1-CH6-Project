@@ -425,6 +425,15 @@ UAnimMontage* ABaseEnemyCharacter::GetDieAnimMontage() const
 	return nullptr;
 }
 
+float ABaseEnemyCharacter::GetEXP() const
+{
+	if (IsValid(BaseEnemyDataAsset))
+	{
+		return BaseEnemyDataAsset->EXP;
+	}
+	return 0.0f;
+}
+
 void ABaseEnemyCharacter::StartIntrudeAction()
 {
 	TargetActorPriority = ETargetPriorityType::High;

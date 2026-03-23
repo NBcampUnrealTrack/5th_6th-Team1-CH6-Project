@@ -42,6 +42,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "BaseStat")
 	int32 Health = 100.f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "BaseStat")
+	float EXP = 10.f;
+
 #pragma endregion
 
 #pragma region Move

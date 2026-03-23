@@ -186,6 +186,8 @@ public:
 
 	//void Die();
 
+	float GetEXP() const;
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Config")
 	TObjectPtr<UBaseEnemyDataAsset> BaseEnemyDataAsset;
