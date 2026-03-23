@@ -6,6 +6,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "SpawnManagerSubsystem.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnInitWaveTimeChanged, int32);
+
 class ABaseCore;
 class ABAGameState;
 
@@ -29,6 +31,7 @@ protected:
 	void StartWave();
 	void SpawnEnemies();
 	bool CanSpawnEnemy(FVector& InSpawnLocation);
+	void ChangeWave();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -56,4 +59,8 @@ protected:
 
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
+	FTimerHandle NextWaveTimer;
+
+public:
+	FOnInitWaveTimeChanged OnInitWaveTimeChanged;
 };
