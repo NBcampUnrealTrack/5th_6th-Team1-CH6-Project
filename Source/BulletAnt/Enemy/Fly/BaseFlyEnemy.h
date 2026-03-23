@@ -17,6 +17,7 @@ public:
 	void SetDiveMode();
 	void UnSetDiveMode();
 
+	float GetFlySpeed() const;
 	void SetFlySpeed(float InSpeed);
 
 protected:
@@ -26,8 +27,7 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PossessedBy(AController* NewController) override;
 
-	UFUNCTION()
-	void OnRep_FlySpeed();
+	virtual void OnMoveAttributeChange(const FOnAttributeChangeData& Data) override;
 
 	UFUNCTION()
 	void OnRep_Deceleration();
@@ -41,9 +41,6 @@ protected:
 	void Multicast_UnSetDiveMode();
 
 protected:
-	UPROPERTY(Replicated, ReplicatedUsing = OnRep_FlySpeed)
-	float FlySpeed;
-
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_Deceleration)
 	float Deceleration;
 

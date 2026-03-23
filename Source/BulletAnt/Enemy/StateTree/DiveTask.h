@@ -34,6 +34,8 @@ public:
 protected:
 	FVector FindAttackPoint();
 
+	void BeginAttack();
+
 	TWeakObjectPtr<UCharacterMovementComponent> CMC;
 
 	float DiveTotalTime = 3.f;
