@@ -159,6 +159,51 @@ void ABaseFlyEnemy::PossessedBy(AController* NewController)
 	}
 }
 
+void ABaseFlyEnemy::OnDetectionSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	if (OtherActor == this)
+	{
+		return;
+	}
+	if (!IsValid(TribeType))
+	{
+		return;
+	}
+
+	ETargetPriorityType Priority = ETargetPriorityType::High;
+	FActorArrayWrapper& Value = NearbyActors.FindOrAdd(Priority);
+	Value.Actors.Add(OtherActor);
+}
+
+void ABaseFlyEnemy::OnDetectionSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	if (!ensureMsgf(IsValid(TribeType), TEXT("ABaseEnemyCharacter OnDetectionSphereBeginOverlap : TribeType Miss")))
+	{
+		return;
+	}
+
+	ETargetPriorityType Priority = ETargetPriorityType::High;
+
+	if (FActorArrayWrapper* Value = NearbyActors.Find(Priority))
+	{
+		Value->Actors.Remove(OtherActor);
+		if (TargetActor == OtherActor)
+		{
+			InitTarget();
+			StartIntrudeAction();
+			TransitionToRotate();
+		}
+	}
+}
+
 void ABaseFlyEnemy::OnMoveAttributeChange(const FOnAttributeChangeData& Data)
 {
 	if (IsValid(GetCharacterMovement()) && IsValid(MoveAttributeSet))
