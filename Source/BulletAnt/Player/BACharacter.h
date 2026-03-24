@@ -159,8 +159,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* ADSAction;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-    UInputAction* InteractionAction;
+    //UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Interaction")
+    //UInputAction* InteractionAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Interaction")
+    UInputAction* InteractionFAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Interaction")
+    UInputAction* InteractionQAction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Interaction")
+    UInputAction* InteractionEAction;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Building")
     UInputAction* EnterBuildModeAction;
@@ -224,6 +233,10 @@ protected:
     void CrouchInput(const FInputActionValue& Value); 
     void ADSStart(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
+    void Interaction_F(const FInputActionValue& Value);
+    void Interaction_Q(const FInputActionValue& Value);
+    void Interaction_E(const FInputActionValue& Value);
+    void TryInteractionByKey(const FKey& PressedKey);
     void EnterBuildMode(const FInputActionValue& Value);
     void ExitBuildMode(const FInputActionValue& Value);
     void PlaceBuilding(const FInputActionValue& Value);
@@ -476,17 +489,36 @@ protected:
     float RecoilInterpSpeed = 10.f;
 #pragma endregion
 
+#pragma region UI
+    // Respawn
 protected:
-
     UFUNCTION()
     void HandleRespawnUI(FGameplayTag Tag, int32 NewCount);
 
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category = "Combat|Respawn")
     float RespawnTime = 5.f;
 
+    // Interaction
 protected:
+    UFUNCTION()
+    void UpdateInteractionTrace();
+
+    void SetCurrentInteractActor(AActor* NewActor);
+    void UpdateInteractionUI();
+    void StartInteractionTraceTimer();
+    void StopInteractionTraceTimer();
+
     UPROPERTY(VisibleAnywhere)
     UBuildManagerComponent* BuildManager;
+
+    UPROPERTY()
+    TObjectPtr<class UUW_Interaction> InteractionWidget;
+
+    UPROPERTY()
+    TWeakObjectPtr<AActor> CurrentInteractActor;
+
+    FTimerHandle InteractionTraceTimerHandle;
+#pragma endregion
 
 #pragma region GroundScanner
 

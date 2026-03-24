@@ -225,6 +225,16 @@ void UBuildManagerComponent::RequestDemolish(ABaseBuilding* TargetBuilding)
     }
 }
 
+void UBuildManagerComponent::RequestRepair(ABaseBuilding* TargetBuilding)
+{
+
+}
+
+void UBuildManagerComponent::Server_RequestRepair_Implementation(ABaseBuilding* TargetBuilding)
+{
+
+}
+
 void UBuildManagerComponent::Server_RequestDemolish_Implementation(ABaseBuilding* TargetBuilding)
 {
     if (!IsValid(TargetBuilding))

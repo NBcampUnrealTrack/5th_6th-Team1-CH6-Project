@@ -132,6 +132,51 @@ void ABaseBuilding::Use_Implementation(AActor* User)
 	BuildManager->RequestDemolish(this);
 }
 
+void ABaseBuilding::GetInteractionOptions_Implementation(AActor* User, TArray<FInteractionOption>& OutOptions) const
+{
+	OutOptions.Reset();
+
+	FInteractionOption Op1;
+	Op1.Key = EKeys::Q;
+	Op1.Label = FText::FromString(TEXT("철거"));
+	Op1.ActionName = TEXT("Demolish");
+	OutOptions.Add(Op1);
+
+	FInteractionOption Op2;
+	Op2.Key = EKeys::E;
+	Op2.Label = FText::FromString(TEXT("수리"));
+	Op2.ActionName = TEXT("Repair");
+	OutOptions.Add(Op2);
+}
+
+void ABaseBuilding::Interaction_Implementation(AActor* User, FName ActionName)
+{
+	if (!IsValid(User))
+	{
+		return;
+	}
+
+	ABACharacter* Character = Cast<ABACharacter>(User);
+	if (!Character)
+	{
+		return;
+	}
+
+	UBuildManagerComponent* BuildManager = Character->FindComponentByClass<UBuildManagerComponent>();
+	if (!BuildManager)
+	{
+		return;
+	}
+	if (ActionName == TEXT("Demolish"))
+	{
+		BuildManager->RequestDemolish(this);
+	}
+	else if (ActionName == TEXT("Repair"))
+	{
+		BuildManager->RequestRepair(this);
+	}
+}
+
 void ABaseBuilding::RequestDemolish(AActor* User)
 {
 	if (!HasAuthority() || bDead)

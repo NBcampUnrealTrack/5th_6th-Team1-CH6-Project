@@ -56,6 +56,23 @@ void ABAItemBox::Use_Implementation(AActor* User)
 	PC->Server_RequestAddWeapon(this);
 }
 
+void ABAItemBox::GetInteractionOptions_Implementation(AActor* User, TArray<FInteractionOption>& OutOptions) const
+{
+	FInteractionOption Op1;
+	Op1.Key = EKeys::F;
+	Op1.Label = FText::FromString(TEXT("줍기"));
+	Op1.ActionName = TEXT("Pick");
+	OutOptions.Add(Op1);
+}
+
+void ABAItemBox::Interaction_Implementation(AActor* User, FName ActionName)
+{
+	if (ActionName == TEXT("Pick"))
+	{
+		Use_Implementation(User);
+	}
+}
+
 void ABAItemBox::SetItem(TSubclassOf<ABaseWeapon> InItem)
 {
 	Item = InItem;
