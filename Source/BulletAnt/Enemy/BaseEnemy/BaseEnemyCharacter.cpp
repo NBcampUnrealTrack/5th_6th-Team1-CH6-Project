@@ -526,10 +526,19 @@ void ABaseEnemyCharacter::BeginPlay()
 
 	if (IsValid(BaseEnemyDataAsset->SpawnEffect))
 	{
+		FRotator Rot = FRotator::ZeroRotator;
+		if (IsValid(TargetActor))
+		{
+			FVector Dir = (TargetActor->GetActorLocation() - GetActorLocation());
+			Dir.Z = 0;
+			Rot = Dir.Rotation();
+		}
+
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			BaseEnemyDataAsset->SpawnEffect,
-			GetActorLocation()
+			GetActorLocation(),
+			Rot
 		);
 	}
 	GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
@@ -591,11 +600,12 @@ void ABaseEnemyCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
+	InitTarget();
+
 	if (HasAuthority())
 	{
 		if (IsValid(StateTreeComponent))
 		{
-			InitTarget();
 			StateTreeComponent->StartLogic();
 		}
 	}
