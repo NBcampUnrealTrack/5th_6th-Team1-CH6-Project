@@ -154,6 +154,9 @@ void ABACharacter::BeginPlay()
 		}
 
 		LocalSceneCapture = SceneCapture2D;
+
+		USkeletalMeshComponent* CharacterMesh = GetMesh();
+		CharacterMesh->CustomDepthStencilValue = 0;	
 	}
 	else
 	{
@@ -243,7 +246,7 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	if (Speed > 1.f||GetCharacterMovement()->IsFalling())
+	if (Speed > 1.f || GetCharacterMovement()->IsFalling())
 		GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	else
 		GetCharacterMovement()->bUseControllerDesiredRotation = false;
@@ -282,12 +285,12 @@ void ABACharacter::Tick(float DeltaTime)
 			}
 		}
 	}
-	if(ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, AimingTALength, DeltaTime, TALengthChangeSpeed);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
 	}
-	else if(!bIsAiming)
+	else if (!bIsAiming)
 	{
 		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, DefaultArmLength, DeltaTime, TALengthChangeSpeed);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
@@ -409,7 +412,7 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		{
 			EnhancedInputComponent->BindAction(ToggleBuildInfoAction, ETriggerEvent::Started, this, &ABACharacter::OnToggleBuildInfo);
 		}
-		
+
 
 		// 지하
 		if (GroundScannerAction)
@@ -451,22 +454,20 @@ void ABACharacter::OnRep_PlayerState()
 			AmmoAttributeSet = PS->GetAmmoAttributeSet();
 			EXPAttributeSet = PS->GetEXPAttributeSet();
 
-			if (IsLocallyControlled())
-			{
-				ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-					.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-				ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-					.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-				ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
-					.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
-				ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
-					.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
+				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+				.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
 
-				ASC->RegisterGameplayTagEvent(
-					TAG_State_Combat_Dead,
-					EGameplayTagEventType::NewOrRemoved
-				).AddUObject(this, &ABACharacter::HandleRespawnUI);			
-			}
+			ASC->RegisterGameplayTagEvent(
+				TAG_State_Combat_Dead,
+				EGameplayTagEventType::NewOrRemoved
+			).AddUObject(this, &ABACharacter::HandleRespawnUI);
+
 		}
 	}
 
@@ -606,7 +607,7 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	IgnoreTags.AddTag(TAG_Ability_Active_Reload);
 	IgnoreTags.AddTag(TAG_Ability_Active_ADS);
 
-	ASC->CancelAbilities(&CancelTags,&IgnoreTags);
+	ASC->CancelAbilities(&CancelTags, &IgnoreTags);
 }
 
 void ABACharacter::PossessedBy(AController* NewController)
@@ -618,7 +619,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (PS)
 	{
-		ASC = PS->GetAbilitySystemComponent();		
+		ASC = PS->GetAbilitySystemComponent();
 		ASC->InitAbilityActorInfo(PS, this);
 		PS->InitAbility();
 
@@ -626,6 +627,10 @@ void ABACharacter::PossessedBy(AController* NewController)
 		AmmoAttributeSet = PS->GetAmmoAttributeSet();
 		EXPAttributeSet = PS->GetEXPAttributeSet();
 		HealthAttributeSet->InitValue(100.f, 150.f);
+
+		
+		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
 
 		if (IsLocallyControlled())
 		{
@@ -635,8 +640,6 @@ void ABACharacter::PossessedBy(AController* NewController)
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
 				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
-				.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
 
 			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,
@@ -688,8 +691,12 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	);
 	NewWeapon->SetActorRelativeTransform(NewWeapon->GripOffset);
 	NewWeapon->EquipWeapon(ASC);
-
 	EquippedWeapon = NewWeapon;
+
+	if (IsLocallyControlled())
+	{
+		OnRep_EquippedWeapon();
+	}
 }
 
 FVector ABACharacter::GetFireStartLocation_Implementation() const
@@ -755,6 +762,14 @@ void ABACharacter::EndAiming()
 	GetCharacterMovement()->MaxWalkSpeed = UpdateMovementSpeed();
 
 	Server_SetAiming(false);
+}
+
+void ABACharacter::OnRep_EquippedWeapon()
+{
+	if (IsLocallyControlled() && IsValid(EquippedWeapon))
+	{
+		EquippedWeapon->SetStencilValue(0);
+	}
 }
 
 void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex)
@@ -824,13 +839,19 @@ void ABACharacter::OnEXPChangedCallback(const FOnAttributeChangeData& Data) cons
 
 void ABACharacter::OnLevelChangedCallback(const FOnAttributeChangeData& Data)
 {
-	OnLevelChanged.Broadcast(Data.NewValue, Data.OldValue);
-
-	if ((int32)Data.NewValue > (int32)Data.OldValue)
+	if (IsLocallyControlled())
 	{
-		for (int32 i = Data.OldValue; i < Data.NewValue; ++i)
+		OnLevelChanged.Broadcast(Data.NewValue, Data.OldValue);
+	}
+
+	if (HasAuthority())
+	{
+		if ((int32)Data.NewValue > (int32)Data.OldValue)
 		{
-			LevelUp();
+			for (int32 i = Data.OldValue; i < Data.NewValue; ++i)
+			{
+				LevelUp();
+			}
 		}
 	}
 }
@@ -1084,6 +1105,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, SyncAimYaw);
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
 	DOREPLIFETIME(ABACharacter, EquippedWeapon);
+	DOREPLIFETIME(ABACharacter, OwnedEquipment);
 	DOREPLIFETIME(ABACharacter, bIsReturning);
 }
 
@@ -1138,7 +1160,7 @@ void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 }
 void ABACharacter::IdleTurning(float DeltaTime)
 {
-	if (!HasAuthority()&&!IsLocallyControlled()) return;
+	if (!HasAuthority() && !IsLocallyControlled()) return;
 
 	if (GEngine)
 	{
@@ -1438,7 +1460,7 @@ void ABACharacter::UpdateSplinePath()
 		Multicast_AddPathPoint(CurrLocation);
 		return;
 	}
-;
+	;
 	FVector LastPointLocation = PathSpline->GetLocationAtSplinePoint(TotalPoints - 1, ESplineCoordinateSpace::World);
 
 	float ThresholdSquared = PathDistThreshold * PathDistThreshold;
@@ -1543,7 +1565,7 @@ void ABACharacter::StartReturning()
 		return;
 
 	ReturnDistance = PathSpline->GetSplineLength();
-	
+
 	SetIsReturning(true);		// 미리 ReturnPoint 더 기록되는 거 막음
 	Server_StartReturning();
 }
@@ -1647,7 +1669,9 @@ void ABACharacter::OnRep_IsReturning()
 
 void ABACharacter::GetEXP(float InEXP)
 {
+	if (!HasAuthority()) return;
 	if (!ASC || !EXPEffectClass) return;
+	
 
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 
@@ -1667,6 +1691,7 @@ void ABACharacter::GetEXP(float InEXP)
 
 void ABACharacter::LevelUp()
 {
+	if (!HasAuthority()) return;
 	if (!ASC || !LevelUpEffectClass) return;
 
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
@@ -1677,7 +1702,7 @@ void ABACharacter::LevelUp()
 	float BaseHealth = HealthAttributeSet->GetHealth();
 	float HealthIncrease = BaseHealth * 0.15;
 
-	float BaseAttackPower = HealthAttributeSet->GetAttackPower();	
+	float BaseAttackPower = HealthAttributeSet->GetAttackPower();
 	float AttackPowerIncrease = BaseAttackPower * 0.1f;
 
 	if (Spec.IsValid())

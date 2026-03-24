@@ -22,6 +22,7 @@ UGA_Respawn::UGA_Respawn()
 	AbilityTriggers.Add(Trigger);
 
 	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active);
+	BlockAbilitiesWithTag.AddTag(TAG_Event_Weapon_Switch);
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Dead);
 }
 

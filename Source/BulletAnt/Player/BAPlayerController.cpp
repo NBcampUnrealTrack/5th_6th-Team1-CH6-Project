@@ -128,12 +128,18 @@ void ABAPlayerController::StopRespawnBar()
 
 void ABAPlayerController::StartADSUI()
 {
-
+	if(IsValid(UISubsystem))
+	{
+		UISubsystem->ShowUI(EUIType::Scope);
+	}
 }
 
 void ABAPlayerController::StopADSUI()
 {
-
+	if (IsValid(UISubsystem))
+	{
+		UISubsystem->HideUI(EUIType::Scope);
+	}
 }
 
 void ABAPlayerController::Server_RequestBuyGacha_Implementation(ABaseShop* InShop, int32 GachaID,int32 Count)
