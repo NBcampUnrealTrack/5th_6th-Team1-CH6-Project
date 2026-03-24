@@ -6,15 +6,17 @@
 #include "Engine/DataAsset.h"
 #include "SpitterDataAsset.generated.h"
 
-/**
- * 
- */
+class UNiagaraSystem;
+
 UCLASS()
 class BULLETANT_API USpitterDataAsset : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 	
 public:
+    UPROPERTY(EditDefaultsOnly)
+    TObjectPtr<UNiagaraSystem> AttackEffect;
+
     UPROPERTY(EditDefaultsOnly)
     FName AttackOrigin;
 

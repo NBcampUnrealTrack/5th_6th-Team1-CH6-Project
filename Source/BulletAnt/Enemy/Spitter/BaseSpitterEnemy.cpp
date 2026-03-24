@@ -10,31 +10,55 @@
 #include "Building/BaseCore.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GAS/BAGameplayTags.h"
+#include "NiagaraComponent.h"
+#include "Enemy/DataAsset/SpitterDataAsset.h"
+
+ABaseSpitterEnemy::ABaseSpitterEnemy()
+{
+	NiagaraComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("NiagaraComp"));
+	NiagaraComp->SetupAttachment(GetMesh(), FName("Megaspikan_MouthSocket"));
+	NiagaraComp->SetRelativeLocation(FVector::ZeroVector);
+	NiagaraComp->SetRelativeRotation(FRotator::ZeroRotator);
+	NiagaraComp->bAutoActivate = false;
+}
+
+void ABaseSpitterEnemy::BeginPlay()
+{
+	Super::BeginPlay();
+		
+	if (IsValid(NiagaraComp))
+	{
+		NiagaraComp->SetAsset(SpitterDataAsset->AttackEffect);
+	}
+}
 
 void ABaseSpitterEnemy::StartSpit()
 {
-	if (!HasAuthority())
-	{
-		return;
-	}
-
 	if (!IsValid(SpitterDataAsset))
 	{
 		return;
 	}
 
-	UWorld* World = GetWorld();
-	if (!IsValid(World))
+	if (NiagaraComp)
 	{
-		return;
+		NiagaraComp->Activate(true);
 	}
-	World->GetTimerManager().SetTimer(
-		DamageChecker,
-		this,
-		&ABaseSpitterEnemy::CheckContinousSpit,
-		SpitterDataAsset->CheckInterval,
-		true
-	);
+
+	if (HasAuthority())
+	{
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return;
+		}
+		World->GetTimerManager().SetTimer(
+			DamageChecker,
+			this,
+			&ABaseSpitterEnemy::CheckContinousSpit,
+			SpitterDataAsset->CheckInterval,
+			true
+		);
+	}	
 }
 
 void ABaseSpitterEnemy::CheckContinousSpit()
@@ -120,17 +144,20 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 
 void ABaseSpitterEnemy::StopSpit()
 {
-	if (!HasAuthority())
+	if (NiagaraComp)
 	{
-		return;
+		NiagaraComp->DeactivateImmediate();
 	}
 
-	UWorld* World = GetWorld();
-	if (!IsValid(World))
+	if (HasAuthority())
 	{
-		return;
-	}
-	World->GetTimerManager().ClearTimer(DamageChecker);
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return;
+		}
+		World->GetTimerManager().ClearTimer(DamageChecker);
+	}	
 }
 
 UDataAsset* ABaseSpitterEnemy::GetDataAsset() const
