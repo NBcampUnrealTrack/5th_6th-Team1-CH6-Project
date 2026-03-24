@@ -131,6 +131,7 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 	const float Falloff = Setting->ChunkVoxelSize * 1.5f;
 	const float CalcRadius = Radius + Falloff;
 	const float CalcRadiusSquared = CalcRadius * CalcRadius;
+	const float RadiusSquared = Radius * Radius;
 
 	bool bChunkModified = false;
 
@@ -144,24 +145,25 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 				FVector PointWorldPos = ChunkOffset + FVector(X, Y, Z) * Setting->ChunkVoxelSize;
 				float DistSquared = FVector::DistSquared(RelativeLocation, PointWorldPos);
 
+				bool bPointModified = false;
 				if (DistSquared <= CalcRadiusSquared)
 				{
 					int32 PointIdx = Z * ChunkPoints * ChunkPoints + Y * ChunkPoints + X;
 
 					float Dist = FMath::Sqrt(DistSquared);
-					float DistRatio = FMath::Clamp((Dist - Radius) / Falloff, 0.0f, 1.0f);
-					uint8 DistDensity = FMath::RoundToInt(DistRatio * 200.0f);
-					
+
+					float DistRatio = FMath::Clamp(0.5f + (Dist - Radius) / Falloff * 0.5f, 0.0f, 1.0f);
+					float SmoothAlpha = DistRatio * DistRatio * (3.0f - 2.0f * DistRatio);
+					uint8 DistDensity = FMath::RoundToInt(SmoothAlpha * 200.0f);
 					uint8 CurrentDensity = GetChunkDensityValue(ChunkIdx, PointIdx);
-					uint8 TargetDensity = FMath::Min(CurrentDensity, (uint8)FMath::Clamp(DistDensity - 10, 0, 200));
-					// 기반암(> 200)은 Dig 불가
-					if (CurrentDensity <= 200 && TargetDensity < CurrentDensity)
+					uint8 TargetDensity = FMath::Min(CurrentDensity, (uint8)FMath::Clamp(DistDensity, 0, 200));
+					if (ChunkDatas[ChunkIdx].VoxelTypes[PointIdx] != EVoxelType::BedRock && TargetDensity < CurrentDensity)
 					{
 						FVoxelChangedResult OutResult;
 						bool bChanged = ChangeChunkDensityValue(ChunkIdx, PointIdx, TargetDensity, OutResult);
 						if (bChanged == true)
 						{
-							bChunkModified = true;
+							bPointModified = true;
 							if (OutResult.bTypeChanged == true && OutResult.CurrType == EVoxelType::None)
 							{
 								EOreType OreType = EOreType::None;
@@ -182,16 +184,19 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 						}
 					}
 
+					// Z-Fighting 대비해서, 지형보다 조금 튀어나오도록 Radius에서 1.0 뺌 
+					float DistOreRatio = FMath::Clamp(0.5f + (Dist - (Radius - 1.0f)) / Falloff * 0.5f, 0.0f, 1.0f);
+					float SmoothOreAlpha = DistOreRatio * DistOreRatio * (3.0f - 2.0f * DistOreRatio);
+					uint8 DistOreDensity = FMath::RoundToInt(SmoothOreAlpha * 200.0f);
 					uint8 CurrOreDensity = GetChunkOreDensity(ChunkIdx, PointIdx);
-					uint8 DistOreDensity = DistDensity + (DistDensity > IsoLevel ? 10 : 0);
 					uint8 TargetOreDensity = FMath::Min(CurrOreDensity, (uint8)FMath::Clamp(DistOreDensity, 0, 200));
-					if (CurrOreDensity <= 200 && TargetOreDensity < CurrOreDensity)
+					if (ChunkOreDatas[ChunkIdx].VoxelTypes[PointIdx] != EVoxelType::BedRock && TargetOreDensity < CurrOreDensity)
 					{
 						FVoxelChangedResult OutResult;
 						bool bChanged = ChangeChunkOreDensity(ChunkIdx, PointIdx, TargetOreDensity, OutResult);
 						if (bChanged == true)
 						{
-							bChunkModified = true;
+							bPointModified = true;
 							if (OutResult.bTypeChanged == true && OutResult.CurrType == EVoxelType::None)
 							{
 								EOreType OreType = EOreType::None;
@@ -212,11 +217,16 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 						}
 					}
 
-					FVoxelPointEditData PointEditData;
-					PointEditData.VoxelIndex = PointIdx;
-					PointEditData.NewDensity = TargetDensity;
-					PointEditData.NewOreDensity = TargetOreDensity;
-					OutData.PointEditDatas.Add(PointEditData);
+					if (bPointModified == true)
+					{
+						bChunkModified = true;
+
+						FVoxelPointEditData PointEditData;
+						PointEditData.VoxelIndex = PointIdx;
+						PointEditData.NewDensity = TargetDensity;
+						PointEditData.NewOreDensity = TargetOreDensity;
+						OutData.PointEditDatas.Add(PointEditData);
+					}
 				}
 			}
 		}
@@ -504,18 +514,28 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 							if (const FVeinLocationData* Data = VeinLocationDatas.Find(Cell))
 							{
-								float Dist = FVector::Distance(WorldPos, Data->VeinLocation);
-
-								if (Dist > Data->VeinRadius)
+								float DistSquared = FVector::DistSquared(WorldPos, Data->VeinLocation);
+								if (DistSquared > Data->VeinRadius * Data->VeinRadius) 
 									return;
 
-								float t = 1.0f - (Dist / Data->VeinRadius);
+								/*FVector WarpPos = WorldPos + (FVector(
+									FMath::PerlinNoise3D(WorldPos * 0.03f),
+									FMath::PerlinNoise3D((WorldPos + 100.f) * 0.03f),
+									FMath::PerlinNoise3D((WorldPos + 200.f) * 0.03f)
+								) * 15.0f);
 
-								float RoughNoise = FMath::PerlinNoise3D(WorldPos * 0.02f);
-								float Roughness = RoughNoise * 4.0f;
+								float WarpedDist = FVector::Distance(WarpPos, Data->VeinLocation);
+								if (WarpedDist > Data->VeinRadius)
+									return;
 
-								OreVoxelType = EVoxelType::Vein;
-								OreFinalDensity = 200;// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
+								float DetailNoise = FMath::PerlinNoise3D(WorldPos * 0.15f) * 30.0f;
+								float TargetDensity = FMath::Lerp(200.0f, (float)IsoLevel - 20.0f, WarpedDist / Data->VeinRadius) + DetailNoise;
+
+								if (TargetDensity < IsoLevel)
+									return;*/
+
+								OreFinalDensity = 200;// (uint8)FMath::Clamp(TargetDensity, 0, 200);// (uint8)FMath::Clamp(FinalDensity + 80, 0, 200);
+								OreVoxelType = OreFinalDensity > IsoLevel ? EVoxelType::Vein : EVoxelType::None;
 							}
 						};
 
@@ -539,8 +559,8 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 								float Distance = Radial / Data->PillarRadius;
 								float DistanceValue = (1.0f - Distance) * (1.0f - (AlongNormal / Data->PillarHeight) * 0.2f);
 
-								OreVoxelType = EVoxelType::Pillar;
 								OreFinalDensity = (uint8)FMath::Clamp(DistanceValue * 200, 0, 200);
+								OreVoxelType = OreFinalDensity > IsoLevel ? EVoxelType::Pillar : EVoxelType::None;
 							}
 						};
 
@@ -551,21 +571,21 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 						FVector AbsLocalPos = LocalPos.GetAbs();
 						float DistXYSquared = LocalPos.X * LocalPos.X + LocalPos.Y * LocalPos.Y;
 
-						float MaxAxisRatio = FMath::Max3(
-							AbsLocalPos.X / HalfSize.X,
-							AbsLocalPos.Y / HalfSize.Y,
-							AbsLocalPos.Z / HalfSize.Z);
+						float MinDistFromEdge = FMath::Min3(
+							HalfSize.X - AbsLocalPos.X,
+							HalfSize.Y - AbsLocalPos.Y,
+							HalfSize.Z - AbsLocalPos.Z);
 
 						bool bBedRock = false;
-						const static float BedRockNoiseWeight = 0.02f;
-						const static float BedRockThickness = 0.04f;
+						const static float BedRockThickness = 400.0f;
+						const static float BedRockNoiseWeight = 200.0f;
 						// MaxAxisRatio가 기반암이 생성 가능한 수치 이내라면, 위쪽 중앙 입구 지역이 아니라면
-						bool bIsBedRockRange = MaxAxisRatio >= (1 - BedRockNoiseWeight - BedRockThickness);
+						bool bIsBedRockRange = MinDistFromEdge <= (BedRockThickness + BedRockNoiseWeight);
 						if (bIsBedRockRange == true)
 						{
-							float BedRockNoiseValue = FMath::PerlinNoise3D(WorldPos * 0.0008f);
-							float DistortedRatio = MaxAxisRatio + BedRockNoiseValue * BedRockNoiseWeight;
-							float BedRockDensity = FMath::Clamp((DistortedRatio - (1.0f - BedRockThickness)) / BedRockThickness, 0.0f, 1.0f);
+							float BedRockNoiseValue = FMath::PerlinNoise3D(WorldPos * 0.0012f);
+							float DistortedDist = MinDistFromEdge + BedRockNoiseValue * BedRockNoiseWeight;
+							float BedRockDensity = 1.0f - FMath::Clamp(DistortedDist / BedRockThickness, 0.0f, 1.0f);
 
 							// 기반암이면 Density 200 넘도록 Clamp, 기반암 아닌 경우엔 광물 계산
 							if (BedRockDensity > 0.0f)
@@ -593,16 +613,34 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 							ApplyPillar(WorldPos);
 						}
 
-						const float EntranceRadius = 400.0f;
-						//bool bEntrance = bIsBedRockRange == true && (WorldPos.Z > Center.Z && DistXYSquared <= (EntranceRadius * EntranceRadius));
-						bool bEntrance = bIsBedRockRange == true && AbsLocalPos.X <= EntranceRadius && AbsLocalPos.Y <= EntranceRadius;
+						const float EntranceRadius = 800.0f;
+						const float EntranceOpt = EntranceRadius + 200.0f;		// 일반암 좀 더 넓게 파기
+						bool bIsBedRockRangeOpt = MinDistFromEdge <= (BedRockThickness + BedRockNoiseWeight + 400.0f);
+						bool bEntrance = bIsBedRockRangeOpt == true && (WorldPos.Z > Center.Z && DistXYSquared <= (EntranceOpt * EntranceOpt));
+						//bool bEntrance = bIsBedRockRange == true && AbsLocalPos.X <= EntranceRadius && AbsLocalPos.Y <= EntranceRadius;
 						if (bEntrance == true)
 						{
 							// Bedrock 구분 방법 denstiy로 되어 있는 걸 전부 EVoxelType으로 교체 후에 원형 구멍으로 변경
-							FinalDensity = 0;
-							VoxelType = EVoxelType::None;
-							//FinalDensity = (uint8)FMath::Clamp(FMath::RoundToInt((DistXYSquared / (EntranceRadius * EntranceRadius)) * 200.0f), 0, 200);
-							//VoxelType = FinalDensity > IsoLevel ? VoxelType : EVoxelType::None;
+							//FinalDensity = 0;
+							//VoxelType = EVoxelType::None;
+							float EntranceSquared = EntranceRadius * EntranceRadius;
+							float EntranceOptSquared = EntranceOpt * EntranceOpt;
+							uint8 TargetDensity = 200;
+							if (VoxelType != EVoxelType::BedRock)
+							{
+								TargetDensity = (uint8)FMath::Clamp(FMath::RoundToInt((DistXYSquared / EntranceOptSquared) * 200.0f) - 10, 0, 200);
+							}
+							else
+							{
+								TargetDensity = (uint8)FMath::Clamp(FMath::RoundToInt((DistXYSquared / EntranceSquared) * 200.0f), 0, 200);
+							}
+							FinalDensity = FMath::Min(FinalDensity, TargetDensity);
+							VoxelType = FinalDensity > IsoLevel ? VoxelType : EVoxelType::None;
+
+							uint8 TargetOreDensity = 200;
+							TargetOreDensity = (uint8)FMath::Clamp(FMath::RoundToInt((DistXYSquared / EntranceOptSquared) * 200.0f), 0, 200);
+							OreFinalDensity = FMath::Min(OreFinalDensity, TargetOreDensity);
+							OreVoxelType = OreFinalDensity > IsoLevel ? OreVoxelType : EVoxelType::None;
 						}
 					}
 
@@ -814,7 +852,7 @@ void AVoxelGround::PlaceObjectsByCell()
 			(Cell.Y + 0.5f) * CellSize,
 			(Cell.Z + 0.5f) * CellSize);
 		float PillarRadius = 240.0f;
-		float PillarHeight = 320.0f + 180.0f * Stream.FRand();
+		float PillarHeight = 320.0f + 80.0f * Stream.FRand();
 		float Available = CellSize - PillarRadius * 2.0f;
 		FVector CandidateRangeMin = FVector(CellSize) * BuriedRegionSize + PillarRadius;
 		FVector CandidateRangeMax = CandidateRangeMin + Available;
@@ -842,7 +880,7 @@ void AVoxelGround::PlaceObjectsByCell()
 				continue;
 
 			FPillarLocationData LocationData;
-			LocationData.PillarLocation = Candidate - Normal * 60.0f;
+			LocationData.PillarLocation = Candidate - Normal * 30.0f;
 			LocationData.PillarRadius = PillarRadius;
 			LocationData.PillarHeight = PillarHeight;
 			LocationData.PillarNormal = Normal;
@@ -875,7 +913,7 @@ void AVoxelGround::PlaceObjectsByCell()
 		FRandomStream Stream(Hash);
 
 		// 반지름 = 100 ~ 360 / 지름 = 200 ~ 720
-		float Radius = 100.0f +Stream.FRand() * 260.0f;
+		float Radius = 100.0f + Stream.FRand() * 260.0f;
 		float Available = CellSize - Radius * 2.0f;
 		for (int32 Count = 0; Count < 16; ++Count)
 		{
@@ -1235,8 +1273,8 @@ void AVoxelGround::AddChunkAndNeighbors(int32 ChunkIdx, TSet<int32>& ChunkIdxs)
 void AVoxelGround::UpdateChunkMesh(int32 ChunkIdx, bool bIncludeNeighbors)
 {
 	bIsDirty = true;
-	ChunkMeshDirties[ChunkIdx] = true;
 	ChunkOreMeshDirties[ChunkIdx] = true;
+	ChunkMeshDirties[ChunkIdx] = true;
 
 	if (bIncludeNeighbors == true)
 	{
@@ -1263,8 +1301,8 @@ void AVoxelGround::UpdateChunkMeshImmediately(int32 ChunkIdx, bool bIncludeNeigh
 			&ThisClass::UpdatePriorityDirtyChunks);
 	}
 
-	PriorityChunkMeshDirties[ChunkIdx] = true;
 	PriorityChunkOreMeshDirties[ChunkIdx] = true;
+	PriorityChunkMeshDirties[ChunkIdx] = true;
 
 	if (bIncludeNeighbors == true)
 	{
@@ -1448,7 +1486,7 @@ bool AVoxelGround::ChangeChunkOreDensity(int32 ChunkIdx, int32 PointIdx, int32 N
 		}
 		else
 		{
-			ChunkOreDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
+			ChunkOreDatas[ChunkIdx].ChunkState = ChunkOreDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
 			ChunkOreDatas[ChunkIdx].DensityValues.Empty(0);
 			ChunkOreDatas[ChunkIdx].VoxelTypes.Empty(0);
 		}
