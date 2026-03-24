@@ -98,7 +98,8 @@ void ASunManager::SetSunInitRotator_Implementation(int32 InInitWaveTime)
 
 void ASunManager::RotateSun()
 {
-    FRotator BaseRotator(Sun->GetActorRotation());
+    FRotator SunRotator = Sun->GetActorRotation();
+    FRotator BaseRotator(SunRotator);
     FQuat QBase = BaseRotator.Quaternion();
 
     FQuat QDelta = FQuat(CustomAxis, FMath::DegreesToRadians(RotationPerMSec));
@@ -106,8 +107,30 @@ void ASunManager::RotateSun()
     FQuat QResult = QDelta * QBase;
     Sun->SetActorRotation(QResult);
 
-    float MoonIntensity = FMath::Clamp(0.1f + Sun->GetActorRotation().Pitch * 0.01f, 0.f, 0.1f);
+    float MoonIntensity = FMath::Clamp(0.1f + SunRotator.Pitch * 0.01f, 0.f, 0.1f);
     Moon->GetLightComponent()->SetIntensity(MoonIntensity);
+
+    if (SunRotator.Pitch > 5)
+    {
+        Sun->GetLightComponent()->Deactivate();
+        Sun->SetActorHiddenInGame(true);
+    }
+    else
+    {
+        Sun->GetLightComponent()->Activate();
+        Sun->SetActorHiddenInGame(false);
+    }
+
+    if (MoonIntensity > 0)
+    {
+        Moon->GetLightComponent()->Activate();
+        Moon->SetActorHiddenInGame(false);
+    }
+    else
+    {
+        Moon->GetLightComponent()->Deactivate();
+        Moon->SetActorHiddenInGame(true);
+    }
 }
 
 void ASunManager::OnInitWaveTime(int32 InInitWaveTime)
