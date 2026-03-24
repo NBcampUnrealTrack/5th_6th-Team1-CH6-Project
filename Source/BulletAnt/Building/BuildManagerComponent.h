@@ -65,6 +65,12 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDemolish(ABaseBuilding* TargetBuilding);
 
+	UFUNCTION(BlueprintCallable, Category = "Build")
+	void RequestRepair(ABaseBuilding* TargetBuilding);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestRepair(ABaseBuilding* TargetBuilding);
+
 private:
 	void SpawnPreview(TSubclassOf<ABaseBuilding> BuildingClass);
 	bool ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface);

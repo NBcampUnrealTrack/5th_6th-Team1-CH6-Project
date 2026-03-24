@@ -18,6 +18,7 @@ enum class EUIType : uint8
     Shop,
     Compass,
     PlayerHUD,
+    Interaction
 };
 
 USTRUCT()

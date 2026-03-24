@@ -6,6 +6,21 @@
 #include "UObject/Interface.h"
 #include "BAItemInterface.generated.h"
 
+USTRUCT(BlueprintType)
+struct FInteractionOption
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+	FKey Key;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+	FText Label;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
+	FName ActionName;
+};
+
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
 class UBAItemInterface : public UInterface
@@ -24,4 +39,12 @@ class BULLETANT_API IBAItemInterface
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	void Use(AActor* User);
+
+	// UI 표시용
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
+	void GetInteractionOptions(AActor* User, TArray<FInteractionOption>& OutOptions) const;
+
+	// 실제 실행
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
+	void Interaction(AActor* User, FName ActionName);
 };

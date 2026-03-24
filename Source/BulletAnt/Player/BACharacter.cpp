@@ -14,6 +14,7 @@
 #include "BAParkourComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "UI/UW_PlayerHUDWidget.h"
+#include "UI/UW_Interaction.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "UI/UISubsystem.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
@@ -200,10 +201,33 @@ void ABACharacter::BeginPlay()
 
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 	PC = Cast<ABAPlayerController>(GetController());
+
+#pragma region InteractionUI
+	if (IsLocallyControlled())
+	{
+		ULocalPlayer* LP = PC->GetLocalPlayer();
+		if (!LP)
+		{
+			return;
+		}
+
+		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+		if (IsValid(UISubsystem))
+		{
+			InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
+			if (InteractionWidget)
+			{
+				InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+	}
+#pragma endregion
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	StopInteractionTraceTimer();
+
 	ABAGameState* GS = GetWorld()->GetGameState<ABAGameState>();
 	if (IsValid(GS) == true)
 	{
@@ -354,9 +378,24 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		}
 
 		//상호작용
-		if (InteractionAction)
+		//if (InteractionAction)
+		//{
+		//	EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
+		//}
+
+		if (InteractionFAction)
 		{
-			EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
+			EnhancedInputComponent->BindAction(InteractionFAction, ETriggerEvent::Started, this, &ABACharacter::Interaction_F);
+		}
+
+		if (InteractionQAction)
+		{
+			EnhancedInputComponent->BindAction(InteractionQAction, ETriggerEvent::Started, this, &ABACharacter::Interaction_Q);
+		}
+
+		if (InteractionEAction)
+		{
+			EnhancedInputComponent->BindAction(InteractionEAction, ETriggerEvent::Started, this, &ABACharacter::Interaction_E);
 		}
 
 		if (SwitchAction)
@@ -433,6 +472,7 @@ void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
+	StartInteractionTraceTimer();
 }
 
 void ABACharacter::OnRep_PlayerState()
@@ -649,6 +689,8 @@ void ABACharacter::PossessedBy(AController* NewController)
 	{
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
+
+	StartInteractionTraceTimer();
 }
 
 
@@ -850,6 +892,111 @@ void ABACharacter::HandleRespawnUI(FGameplayTag Tag, int32 NewCount)
 	}
 }
 
+void ABACharacter::UpdateInteractionTrace()
+{
+	FVector CamLoc;
+	FRotator CamRot;
+	GetController()->GetPlayerViewPoint(CamLoc, CamRot);
+
+	FVector Start = CamLoc;
+	FVector End = Start + (CamRot.Vector() * LineTraceRange);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_GameTraceChannel4,
+		Params
+	);
+
+	AActor* NewActor = nullptr;
+
+	if (bHit)
+	{
+		AActor* HitActor = Hit.GetActor();
+		if (HitActor && HitActor->GetClass()->ImplementsInterface(UBAItemInterface::StaticClass()))
+		{
+			NewActor = HitActor;
+		}
+	}
+
+	SetCurrentInteractActor(NewActor);
+}
+
+void ABACharacter::SetCurrentInteractActor(AActor* NewActor)
+{
+	if (CurrentInteractActor.Get() == NewActor)
+	{
+		UpdateInteractionUI();
+		return;
+	}
+
+	CurrentInteractActor = NewActor;
+	UpdateInteractionUI();
+}
+
+void ABACharacter::UpdateInteractionUI()
+{
+	if (!InteractionWidget)
+	{
+		return;
+	}
+
+	AActor* Target = CurrentInteractActor.Get();
+
+	if (!Target)
+	{
+		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+		InteractionWidget->ClearInteraction();
+		return;
+	}
+
+	TArray<FInteractionOption> Options;
+	IBAItemInterface::Execute_GetInteractionOptions(Target, this, Options);
+
+	if (Options.Num() == 0)
+	{
+		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	InteractionWidget->SetVisibility(ESlateVisibility::Visible);
+	InteractionWidget->SetInteractionOptions(Options);
+}
+
+void ABACharacter::StartInteractionTraceTimer()
+{
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	if (!GetController())
+	{
+		return;
+	}
+
+	if (!GetWorldTimerManager().IsTimerActive(InteractionTraceTimerHandle))
+	{
+		GetWorldTimerManager().SetTimer(
+			InteractionTraceTimerHandle,
+			this,
+			&ABACharacter::UpdateInteractionTrace,
+			0.05f,
+			true
+		);
+	}
+}
+
+void ABACharacter::StopInteractionTraceTimer()
+{
+	GetWorldTimerManager().ClearTimer(InteractionTraceTimerHandle);
+}
+
 //조준 시작
 void ABACharacter::AimStart(const FInputActionValue& Value)
 {
@@ -920,6 +1067,52 @@ void ABACharacter::Interaction(const FInputActionValue& Value)
 				IBAItemInterface::Execute_Use(HitActor, this);
 			}
 		}
+	}
+}
+
+void ABACharacter::Interaction_F(const FInputActionValue& Value)
+{
+	TryInteractionByKey(EKeys::F);
+}
+
+void ABACharacter::Interaction_Q(const FInputActionValue& Value)
+{
+	TryInteractionByKey(EKeys::Q);
+}
+
+void ABACharacter::Interaction_E(const FInputActionValue& Value)
+{
+	TryInteractionByKey(EKeys::E);
+}
+
+void ABACharacter::TryInteractionByKey(const FKey& PressedKey)
+{
+	AActor* Target = CurrentInteractActor.Get();
+	if (!Target)
+	{
+		return;
+	}
+
+	if (!Target->GetClass()->ImplementsInterface(UBAItemInterface::StaticClass()))
+	{
+		return;
+	}
+
+	TArray<FInteractionOption> Options;
+	IBAItemInterface::Execute_GetInteractionOptions(Target, this, Options);
+
+	for (const FInteractionOption& Option : Options)
+	{
+		if (Option.Key == PressedKey)
+		{
+			IBAItemInterface::Execute_Interaction(Target, this, Option.ActionName);
+			return;
+		}
+	}
+
+	if (PressedKey == EKeys::F)
+	{
+		IBAItemInterface::Execute_Use(Target, this);
 	}
 }
 
