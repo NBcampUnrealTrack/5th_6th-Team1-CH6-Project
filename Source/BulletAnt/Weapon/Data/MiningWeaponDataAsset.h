@@ -14,7 +14,7 @@ public:
 	float TraceRadius = 20.f;
 
 	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
-	float DigRadius = 200.f;
+	float DigRadius = 240.f;
 
 	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float DigPerMinute = 180.f;
