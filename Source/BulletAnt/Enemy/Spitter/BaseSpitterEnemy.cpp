@@ -11,7 +11,6 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GAS/BAGameplayTags.h"
 #include "NiagaraComponent.h"
-#include "Enemy/DataAsset/SpitterDataAsset.h"
 
 ABaseSpitterEnemy::ABaseSpitterEnemy()
 {

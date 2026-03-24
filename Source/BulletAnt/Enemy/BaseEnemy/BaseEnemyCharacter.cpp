@@ -178,7 +178,7 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 	float MinDistSquared = TNumericLimits<float>::Max();
 	float SenseAngle = BaseEnemyDataAsset->SenseAngle;
 	AActor* NewTarget = nullptr;
-	ETargetPriorityType NewTargetPriority;
+	ETargetPriorityType NewTargetPriority = ETargetPriorityType::Max;
 	for (uint8 i = 1; i < static_cast<uint8>(TargetActorPriority); i++)
 	{
 		ETargetPriorityType Key = static_cast<ETargetPriorityType>(i);
