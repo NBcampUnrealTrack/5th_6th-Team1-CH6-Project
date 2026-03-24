@@ -61,6 +61,8 @@ protected:
 
 public:
 	virtual void Use_Implementation(AActor* User) override;
+	virtual void GetInteractionOptions_Implementation(AActor* User, TArray<FInteractionOption>& OutOptions) const;
+	virtual void Interaction_Implementation(AActor* User, FName ActionName);
 
 	UFUNCTION()
 	void RequestDemolish(AActor* User);

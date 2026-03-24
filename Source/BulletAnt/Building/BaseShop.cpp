@@ -119,6 +119,29 @@ void ABaseShop::Use_Implementation(AActor* User)
 	ShowShop(PC);
 }
 
+void ABaseShop::GetInteractionOptions_Implementation(AActor* User, TArray<FInteractionOption>& OutOptions) const
+{
+	Super::GetInteractionOptions_Implementation(User, OutOptions);
+
+	FInteractionOption Op1;
+	Op1.Key = EKeys::F;
+	Op1.Label = FText::FromString(TEXT("상점"));
+	Op1.ActionName = TEXT("ShowShop");
+	OutOptions.Add(Op1);
+}
+
+void ABaseShop::Interaction_Implementation(AActor* User, FName ActionName)
+{
+	if (ActionName == TEXT("ShowShop"))
+	{
+		Use_Implementation(User);
+	}
+	else
+	{
+		Super::Interaction_Implementation(User, ActionName);
+	}
+}
+
 void ABaseShop::BeginPlay()
 {
 	Super::BeginPlay();
