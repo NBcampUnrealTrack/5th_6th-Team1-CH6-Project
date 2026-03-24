@@ -74,6 +74,10 @@
 		{
 			"Name": "OnlineSubsystemEOS",
 			"Enabled": true
+		},
+		{
+			"Name": "CascadeToNiagaraConverter",
+			"Enabled": true
 		}
 	]
 }

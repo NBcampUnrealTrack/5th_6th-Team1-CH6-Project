@@ -7,6 +7,7 @@
 #include "BaseSpitterEnemy.generated.h"
 
 class USpitterDataAsset;
+class UNiagaraComponent;
 
 UCLASS()
 class BULLETANT_API ABaseSpitterEnemy : public ABaseEnemyCharacter
@@ -14,6 +15,9 @@ class BULLETANT_API ABaseSpitterEnemy : public ABaseEnemyCharacter
 	GENERATED_BODY()
 
 public:
+	ABaseSpitterEnemy();
+	virtual void BeginPlay() override;
+
 	void StartSpit();
 	void CheckContinousSpit();
 	void StopSpit();
@@ -23,6 +27,9 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Spitter")
 	TObjectPtr<USpitterDataAsset> SpitterDataAsset;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Spitter")
+	TObjectPtr<UNiagaraComponent> NiagaraComp;
 
 	FTimerHandle DamageChecker;
 };

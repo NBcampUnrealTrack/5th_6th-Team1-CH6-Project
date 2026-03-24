@@ -27,7 +27,7 @@ struct FActorArrayWrapper
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TArray<TObjectPtr<AActor>> Actors;
+	TSet<TObjectPtr<AActor>> Actors;
 };
 
 UCLASS()
