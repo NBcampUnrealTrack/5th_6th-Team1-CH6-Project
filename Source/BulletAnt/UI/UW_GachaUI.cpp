@@ -64,9 +64,11 @@ void UUW_GachaUI::InitGachaUI(TMap<EOreType, int32> InCost)
 		{
 		case EOreType::Gold :
 			RequireGoldText->SetText(FText::AsNumber(Cost.Value));
+			RequireGold = Cost.Value;
 			break;
 		case EOreType::Mineral :
 			RequireMineralText->SetText(FText::AsNumber(Cost.Value));
+			RequireMineral = Cost.Value;
 			break;
 
 		default:
@@ -76,18 +78,24 @@ void UUW_GachaUI::InitGachaUI(TMap<EOreType, int32> InCost)
 
 	GachaCount = 0;
 	CountText->SetText(FText::AsNumber(GachaCount));
+	RequireGoldText->SetText(FText::AsNumber(GachaCount * RequireGold));
+	RequireMineralText->SetText(FText::AsNumber(GachaCount * RequireMineral));
 }
 
 void UUW_GachaUI::HadleUpButtonClicked()
 {
 	GachaCount = FMath::Clamp(GachaCount + 1, 0, 100);
 	CountText->SetText(FText::AsNumber(GachaCount));
+	RequireGoldText->SetText(FText::AsNumber(GachaCount * RequireGold));
+	RequireMineralText->SetText(FText::AsNumber(GachaCount * RequireMineral));
 }
 
 void UUW_GachaUI::HandleDownButtonClicked()
 {
 	GachaCount = FMath::Clamp(GachaCount - 1, 0, 100);
 	CountText->SetText(FText::AsNumber(GachaCount));
+	RequireGoldText->SetText(FText::AsNumber(GachaCount * RequireGold));
+	RequireMineralText->SetText(FText::AsNumber(GachaCount * RequireMineral));
 }
 
 void UUW_GachaUI::HandleOkayButtonClicked()
