@@ -33,11 +33,23 @@ void ATitlePlayerController::BeginPlay()
 				TitleScreenWidget->OnJoinButtonClicked.AddDynamic(this, &ThisClass::HandleJoinRequested);
 				TitleScreenWidget->OnOptionButtonClicked.AddDynamic(this, &ThisClass::HandleOptionRequested);
 
+				TitleScreenWidget->ShowLoginPanel(bShowLoginPanel);
+
 				FInputModeUIOnly Mode;
 				SetInputMode(Mode);
 				bShowMouseCursor = true;
 			}
 		}
+	}
+}
+
+void ATitlePlayerController::ShowLoginPanel(bool bInShow)
+{
+	bShowLoginPanel = bInShow;
+
+	if (IsValid(TitleScreenWidget) == true)
+	{
+		TitleScreenWidget->ShowLoginPanel(bShowLoginPanel);
 	}
 }
 

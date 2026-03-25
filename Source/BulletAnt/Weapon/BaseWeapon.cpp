@@ -56,5 +56,5 @@ void ABaseWeapon::UnequipWeapon(UAbilitySystemComponent* ASC)
 
 void ABaseWeapon::SetStencilValue(int32 NewValue)
 {
-	WeaponMesh->CustomDepthStencilValue = NewValue;
+	WeaponMesh->SetCustomDepthStencilValue(NewValue);
 }
