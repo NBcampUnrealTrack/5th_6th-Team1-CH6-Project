@@ -157,7 +157,7 @@ void ABACharacter::BeginPlay()
 		LocalSceneCapture = SceneCapture2D;
 
 		USkeletalMeshComponent* CharacterMesh = GetMesh();
-		CharacterMesh->CustomDepthStencilValue = 0;	
+		CharacterMesh->SetCustomDepthStencilValue(0);	
 	}
 	else
 	{
