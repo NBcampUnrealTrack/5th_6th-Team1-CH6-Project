@@ -16,6 +16,7 @@
 #include "Components/BoxComponent.h"
 #include "Building/BuildManagerComponent.h"
 #include "Player/BACharacter.h"
+#include "Building/BuildingRow.h"
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -596,9 +597,91 @@ void ABaseBuilding::Server_ReevaluateSupportAndMaybeDie()
 
 void ABaseBuilding::ApplyBuildingRow(const FBuildingRow& Row)
 {
+	CachedBuildingRow = &Row;
+
 	MinSupportCoverage = Row.MinSupportCoverage;
 	SupportSampleSpacing = Row.SupportSampleSpacing;
+
 	DefaultHealth = Row.Health;
+
+	RepairCostPercent = Row.RepairCostPercent;
+	RepairHealPercent = Row.RepairHealPercent;
+}
+
+TMap<EOreType, int32> ABaseBuilding::GetRepairCost() const
+{
+	TMap<EOreType, int32> Result;
+
+	if (!CachedBuildingRow)
+	{
+		return Result;
+	}
+
+	for (const TPair<EOreType, int32>& Pair : CachedBuildingRow->BuildCost)
+	{
+		const EOreType OreType = Pair.Key;
+		const int32 BuildNeed = Pair.Value;
+
+		if (BuildNeed <= 0)
+		{
+			continue;
+		}
+
+		const int32 RepairNeed = FMath::CeilToInt(BuildNeed * RepairCostPercent);
+		if (RepairNeed > 0)
+		{
+			Result.Add(OreType, RepairNeed);
+		}
+	}
+
+	return Result;
+}
+
+float ABaseBuilding::GetRepairHealAmount() const
+{
+	if (!HealthSet)
+	{
+		return 0.f;
+	}
+
+	const float MaxHealth = HealthSet->GetMaxHealth();
+	return MaxHealth * RepairHealPercent;
+}
+
+bool ABaseBuilding::CanRepair() const
+{
+	if (bDead || !HealthSet)
+	{
+		return false;
+	}
+
+	return HealthSet->GetHealth() < HealthSet->GetMaxHealth();
+}
+
+void ABaseBuilding::Repair(float HealAmount)
+{
+	if (!HasAuthority() || bDead || !HealthSet)
+	{
+		return;
+	}
+
+	const float NewHealth = FMath::Clamp(
+		HealthSet->GetHealth() + HealAmount,
+		0.f,
+		HealthSet->GetMaxHealth()
+	);
+
+	HealthSet->SetHealth(NewHealth);
+}
+
+float ABaseBuilding::GetCurrentHealth() const
+{
+	return HealthSet ? HealthSet->GetHealth() : 0.f;
+}
+
+float ABaseBuilding::GetMaxHealth() const
+{
+	return HealthSet ? HealthSet->GetMaxHealth() : 0.f;
 }
 
 void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const

@@ -52,4 +52,10 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display")
     TSoftObjectPtr<UTexture2D> IconTexture;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repair")
+    float RepairCostPercent = 0.1f; 
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repair")
+    float RepairHealPercent = 0.2f;
 };

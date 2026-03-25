@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "Common/BAItemInterface.h"
 #include "Building/BuildingRow.h"
+#include "Mining/VoxelData.h"
 #include "BaseBuilding.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnDestroyed);
@@ -89,6 +90,14 @@ public:
 
 	void ApplyBuildingRow(const FBuildingRow& Row);
 
+	TMap<EOreType, int32> GetRepairCost() const;
+	float GetRepairHealAmount() const;
+
+	bool CanRepair() const;
+	void Repair(float HealAmount);
+	float GetCurrentHealth() const;
+	float GetMaxHealth() const;
+
 protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
 
@@ -167,6 +176,14 @@ protected:
 	// 위 건물들
 	UPROPERTY(VisibleAnywhere, Category = "Build|Support")
 	TSet<TWeakObjectPtr<ABaseBuilding>> SupportedBuildings;
+
+	const FBuildingRow* CachedBuildingRow = nullptr;
+
+	UPROPERTY()
+	float RepairCostPercent = 0.1f;
+
+	UPROPERTY()
+	float RepairHealPercent = 0.2f;
 
 #pragma region Delegate
 
