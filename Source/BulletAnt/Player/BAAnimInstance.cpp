@@ -106,9 +106,9 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsFalling = Movement->IsFalling();
 	bIsCrouch = Character->bIsCrouched;
 	bIsRunning = Character->bIsRunning;
+	LowerYaw = Character->RootYawOffset;
 	VerticalVelocity = Velocity.Z;
 
-	RootYawOffset = Character->RootYawOffset * -1;
 	IsGrabLeftHand(DeltaSeconds);
 	//Test
 	
@@ -151,10 +151,14 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 	}
 	else
 	{
-		FRotator BaseAimRot = Character->GetBaseAimRotation();
-		FRotator ActorRot = Character->GetActorRotation();
+		FVector TargetLocation = Character->ReplicatedAimTarget;
 
-		return UKismetMathLibrary::NormalizedDeltaRotator(BaseAimRot, ActorRot);
+		FVector StartLocation = Character->GetActorLocation() + FVector(0.0f, 0.0f, Character->BaseEyeHeight);
+
+		FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
+
+		FRotator ActorRot = Character->GetActorRotation();
+		return UKismetMathLibrary::NormalizedDeltaRotator(LookAtRot, ActorRot);
 	}
 }
 

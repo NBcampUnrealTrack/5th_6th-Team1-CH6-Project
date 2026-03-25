@@ -112,7 +112,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GrabLeftHand;
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|TurnInPlace")
-	float RootYawOffset;
+	float LowerYaw;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Parkour")
 	float HandIKAlpha;

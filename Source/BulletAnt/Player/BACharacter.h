@@ -277,6 +277,8 @@ public:
     void IdleTurning(float DeltaTime);
     void SetTurnStatus();
     void StopMontage();
+    UFUNCTION(Server, Unreliable)
+    void Server_UpdateAimTarget(FVector_NetQuantize NewTarget);
 protected:
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_PlayTurnMontage(UAnimMontage* MontageToPlay, FTransform TargetTransform);
@@ -292,6 +294,8 @@ protected:
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
 public:
+    UPROPERTY(Replicated, Transient, BlueprintReadOnly, Category = "Aim")
+    FVector_NetQuantize ReplicatedAimTarget;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
 
