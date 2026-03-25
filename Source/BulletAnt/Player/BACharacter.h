@@ -441,8 +441,11 @@ public:
     void StartAiming();
     void EndAiming();
 
+    UFUNCTION()
+    void OnRep_EquippedWeapon();
+
     UFUNCTION(Server,Reliable)
-    void Server_SetChangeWeapon(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex);
+    void Server_SetChangeWeapon(TSubclassOf<ABaseWeapon> InWeapon, int32 WeaponIndex = 0);
 
     UFUNCTION()
     void OnRep_bIsFiring();
@@ -461,10 +464,10 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Combat|Weapon")
     TSubclassOf<ABaseWeapon> DefaultWeaponClass;
 
-    UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadWrite, Category = "Combat|Weapon")
+    UPROPERTY(VisibleAnywhere, ReplicatedUsing = OnRep_EquippedWeapon, BlueprintReadWrite, Category = "Combat|Weapon")
     TObjectPtr<ABaseWeapon> EquippedWeapon;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Combat|Weapon")
     TArray<TSubclassOf<ABaseWeapon>> OwnedEquipment;
 
     FTransform SavedSpringArmTransform;

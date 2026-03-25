@@ -73,6 +73,15 @@ void ABAPlayerState::CopyProperties(APlayerState* NewPlayerState)
 	NewPS->PlayerColorIdx = this->PlayerColorIdx;
 }
 
+void ABAPlayerState::BeginPlay()
+{
+	Super::BeginPlay();
+
+	FGameplayTagContainer DefaultTags;
+	DefaultTags.AddTag(TAG_Team_Player);
+	AbilitySystemComponent->AddLooseGameplayTags(DefaultTags);
+}
+
 void ABAPlayerState::SetPlayerColorIdx(int32 NewIdx)
 {
 	PlayerColorIdx = NewIdx;

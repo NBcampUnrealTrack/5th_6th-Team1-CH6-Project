@@ -7,6 +7,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Player/BACharacter.h"
 #include "GAS/AttributeSet/EXPAttributeSet.h"
+#include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -39,10 +40,14 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 		UAbilitySystemComponent* TargetASC = Data.Target.AbilityActorInfo->AbilitySystemComponent.Get();
 		if (!TargetASC || TargetASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) return;
 
-		const float LocalIncomingDamage = GetIncomingDamage();
+		float LocalIncomingDamage = GetIncomingDamage();
 
 		if (LocalIncomingDamage > 0.f)
 		{
+			if (TargetASC->HasMatchingGameplayTag(TAG_Team_Player))
+			{
+				LocalIncomingDamage = LocalIncomingDamage * 0.05f;
+			}
 			const float NewHealth = GetHealth() - LocalIncomingDamage;
 			SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
 
@@ -52,7 +57,7 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 			FGameplayCueParameters Params;
 			Params.EffectContext = Data.EffectSpec.GetContext();
-			Params.RawMagnitude = GetIncomingDamage();
+			Params.RawMagnitude = LocalIncomingDamage;
 			Data.Target.ExecuteGameplayCue(TAG_GameplayCue_Combat_Damaged, Params);
 
 			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
@@ -66,8 +71,14 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 				ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
 				if (PlayerCharacter)
 				{
-					float EXP = 30.f;
-					PlayerCharacter->GetEXP(EXP);
+					if (ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(TargetActor))
+					{
+						if (Enemy)
+						{
+							float EXP = Enemy->GetEXP();
+							PlayerCharacter->GetEXP(EXP);
+						}
+					}
 				}
 
 				Payload.EventMagnitude = 5.f;

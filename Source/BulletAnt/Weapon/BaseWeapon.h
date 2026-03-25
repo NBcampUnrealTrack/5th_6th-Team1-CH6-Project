@@ -27,13 +27,13 @@ public:
 	FORCEINLINE TArray<FGameplayAbilitySpecHandle> GetGrantedAbilityHandles() const { return GrantedAbilityHandles; }
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetSwitchEffectClass() const { return SwitchEffectClass; }
 
-
 	virtual void EquipWeapon(UAbilitySystemComponent* ASC);
 	void UnequipWeapon(UAbilitySystemComponent* ASC);
 
+	void SetStencilValue(int32 NewValue);
+
 	UPROPERTY()
 	uint8 bAutoActive : 1 = false;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 	FTransform GripOffset;

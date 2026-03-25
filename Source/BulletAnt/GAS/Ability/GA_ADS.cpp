@@ -9,6 +9,7 @@
 #include "Weapon/BaseWeapon.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Weapon/Data/WeaponDataAsset.h"
 
 UGA_ADS::UGA_ADS()
 {
@@ -71,6 +72,14 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
 		SpringArm->TargetArmLength = 223.f;
 
+		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
+		{
+			if (Data->WeaponType == EWeaponType::Sniper)
+			{
+				PC->StopADSUI();
+			}
+		}
+
 		Source->GetMesh()->UnHideBoneByName(FName("head"));
 	}	
 
@@ -98,6 +107,13 @@ void UGA_ADS::StartADS()
 
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
 		
+		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
+		{
+			if (Data->WeaponType == EWeaponType::Sniper)
+			{
+				PC->StartADSUI();
+			}
+		}	
 	}
 
 }

@@ -35,7 +35,7 @@ public:
 	void UpdateMaxEXP();
 
 public:
-	UPROPERTY(BlueprintReadOnly, Category = "EXP", ReplicatedUsing = OnRep_CurrentEXP)
+	UPROPERTY(BlueprintReadOnly, Category = "EXP", ReplicatedUsing = OnRep_CurrentLevel)
 	FGameplayAttributeData CurrentLevel;
 	ATTRIBUTE_ACCESSORS(UEXPAttributeSet, CurrentLevel)
 
@@ -52,7 +52,7 @@ public:
 	ATTRIBUTE_ACCESSORS(UEXPAttributeSet, IncomingEXP)
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EXP")
-	float MaxLevel = 100.f;
+	float MaxLevel = 99.f;
 
 	
 };

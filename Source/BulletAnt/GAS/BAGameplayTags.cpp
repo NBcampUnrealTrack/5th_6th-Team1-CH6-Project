@@ -47,5 +47,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Reward_EXP, "Data.Reward.EXP");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Reward_IncreaseMaxHealth, "Data.Reward.IncreaseMaxHealth");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Reward_IncreaseAttackPower, "Data.Reward.IncreaseAttackPower");
 
+UE_DEFINE_GAMEPLAY_TAG(TAG_Team_Player, "TAG.Team.Player");
+
 
 

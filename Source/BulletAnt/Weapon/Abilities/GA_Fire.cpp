@@ -65,6 +65,7 @@ void UGA_Fire::ActivateAbility(
 	}
 
 	ContinuousBullet = 0;
+	FireDelay = 60.f / RangedData->RoundPerMinute;
 	
 	if (RangedData->bAutoFire)
 	{
@@ -136,7 +137,7 @@ void UGA_Fire::FireOnce()
 
 void UGA_Fire::StartAutoFireLoop()
 {
-	FireDelay = 60.f / RangedData->RoundPerMinute;
+	
 
 	GetWorld()->GetTimerManager().SetTimer(
 		FireTimerHandler,

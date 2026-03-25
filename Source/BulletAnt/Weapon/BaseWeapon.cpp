@@ -53,3 +53,8 @@ void ABaseWeapon::UnequipWeapon(UAbilitySystemComponent* ASC)
 
 	GrantedAbilityHandles.Empty();
 }
+
+void ABaseWeapon::SetStencilValue(int32 NewValue)
+{
+	WeaponMesh->CustomDepthStencilValue = NewValue;
+}
