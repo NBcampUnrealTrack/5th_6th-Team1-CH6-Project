@@ -12,6 +12,7 @@ class FOnlineSessionSearch;
 class IVoiceChatUser;
 enum class EOnSessionParticipantLeftReason : uint8;
 
+DECLARE_MULTICAST_DELEGATE(FOnSuccessLogin);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnCreateSession, FName, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnFindSessions, bool);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnJoinSession, FName, EOnJoinSessionCompleteResult::Type);	// Type이 그냥 enum이라 Dynamic Delegate 사용 불가
@@ -35,6 +36,9 @@ public:
 	void SearchSessions(int32 MaxSearchCount = 16);
 	void JoinSession(int32 Index);
 
+	void BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate);
+	void UnbindOnSuccessLogin(const UObject* Object);
+
 	// 호스트는 non-seamless travel로 로비레벨 이동 후 세션 생성
 	void ServerTravelToLobby();
 	// 로비 모집 종료 후에는 seamless travel로 함께 이동
@@ -57,6 +61,8 @@ private:
 
 private:
 	FDelegateHandle LoginHandle;
+
+	FOnSuccessLogin OnSuccessLogin;
 
 	FOnCreateSession OnCreateSession;
 	FOnFindSessions OnFindSessions;

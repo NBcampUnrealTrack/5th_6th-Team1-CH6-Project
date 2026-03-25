@@ -12,4 +12,12 @@ class BULLETANT_API ATitleGameMode : public AGameMode
 public:
 	ATitleGameMode();
 
+	virtual void BeginPlay() override;
+
+	void StartLogin();
+	void OnSuccessLogin();
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	uint8 bAlreadyLogin : 1 = false;
 };
