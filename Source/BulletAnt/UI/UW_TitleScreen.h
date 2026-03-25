@@ -11,6 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnJoinButtonClicked, const FText&, 
 class UButton;
 class UVerticalBox;
 class UEditableText;
+class UOverlay;
 
 UCLASS()
 class BULLETANT_API UUW_TitleScreen : public UUserWidget
@@ -22,6 +23,9 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
+
+public:
+	void ShowLoginPanel(bool bInShow);
 
 private:
 	UFUNCTION()
@@ -61,4 +65,7 @@ private:
 
 	UPROPERTY(Meta = (BindWidget))
 	TObjectPtr<UButton> JoinBtn;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UOverlay> LoginPanel;		// 로그인 전에 화면 입력 막는 용도
 };

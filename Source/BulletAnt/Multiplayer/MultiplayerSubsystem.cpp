@@ -34,19 +34,25 @@ void UMultiplayerSubsystem::EpicLogin()
 
 void UMultiplayerSubsystem::SteamLogin()
 {
-	if (SteamAPI_Init() == false || SteamAPI_IsSteamRunning() == false)
+	if (SteamAPI_Init() == false || SteamAPI_IsSteamRunning() == false || SteamUser() == nullptr)
 	{
-		if (SteamAPI_RestartAppIfNecessary(480) == true)
+		// SteamAPI_RestartAppIfNecessary는 프로세스가 스팀을 통해 정상적으로 실행되지 않았다면,
+		// 현재 프로세스를 죽이고 스팀 런처를 통해 다시 실행하는 함수.
+		// AppId 480 (공용 테스트 ID)로 Shipping에서 이 함수가 실행되면, 새로 켜질 떄마다 꺼지고 재실행이 반복됨.
+		/*if (SteamAPI_RestartAppIfNecessary(480) == true)
 		{
 			FPlatformMisc::RequestExit(false);
-		}
+		}*/
 
 		FTimerHandle Timer;
 		GetWorld()->GetTimerManager().SetTimer(
 			Timer,
-			[this]()
+			[WeakThis = TWeakObjectPtr(this)]()
 			{
-				SteamLogin();
+				if (WeakThis.IsValid() == true)
+				{
+					WeakThis->SteamLogin();
+				}
 			},
 			2.0f,
 			false);
@@ -62,6 +68,7 @@ void UMultiplayerSubsystem::SteamLogin()
 		SteamAuthTimer,
 		[this]()
 		{
+			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Try Get Callback"));
 			SteamAPI_RunCallbacks();
 		},
 		0.5f,
@@ -94,23 +101,38 @@ void UMultiplayerSubsystem::SteamLogin()
 void UMultiplayerSubsystem::ProcessEOSLogin(FString CredentialType, FString CredentialId, FString AuthToken)
 {
 	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld(), EOS_SUBSYSTEM);
+
+	// 게임 켜진 이후에 플랫폼 켜지면, EOSSubsystem이 안 만들어짐. 언리얼에서 만드는 기능도 제공 안해줌.
+	// 반드시 게임 끄고 플랫폼 먼저 켜지면 게임 켜야 함
+
 	if (Subsystem)
 	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("EOSSubsystem Valid"));
 		IOnlineIdentityPtr Identity = Subsystem->GetIdentityInterface();
 		if (Identity.IsValid() == true)
 		{
+			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Identity Valid"));
 			if (LoginHandle.IsValid() == true)
 			{
 				Identity->ClearOnLoginCompleteDelegate_Handle(0, LoginHandle);
 			}
 
-			/*LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateLambda(
-				[this, Identity](int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+			LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateLambda(
+				[WeakThis = TWeakObjectPtr(this), Identity](int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
 				{
-					FString StrSuccess = bWasSuccessful == true ? TEXT("Login Success") : TEXT("Login Failed");
-					UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
-				}));*/
+					if (WeakThis.IsValid() == true)
+					{
+						FString StrSuccess = bWasSuccessful == true ? TEXT("Login Success") : TEXT("Login Failed");
+						UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
+						if (bWasSuccessful == true)
+						{
+							WeakThis->OnSuccessLogin.Broadcast();
+							WeakThis->OnSuccessLogin.Clear();
+						}
+					}
+				}));
 
+			UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("Start Login %s"), *AuthToken));
 			FOnlineAccountCredentials Credentials;
 			Credentials.Type = CredentialType;
 			Credentials.Id = CredentialId;
@@ -185,6 +207,16 @@ void UMultiplayerSubsystem::JoinSession(int32 Index)
 		SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UMultiplayerSubsystem::OnJoinSessionComplete);
 		SessionInterface->JoinSession(0, NAME_GAMESESSION, SessionSearch->SearchResults[Index]);		// SessionName은 내가 붙인 방의 별명
 	}
+}
+
+void UMultiplayerSubsystem::BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate)
+{
+	OnSuccessLogin.Add(Delegate);
+}
+
+void UMultiplayerSubsystem::UnbindOnSuccessLogin(const UObject* Object)
+{
+	OnSuccessLogin.RemoveAll(Object);
 }
 
 void UMultiplayerSubsystem::ServerTravelToLobby()
@@ -376,7 +408,7 @@ void UMultiplayerSubsystem::OnGetAuthTicketForWebApiCompleted(GetTicketForWebApi
 
 	FString TokenString = FString::FromHexBlob(Response->m_rgubTicket, Response->m_cubTicket);
 
-	//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Start Login"));
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Start Login"));
 	ProcessEOSLogin(
 		TEXT("externalauth:SteamSessionTicket"),
 		TEXT(""),

@@ -20,6 +20,9 @@ public:
 
 	virtual void BeginPlay() override;
 
+public:
+	void ShowLoginPanel(bool bInShow);
+
 private:
 	UFUNCTION()
 	void HandleJoinRequested(const FText& InIpPort);
@@ -33,4 +36,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UUW_TitleScreen> TitleScreenWidget;
+
+	UPROPERTY()
+	uint8 bShowLoginPanel : 1 = true;
 };

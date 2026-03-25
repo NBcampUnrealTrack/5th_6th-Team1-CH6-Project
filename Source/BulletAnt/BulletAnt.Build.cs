@@ -56,13 +56,13 @@ public class BulletAnt : ModuleRules
 			"VoiceChat"
 		});
 
-		string SteamVersion = "v161";
-		string SteamDir = Path.Combine(Target.UEThirdPartySourceDirectory, "Steamworks", SteamVersion, "sdk");
+		//string SteamVersion = "v161";
+		//string SteamDir = Path.Combine(Target.UEThirdPartySourceDirectory, "Steamworks", SteamVersion, "sdk");
 
 		PublicIncludePaths.AddRange(new string[]
 		{
 			"BulletAnt",
-			Path.Combine(SteamDir, "public")
+			//Path.Combine(SteamDir, "public")
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

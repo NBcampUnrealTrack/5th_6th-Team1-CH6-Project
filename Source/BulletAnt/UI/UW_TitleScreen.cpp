@@ -6,6 +6,7 @@
 #include "Components/EditableText.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Player/TitlePlayerController.h"
+#include "Components/Overlay.h"
 
 UUW_TitleScreen::UUW_TitleScreen(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -21,6 +22,15 @@ void UUW_TitleScreen::NativeConstruct()
 	ExitBtn.Get()->OnClicked.AddDynamic(this, &ThisClass::OnExitBtnClicked);
 
 	JoinBtn.Get()->OnClicked.AddDynamic(this, &ThisClass::OnJoinBtnClicked);
+}
+
+void UUW_TitleScreen::ShowLoginPanel(bool bInShow)
+{
+	if (IsValid(LoginPanel) == true)
+	{
+		ESlateVisibility NewVisibility = bInShow == true ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+		LoginPanel->SetVisibility(NewVisibility);
+	}
 }
 
 void UUW_TitleScreen::OnStartBtnClicked()
