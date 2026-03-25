@@ -49,7 +49,7 @@ ABACharacter::ABACharacter()
 
 	// 캐릭터 회전 설정
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
+	bUseControllerRotationYaw = true;
 	bUseControllerRotationRoll = false;
 
 
@@ -68,7 +68,7 @@ ABACharacter::ABACharacter()
 	DetectedCapsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel7, ECollisionResponse::ECR_Overlap);	// Enemy Vision
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	SpringArm->SetupAttachment(GetMesh(), FName("spine_03"));
+	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->bUsePawnControlRotation = true;
 	// 카메라 생성 및 설정
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -270,11 +270,6 @@ void ABACharacter::Tick(float DeltaTime)
 
 	float Speed = GetVelocity().Size2D();
 
-	if (Speed > 1.f || GetCharacterMovement()->IsFalling())
-		GetCharacterMovement()->bUseControllerDesiredRotation = true;
-	else
-		GetCharacterMovement()->bUseControllerDesiredRotation = false;
-
 	if (HasAuthority())
 	{
 		if (Controller)
@@ -309,14 +304,35 @@ void ABACharacter::Tick(float DeltaTime)
 			}
 		}
 	}
+	if (IsLocallyControlled())
+	{
+		FVector CamLoc;
+		FRotator CamRot;
+		GetController()->GetPlayerViewPoint(CamLoc, CamRot);
+
+		FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.0f);
+
+		FHitResult Hit;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+		if (EquippedWeapon)
+			Params.AddIgnoredActor(EquippedWeapon);
+
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel11, Params);
+
+		FVector ExactTarget = bHit ? Hit.ImpactPoint : TraceEnd;
+		Server_UpdateAimTarget(ExactTarget);
+	}
 	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
-		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, AimingTALength, DeltaTime, TALengthChangeSpeed);
+		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 133, DeltaTime, TALengthChangeSpeed);
+		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
 	}
 	else if (!bIsAiming)
 	{
-		SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, DefaultArmLength, DeltaTime, TALengthChangeSpeed);
+		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 0, DeltaTime, TALengthChangeSpeed);
+		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
 	}
 	IdleTurning(DeltaTime);
@@ -1280,6 +1296,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, EquippedWeapon);
 	DOREPLIFETIME(ABACharacter, OwnedEquipment);
 	DOREPLIFETIME(ABACharacter, bIsReturning);
+	DOREPLIFETIME(ABACharacter, ReplicatedAimTarget);
 }
 
 void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)
@@ -1333,21 +1350,20 @@ void ABACharacter::OnTurnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 }
 void ABACharacter::IdleTurning(float DeltaTime)
 {
-	if (!HasAuthority() && !IsLocallyControlled()) return;
-
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
-	}
 	if (ParkourComponent->bIsParkour || GetVelocity().Size2D() > 1.f || GetCharacterMovement()->IsFalling())
 	{
 		LastBodyYaw = GetActorRotation().Yaw;
 		return;
 	}
-	RootYawOffset = UKismetMathLibrary::NormalizeAxis(GetBaseAimRotation().Yaw - LastBodyYaw);
+	if (GEngine && (HasAuthority() || IsLocallyControlled())) // 디버그는 내 것만 뜨게
+	{
+		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
+	}
+	RootYawOffset = UKismetMathLibrary::NormalizeAxis(LastBodyYaw - GetActorRotation().Yaw);
+	if (!HasAuthority() && !IsLocallyControlled()) return;
 	if (!bIsTurning)
 	{
-		if (FMath::Abs(RootYawOffset) > 90.f)
+		if (FMath::Abs(RootYawOffset) > 55.f)
 		{
 			TurnDelayTimer += DeltaTime;
 			if (TurnDelayTimer > 0.1f)
@@ -1355,8 +1371,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				bIsTurning = true;
 				TurnStartYaw = LastBodyYaw;
 
-				bool bRight = RootYawOffset > 0;
-				LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
+				bool bRight = RootYawOffset < 0;
 				TurnType = bRight ? ETurnType::Right90 : ETurnType::Left90;
 				CurrentTurnSpeed = 10.f;
 
@@ -1391,6 +1406,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 					FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
 					FTransform TargetTransform(GoalRot, GetActorLocation());
 					Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
+					LastBodyYaw = GetActorRotation().Yaw;
 				}
 			}
 		}
@@ -1406,8 +1422,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 		if (FMath::Abs(TotalFlickYaw) > 160.f && (TurnType == ETurnType::Right90 || TurnType == ETurnType::Left90))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("180도 감지. 90도 취소하고 180도로 덮어씌움."));
-			bool bRight = (TotalFlickYaw > 0); // 방향 다시 계산
-			LastBodyYaw = UKismetMathLibrary::NormalizeAxis(LastBodyYaw + (bRight ? 90.f : -90.f));
+			bool bRight = (TotalFlickYaw < 0); // 방향 다시 계산
 			TurnType = bRight ? ETurnType::Right180 : ETurnType::Left180;
 			if (bIsCrouched)
 			{
@@ -1440,6 +1455,7 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
 				FTransform TargetTransform(GoalRot, GetActorLocation());
 				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
+				LastBodyYaw = GetActorRotation().Yaw;
 			}
 		}
 	}
@@ -1455,7 +1471,6 @@ void ABACharacter::SetTurnStatus()
 
 void ABACharacter::StopMontage()
 {
-	LastBodyYaw = GetActorRotation().Yaw;
 	if (bIsTurning)
 	{
 		if (HasAuthority())
@@ -1467,6 +1482,11 @@ void ABACharacter::StopMontage()
 			ServerRPC_StopTurnMontage();
 		}
 	}
+}
+
+void ABACharacter::Server_UpdateAimTarget_Implementation(FVector_NetQuantize NewTarget)
+{
+	ReplicatedAimTarget = NewTarget;
 }
 
 void ABACharacter::RotateScannerParent(const FVector2D& Input)
