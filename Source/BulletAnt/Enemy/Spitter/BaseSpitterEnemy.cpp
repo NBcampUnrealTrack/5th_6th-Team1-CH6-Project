@@ -74,6 +74,10 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 	{
 		return;
 	}
+	if (!IsValid(AbilitySystemComponent))
+	{
+		return;
+	}
 
 	FVector MouthLocation = GetMesh()->GetSocketLocation(SpitterDataAsset->AttackOrigin);
 	FRotator MouthRotator = GetMesh()->GetSocketRotation(SpitterDataAsset->AttackOrigin);
@@ -118,7 +122,7 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 				ProcessedActors.Add(HitActor);
 
 				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
-				if (IsValid(TargetASC)) 
+				if (IsValid(TargetASC) && IsValid(AbilitySystemComponent))
 				{
 					FGameplayEffectContextHandle Context = TargetASC->MakeEffectContext();
 					Context.AddInstigator(this, this);
@@ -133,7 +137,7 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 					if (SpecHandle.IsValid())
 					{
 						SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, WeaponData->BaseDamage);
-						TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+						AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 					}
 				}
 			}
