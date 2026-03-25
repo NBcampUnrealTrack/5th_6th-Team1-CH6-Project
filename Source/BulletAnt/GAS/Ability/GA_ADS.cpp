@@ -89,10 +89,9 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 void UGA_ADS::StartADS()
 {
 	Source->GetCharacterMovement()->bUseControllerDesiredRotation = false;
-	Source->bUseControllerRotationYaw = true;
+	Source->bUseControllerRotationYaw = true;	
 	if (IsLocallyControlled())
-	{	
-		SavedTargetPoint = ADSLineTrace();
+	{		
 		FVector SightLoc = CachedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
 		FRotator SightRot = CachedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
 
@@ -125,7 +124,7 @@ void UGA_ADS::StopADS(FGameplayEventData Payload)
 
 FVector UGA_ADS::ADSLineTrace()
 {
-	FVector CamLoc;
+	FVector CamLoc = Source->GetCamera()->GetComponentLocation();
 	FRotator CamRot;
 	PC->GetPlayerViewPoint(CamLoc, CamRot);
 	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.f);
