@@ -99,6 +99,12 @@ void UFlyAttackTask::HitCheck()
 		}
 		FGameplayTag EventTag = WeaponData->HitEventTag;
 
+		UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(ContextActor);
+		if (!IsValid(SourceASC))
+		{
+			return;
+		}
+
 		for (const FHitResult& Hit : OutHits)
 		{
 			AActor* HitActor = Hit.GetActor();
@@ -107,7 +113,7 @@ void UFlyAttackTask::HitCheck()
 				HitActors.Add(HitActor);
 
 				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitActor);
-				if (IsValid(TargetASC))
+				if (IsValid(TargetASC) && IsValid(SourceASC))
 				{
 					FGameplayEffectContextHandle Context = TargetASC->MakeEffectContext();
 					Context.AddInstigator(ContextActor, ContextActor);
@@ -122,7 +128,7 @@ void UFlyAttackTask::HitCheck()
 					if (SpecHandle.IsValid())
 					{
 						SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Combat_Damage, WeaponData->BaseDamage);
-						TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+						SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 					}
 				}
 			}
