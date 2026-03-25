@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/Ability/GA_DestroyBuilding.h"
+#include "GAS/BAGameplayTags.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "GeometryCollection/GeometryCollection.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -108,6 +109,10 @@ void ABaseBuilding::BeginPlay()
 	}
 
 	RebuildCachedLocalEdges();
+
+	FGameplayTagContainer DefaultTags;
+	DefaultTags.AddTag(TAG_Team_Player);
+	ASC->AddLooseGameplayTags(DefaultTags);
 }
 
 void ABaseBuilding::Use_Implementation(AActor* User)

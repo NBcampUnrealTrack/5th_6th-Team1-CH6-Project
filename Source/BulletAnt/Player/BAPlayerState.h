@@ -23,6 +23,7 @@ public:
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 	virtual void CopyProperties(APlayerState* NewPlayerState) override;
+	virtual void BeginPlay() override;
 
 public:
 	void SetPlayerColorIdx(int32 NewIdx);

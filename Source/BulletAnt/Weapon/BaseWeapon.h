@@ -35,7 +35,6 @@ public:
 	UPROPERTY()
 	uint8 bAutoActive : 1 = false;
 
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Settings")
 	FTransform GripOffset;
 
