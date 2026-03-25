@@ -690,6 +690,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 	if (DefaultWeaponClass)
 	{
+		UpdateAmmo(OwnedEquipment[0]);
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
 

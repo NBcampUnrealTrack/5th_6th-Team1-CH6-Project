@@ -20,8 +20,8 @@
 #include "Player/BAPlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Weapon/BaseWeapon.h"
-
-
+#include "Weapon/BaseRangedWeapon.h"
+#include "GAS/AttributeSet/AmmoAttributeSet.h"
 
 void ABAPlayerController::BeginPlay()
 {
@@ -306,7 +306,26 @@ void ABAPlayerController::SetupForMain()
 		HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
 		if (HUD)
 		{
-			HUD->OwnerCharacter = Cast<ABACharacter>(GetPawn());
+			ABACharacter* PlayerCharacter = Cast<ABACharacter>(GetPawn());
+			if (PlayerCharacter)
+			{
+				HUD->OwnerCharacter = PlayerCharacter;
+				ABAPlayerState* PS = Cast<ABAPlayerState>(PlayerCharacter->GetPlayerState());
+				if (PS)
+				{
+					const UAmmoAttributeSet* Ammo = PS->GetAmmoAttributeSet();
+					HUD->UpdateAmmo(Ammo->GetCurrentAmmo(), Ammo->GetMaxAmmo());
+					if (PlayerCharacter->EquippedWeapon->IsA(ABaseRangedWeapon::StaticClass()))
+					{
+						HUD->ShowAmmoText();
+					}
+					else
+					{
+						HUD->HideAmmoText();
+					}
+				}		
+			}
+			
 			HUD->InitPlayerHUD();
 		}
 

@@ -32,6 +32,9 @@ public:
 	void ShowAmmoText();
 	void HideAmmoText();
 
+	UFUNCTION()
+	void UpdateAmmo(float Current, float Max);
+
 	void SetAutoImage(bool bIsFullAuto);
 
 protected:
@@ -40,9 +43,6 @@ protected:
 
 	UFUNCTION()
 	void UpdateEXP(float Current, float Max);
-
-	UFUNCTION()
-	void UpdateAmmo(float Current, float Max);
 
 	UFUNCTION()
 	void UpdateLevel(float Current, float OldLevel);

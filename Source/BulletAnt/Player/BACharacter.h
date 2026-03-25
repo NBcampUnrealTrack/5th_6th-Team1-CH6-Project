@@ -526,6 +526,7 @@ protected:
 
 public:
     FORCEINLINE USceneCaptureComponent2D* GetGroundScannerSceneCapture() { return SceneCapture2D; }
+    FORCEINLINE UStaticMeshComponent* GetArrowMesh() { return ArrowMesh; };
     void RotateScannerParent(const FVector2D& Input);
     void ChangeScannerDistance(float Input);
     void SwitchGroundScanner();
@@ -534,6 +535,7 @@ public:
     void UpdateShowComponents();
     
     void SetPlayerColor();
+   
         
 protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GroundScanner")
