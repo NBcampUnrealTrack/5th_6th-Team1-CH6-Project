@@ -408,6 +408,8 @@ public:
     void GetEXP(float InEXP);
     void LevelUp();
 
+    void UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass);
+
 protected:
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;
 

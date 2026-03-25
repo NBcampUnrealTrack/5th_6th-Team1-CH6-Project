@@ -63,4 +63,6 @@ protected:
 	UTextBlock* RequireMineralText;
 
 	int32 GachaCount = 0;
+	int32 RequireGold = 0;
+	int32 RequireMineral = 0;
 };

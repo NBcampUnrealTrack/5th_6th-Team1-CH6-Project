@@ -615,7 +615,7 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 {
 	if (!ASC) return;
 	if (!EquippedWeapon) return;
-	if (ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
+	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged) && ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
 
 	FGameplayTagContainer Tag;
 
@@ -708,6 +708,8 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 {
 	if (!HasAuthority()) return;
 	if (!WeaponClass) return;
+	if (EquippedWeapon && EquippedWeapon->GetClass() == WeaponClass) return;
+	
 
 	if (EquippedWeapon)
 	{
@@ -819,29 +821,7 @@ void ABACharacter::Server_SetChangeWeapon_Implementation(TSubclassOf<ABaseWeapon
 	OwnedEquipment[WeaponIndex] = InWeapon;
 	Server_EquipWeapon(InWeapon);
 
-	if (ASC)
-	{
-		const UAmmoAttributeSet* AmmoSet = ASC->GetSet<UAmmoAttributeSet>();
-		if (!AmmoSet) return;
-
-		ABaseRangedWeapon* CDOWeapon = Cast<ABaseRangedWeapon>(InWeapon->GetDefaultObject());
-		if (!CDOWeapon) return;
-
-		URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(CDOWeapon->GetWeaponData());
-		if (!Data) return;
-
-		int32 NewMaxAmmo = Data->MaxAmmo;
-
-		ASC->SetNumericAttributeBase(
-			UAmmoAttributeSet::GetMaxAmmoAttribute(),
-			NewMaxAmmo
-		);
-
-		ASC->SetNumericAttributeBase(
-			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
-			NewMaxAmmo
-		);
-	}
+	UpdateAmmo(InWeapon);
 }
 
 void ABACharacter::OnRep_bIsFiring()
@@ -1911,5 +1891,32 @@ void ABACharacter::LevelUp()
 		);
 
 		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+}
+
+void ABACharacter::UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass)
+{
+	if (ASC)
+	{
+		const UAmmoAttributeSet* AmmoSet = ASC->GetSet<UAmmoAttributeSet>();
+		if (!AmmoSet) return;
+
+		ABaseRangedWeapon* CDOWeapon = Cast<ABaseRangedWeapon>(InWeaponClass->GetDefaultObject());
+		if (!CDOWeapon) return;
+
+		URangedWeaponDataAsset* Data = Cast<URangedWeaponDataAsset>(CDOWeapon->GetWeaponData());
+		if (!Data) return;
+
+		int32 NewMaxAmmo = Data->MaxAmmo;
+
+		ASC->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetMaxAmmoAttribute(),
+			NewMaxAmmo
+		);
+
+		ASC->SetNumericAttributeBase(
+			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
+			NewMaxAmmo
+		);
 	}
 }

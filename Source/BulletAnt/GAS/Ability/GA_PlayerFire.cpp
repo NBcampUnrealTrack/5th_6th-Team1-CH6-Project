@@ -40,7 +40,7 @@ void UGA_PlayerFire::FireOnce()
 
 	if (IsLocallyControlled())
 	{
-		float InRecoilPitch = FMath::RandRange(0.f, RecoilPitch);
+		float InRecoilPitch = RecoilPitch;
 		float InRecoilYaw = FMath::RandRange(-RecoilYaw, RecoilYaw);
 
 		if (PlayerCharacter)
