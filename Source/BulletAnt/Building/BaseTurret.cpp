@@ -152,6 +152,7 @@ void ABaseTurret::ApplyTurretData()
 
 	TargetSearchingSphere->SetSphereRadius(TurretData->SearchRadius);
 	TargetSearchingSphere->SetCollisionResponseToChannel(TurretData->EnemyTraceChannel, ECR_Overlap);
+	TargetSearchingSphere->SetCollisionResponseToChannel(ECC_GameTraceChannel12, ECR_Overlap);
 }
 
 void ABaseTurret::UpdateAim(float DeltaSeconds)
