@@ -68,9 +68,9 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		Source->GetCamera()->FieldOfView = 90.f;
 		Source->EndAiming();
 
-		SpringArm->AttachToComponent(Source->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("spine_03"));
+		SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-		SpringArm->TargetArmLength = 223.f;
+		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
 
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
@@ -97,12 +97,12 @@ void UGA_ADS::StartADS()
 
 		USpringArmComponent* SpringArm = Source->GetSpringArm();		
 		SpringArm->bUsePawnControlRotation = false;
-		Source->GetCamera()->FieldOfView = 70.f;
+		Source->GetCamera()->FieldOfView = 60.f;
 		Source->StartAiming();
 
 		SavedSpringArmTransform = SpringArm->GetRelativeTransform();
 		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-		SpringArm->TargetArmLength = 0.f;
+		SpringArm->SocketOffset = FVector(228.f, 0.f, 0.f);
 
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
 		
