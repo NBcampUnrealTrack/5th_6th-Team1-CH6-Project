@@ -483,20 +483,27 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 
 							if (const FPillarLocationData* Data = PillarLocationDatas.Find(Cell))
 							{
-								float Margin = 100.0f;
+								float Margin = ChunkVoxelSize * 1.5f;
 								FVector Delta = WorldPos - Data->PillarLocation;
 								float AlongNormal = FVector::DotProduct(Delta, Data->PillarNormal);
 
-								if (AlongNormal < 0 || AlongNormal > Data->PillarHeight + Margin)
+								if (AlongNormal < -Margin || AlongNormal > Data->PillarHeight + Margin)
 									return;
+
+								// 높이에 따른 기둥 두께 감소
+								float HeightPercent = FMath::Clamp(AlongNormal / Data->PillarHeight, 0.0f, 1.0f);
+								float RadiusScale = FMath::Lerp(1.0f, 0.8f, HeightPercent);
+								float CurrentRadius = Data->PillarRadius * RadiusScale;
 
 								float Radial = (Delta - (Data->PillarNormal * AlongNormal)).Length();
-								if (Radial > Data->PillarRadius + Margin)
+								if (Radial > CurrentRadius + Margin)
 									return;
 
-								float DistRatio = FMath::Clamp(1.0f - (Radial - Data->PillarRadius) / Margin * 1.0f, 0.0f, 1.0f);
-								float SmoothAlpha = DistRatio * DistRatio * (3.0f - 2.0f * DistRatio);
-								uint8 TargetDensity = FMath::RoundToInt(SmoothAlpha * 200.0f * (1.0f - (AlongNormal / Data->PillarHeight) * 0.12f));
+								float DistRatio = FMath::Clamp(0.5f - (Radial - CurrentRadius) / Margin * 0.5f, 0.0f, 1.0f);
+								float SmoothDistAlpha = DistRatio * DistRatio * (3.0f - 2.0f * DistRatio);
+								float HeightRatio = FMath::Clamp(0.5f - (AlongNormal - Data->PillarHeight) / Margin * 0.5f, 0.0f, 1.0f);
+								float SmoothHeightAlpha = HeightRatio * HeightRatio * (3.0f - 2.0f * HeightRatio);
+								uint8 TargetDensity = FMath::RoundToInt(SmoothDistAlpha * SmoothHeightAlpha * 200.0f);
 								FinalDensity = FMath::Max(FinalDensity, (uint8)FMath::Clamp(TargetDensity, 0, 200));
 								VoxelType = FinalDensity > IsoLevel ? EVoxelType::Pillar : EVoxelType::None;
 							}
@@ -773,10 +780,10 @@ void AVoxelGround::PlaceObjectsByCell()
 			(Cell.X + 0.5f) * CellSize,
 			(Cell.Y + 0.5f) * CellSize,
 			(Cell.Z + 0.5f) * CellSize);
-		float PillarRadius = 42.0f;
-		float PillarMargin = 100.0f;	// 기둥 근처의 정점 Density를 이용해서 생성되므로 적어도 정점 간 간격만큼은 여유가 있어야 함
+		float PillarRadius = 80.0f + 20.0f * Stream.FRand();	// 최소 두께가 어느 정도 있어야 문제없이 만들어짐.
+		float PillarMargin = VoxelSize * 1.5f;		// 기둥 근처의 정점 Density를 이용해서 생성되므로 적어도 정점 간 간격만큼은 여유가 있어야 함
 		float PillarRadiusOpt = PillarRadius + 100.0f;
-		float PillarHeight = 320.0f + 80.0f * Stream.FRand();
+		float PillarHeight = 500.0f;		// 어차피 해당 셀을 벗어난 크기는 적용 안되므로 크게 잡아도 됨.
 		float Available = CellSize - PillarRadiusOpt * 2.0f;
 		FVector CandidateRangeMin = FVector(CellSize) * BuriedRegionSize + PillarRadiusOpt;
 		FVector CandidateRangeMax = CandidateRangeMin + Available;
