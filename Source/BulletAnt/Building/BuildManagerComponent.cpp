@@ -227,12 +227,82 @@ void UBuildManagerComponent::RequestDemolish(ABaseBuilding* TargetBuilding)
 
 void UBuildManagerComponent::RequestRepair(ABaseBuilding* TargetBuilding)
 {
+    if (!IsValid(TargetBuilding))
+    {
+        return;
+    }
 
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
+    {
+        return;
+    }
+
+    if (OwnerActor->HasAuthority())
+    {
+        Server_RequestRepair_Implementation(TargetBuilding);
+    }
+    else
+    {
+        Server_RequestRepair(TargetBuilding);
+    }
 }
 
 void UBuildManagerComponent::Server_RequestRepair_Implementation(ABaseBuilding* TargetBuilding)
 {
+    if (!IsValid(TargetBuilding))
+    {
+        return;
+    }
 
+    AActor* OwnerActor = GetOwner();
+    APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+    if (!OwnerPawn)
+    {
+        return;
+    }
+
+    const float MaxUseDist = 500.f;
+    if (FVector::DistSquared(OwnerPawn->GetActorLocation(), TargetBuilding->GetActorLocation()) > FMath::Square(MaxUseDist))
+    {
+        return;
+    }
+
+    if (!TargetBuilding->CanRepair())
+    {
+        return;
+    }
+
+    const float MaxHeal = TargetBuilding->GetRepairHealAmount();
+    const float MissingHealth = TargetBuilding->GetMaxHealth() - TargetBuilding->GetCurrentHealth();
+    const float ActualHeal = FMath::Min(MaxHeal, MissingHealth);
+
+    if (ActualHeal <= KINDA_SMALL_NUMBER)
+    {
+        return;
+    }
+
+    const float HealRatio = (MaxHeal > 0.f) ? (ActualHeal / MaxHeal) : 0.f;
+
+    TMap<EOreType, int32> CostMap = TargetBuilding->GetRepairCost();
+
+    for (TPair<EOreType, int32>& Pair : CostMap)
+    {
+        Pair.Value = FMath::CeilToInt(Pair.Value * HealRatio);
+    }
+
+    ABAGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ABAGameMode>() : nullptr;
+    if (!GM)
+    {
+        return;
+    }
+
+    if (!GM->TrySpendOre(CostMap))
+    {
+        return;
+    }
+
+    TargetBuilding->Repair(ActualHeal);
 }
 
 void UBuildManagerComponent::Server_RequestDemolish_Implementation(ABaseBuilding* TargetBuilding)
