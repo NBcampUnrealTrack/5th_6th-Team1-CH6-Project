@@ -315,14 +315,7 @@ void ABAPlayerController::SetupForMain()
 				{
 					const UAmmoAttributeSet* Ammo = PS->GetAmmoAttributeSet();
 					HUD->UpdateAmmo(Ammo->GetCurrentAmmo(), Ammo->GetMaxAmmo());
-					if (PlayerCharacter->EquippedWeapon->IsA(ABaseRangedWeapon::StaticClass()))
-					{
-						HUD->ShowAmmoText();
-					}
-					else
-					{
-						HUD->HideAmmoText();
-					}
+					HUD->HideAmmoText();
 				}		
 			}
 			

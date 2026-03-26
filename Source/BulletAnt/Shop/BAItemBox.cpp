@@ -120,14 +120,7 @@ void ABAItemBox::Multi_PlayDropSound_Implementation(const FHitResult& ImpactPoin
 void ABAItemBox::DestroyItemBox()
 {
 	if (!HasAuthority()) return;
-	GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
-		{
-			if (IsValid(this))
-			{
-				Destroy();
-			}
-		});
-
+	SetLifeSpan(0.1f);
 }
 
 

@@ -10,6 +10,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Weapon/Data/WeaponDataAsset.h"
+#include "UI/UW_PlayerHUDWidget.h"
 
 UGA_ADS::UGA_ADS()
 {
@@ -72,6 +73,8 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
 		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
 
+		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
+		HUD->SetCrossHairImage(false);
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
 			if (Data->WeaponType == EWeaponType::Sniper)
@@ -105,6 +108,9 @@ void UGA_ADS::StartADS()
 		SpringArm->SocketOffset = FVector(228.f, 0.f, 0.f);
 
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
+
+		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
+		HUD->SetCrossHairImage(true);
 		
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
@@ -112,7 +118,7 @@ void UGA_ADS::StartADS()
 			{
 				PC->StartADSUI();
 			}
-		}	
+		}
 	}
 
 }

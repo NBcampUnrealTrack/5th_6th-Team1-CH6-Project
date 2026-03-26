@@ -36,6 +36,7 @@ public:
 	void UpdateAmmo(float Current, float Max);
 
 	void SetAutoImage(bool bIsFullAuto);
+	void SetCrossHairImage(bool bIsADS);
 
 protected:
 	UFUNCTION()
@@ -81,6 +82,15 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* CurrentShotImage;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* CurrentCrossHair;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* NormalCrossHair;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* ADSCrossHair;
 
 	UPROPERTY(meta = (BindWidget))
 	UVerticalBox* WeaponLogBox;
