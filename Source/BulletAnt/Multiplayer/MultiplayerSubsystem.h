@@ -57,11 +57,17 @@ public:
 	void JoinSession(int32 Index);
 	void JoinSession(const FOnlineSessionSearchResult& SearchResult);
 
+	// 세션 비참여자가 방 정보에서 참가자 정보를 확인할 수 있게, SessionSettings에서 참여자 닉네임 업데이트
+	void UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames);
+
 	bool GetRoomList(TArray<FRoomInfo>& OutRoomList);
 
 	FDelegateHandle BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate);
 	void UnbindOnSuccessLogin(const UObject* Object);
 
+	FDelegateHandle BindOnCreateSession(const FOnCreateSession::FDelegate& Delegate);
+	void UnbindOnCreateSession(const UObject* Object);
+	void UnbindOnCreateSession(FDelegateHandle Handle);
 	FDelegateHandle BindOnFindSessions(const FOnFindSessions::FDelegate& Delegate);
 	void UnbindOnFindSessions(const UObject* Object);
 
@@ -106,6 +112,7 @@ private:
 
 	static const FName SETTING_ROOMNAME;
 	static const FName SETTING_MAXPLAYERS;
+	static const FName SETTING_PARTICIPANTNICKNAMES;
 	static const FName SEARCH_PRESENCE;
 	
 	static const FName NAME_GAMESESSION;

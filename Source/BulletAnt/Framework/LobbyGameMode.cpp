@@ -4,6 +4,7 @@
 #include "Multiplayer/PlayerColorSubsystem.h"
 #include "Player/BAPlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Framework/BAGameState.h"
 
 ALobbyGameMode::ALobbyGameMode()
 {
@@ -21,12 +22,7 @@ void ALobbyGameMode::BeginPlay()
             if (WeakThis.IsValid() == false)
                 return;
 
-            UMultiplayerSubsystem* MultiplayerSubsystem = WeakThis->GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
-            if (IsValid(MultiplayerSubsystem) == true)
-            {
-                // GameMode는 호스트만 가지므로, 별도의 필터링 X
-                MultiplayerSubsystem->CreateSession();
-            }
+            WeakThis->CreateRoom();
         });
 
     // 테스트용 임시
@@ -64,6 +60,8 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
 
+    UpdateSessionParticipants();
+
     ABAPlayerState* PS = NewPlayer->GetPlayerState<ABAPlayerState>();
     if (IsValid(PS) == true)
     {
@@ -89,4 +87,49 @@ void ALobbyGameMode::Logout(AController* Exiting)
     }
 
     Super::Logout(Exiting);
+
+    GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::UpdateSessionParticipants);
+}
+
+void ALobbyGameMode::UpdateSessionParticipants()
+{
+    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    if (IsValid(MultiplayerSubsystem) == true)
+    {
+        AGameStateBase* GS = GetWorld()->GetGameState();
+        if (IsValid(GS) == true)
+        {
+            const auto& PlayerArray = GS->PlayerArray;
+            TArray<FString> PlayerNames;
+            for (APlayerState* PS : PlayerArray)
+            {
+                if (IsValid(PS) == true)
+                {
+                    PlayerNames.Add(PS->GetPlayerName());
+                }
+            }
+
+            MultiplayerSubsystem->UpdateSessionParticipants(PlayerNames);
+        }
+    }
+}
+
+void ALobbyGameMode::CreateRoom()
+{
+    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    if (IsValid(MultiplayerSubsystem) == true)
+    {
+        // GameMode는 호스트만 가지므로, 별도의 필터링 X
+        UpdateParticipantsHandle = MultiplayerSubsystem->BindOnCreateSession(FOnCreateSession::FDelegate::CreateLambda(
+            [MultiplayerSubsystem, WeakThis = TWeakObjectPtr(this)](FName, bool)
+            {
+                if (WeakThis.IsValid() == true)
+                {
+                    WeakThis->UpdateSessionParticipants();
+                    MultiplayerSubsystem->UnbindOnCreateSession(WeakThis->UpdateParticipantsHandle);
+                }
+            }));
+
+        MultiplayerSubsystem->CreateSession();
+    }
 }
