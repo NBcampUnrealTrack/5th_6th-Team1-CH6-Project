@@ -361,7 +361,9 @@ public:
     float RootYawOffset;
     float TurnStartYaw;
 
-    float DefaultArmLength = 233.0f;
+    FVector DefaultSpringArmLocation = FVector(0.0f, 0.0f, 70.0f);
+    float DefaultSpringArmLength = 180.0f;
+    FVector DefaultSpringArmSocektOffset = FVector(0.0f, 60.0f, 10.0f);
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
@@ -641,7 +643,11 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
     float ReturnSpeed = 1500.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
-    float ReturnArmLength = 50.0f;
+    FVector ReturnArmLoaction = FVector(0.0f, 0.0f, 30.0f);
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ReturnArmLength = 150.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    FVector ReturnSocketOffset = FVector::ZeroVector;
     
     float ReturnDistance = 0.0f;
 
