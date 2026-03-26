@@ -293,17 +293,26 @@ protected:
 
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
+
+
+    UFUNCTION()
+    void HidingCharacter(UCameraComponent* CameraComp);
 public:
     UPROPERTY(Replicated, Transient, BlueprintReadOnly, Category = "Aim")
     FVector_NetQuantize ReplicatedAimTarget;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
-
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsADS;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    float CurrentArmLength = 180;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    FVector CurrentSocketOffset = FVector(0.f, 60.f, 10.f);
 
     UPROPERTY(BlueprintReadWrite, Category = "Camera")
     float AimingFieldOfView = 80.f;
