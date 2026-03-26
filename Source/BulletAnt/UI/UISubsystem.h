@@ -31,6 +31,7 @@ public:
 	}
 
 	void HideUI(EUIType Type);
+	void CloseUI(EUIType Type);
 
 	void ResetAllUI();
 
