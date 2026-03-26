@@ -21,6 +21,7 @@ const FName UMultiplayerSubsystem::SETTING_ROOMNAME(TEXT("ROOMNAME"));
 const FName UMultiplayerSubsystem::SETTING_MAXPLAYERS(TEXT("MAXPLAYERS"));
 const FName UMultiplayerSubsystem::SEARCH_PRESENCE(TEXT("SEARCH_PRESENCE"));
 const FName UMultiplayerSubsystem::NAME_GAMESESSION(TEXT("GameSession"));
+const FName UMultiplayerSubsystem::SETTING_PARTICIPANTNICKNAMES(TEXT("ParticipantNicknames"));
 
 void UMultiplayerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -214,6 +215,21 @@ void UMultiplayerSubsystem::JoinSession(const FOnlineSessionSearchResult& Search
 	SessionInterface->JoinSession(0, NAME_GAMESESSION, SearchResult);		// SessionName은 내가 붙인 방의 별명
 }
 
+void UMultiplayerSubsystem::UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames)
+{
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	if (SessionInterface.IsValid() == false)
+		return;
+
+	FOnlineSessionSettings* CurrentSettings = SessionInterface->GetSessionSettings(NAME_GAMESESSION);
+	if (CurrentSettings == nullptr)
+		return;
+
+	FString CombinedNames = FString::Join(ParticipantNicknames, TEXT(","));
+	CurrentSettings->Set(SETTING_PARTICIPANTNICKNAMES, CombinedNames, EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionInterface->UpdateSession(NAME_GAMESESSION, *CurrentSettings);
+}
+
 bool UMultiplayerSubsystem::GetRoomList(TArray<FRoomInfo>& OutRoomList)
 {
 	if (SessionSearch.IsValid() == false)
@@ -235,8 +251,13 @@ bool UMultiplayerSubsystem::GetRoomList(TArray<FRoomInfo>& OutRoomList)
 		NewInfo.MaxPlayers = SessionSetting.NumPublicConnections;
 		NewInfo.CurrentPlayers = NewInfo.MaxPlayers - SearchResult[ResultIdx].Session.NumOpenPublicConnections;		// NumOpenPublicConnections : 남은 자리 수
 		NewInfo.SearchResult = SearchResult[ResultIdx];
-		
-		// 참가자들 닉네임 찾아야 함
+
+		FString CombinedNames;
+		if (SessionSetting.Settings.Contains(SETTING_PARTICIPANTNICKNAMES) == true)
+		{
+			SessionSetting.Settings.Find(SETTING_PARTICIPANTNICKNAMES)->Data.GetValue(CombinedNames);
+			CombinedNames.ParseIntoArray(NewInfo.ParticipantNicknames, TEXT(","), true);
+		}
 
 		OutRoomList.Add(NewInfo);
 	}
@@ -251,6 +272,21 @@ FDelegateHandle UMultiplayerSubsystem::BindOnSuccessLogin(const FOnSuccessLogin:
 void UMultiplayerSubsystem::UnbindOnSuccessLogin(const UObject* Object)
 {
 	OnSuccessLogin.RemoveAll(Object);
+}
+
+FDelegateHandle UMultiplayerSubsystem::BindOnCreateSession(const FOnCreateSession::FDelegate& Delegate)
+{
+	return OnCreateSession.Add(Delegate);
+}
+
+void UMultiplayerSubsystem::UnbindOnCreateSession(const UObject* Object)
+{
+	OnCreateSession.RemoveAll(Object);
+}
+
+void UMultiplayerSubsystem::UnbindOnCreateSession(FDelegateHandle Handle)
+{
+	OnCreateSession.Remove(Handle);
 }
 
 FDelegateHandle UMultiplayerSubsystem::BindOnFindSessions(const FOnFindSessions::FDelegate& Delegate)
