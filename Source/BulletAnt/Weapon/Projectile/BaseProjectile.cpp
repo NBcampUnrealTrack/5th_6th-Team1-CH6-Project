@@ -22,8 +22,9 @@ ABaseProjectile::ABaseProjectile()
 	CollisionComponent->OnComponentHit.AddDynamic(this, &ABaseProjectile::OnHit);
 
 	BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Bullet Mesh"));
-	BulletMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BulletMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	BulletMesh->SetCollisionObjectType(ECC_GameTraceChannel8);
+	BulletMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	BulletMesh->SetupAttachment(CollisionComponent);
 
@@ -68,6 +69,9 @@ void ABaseProjectile::ActivateProjectile()
 
 	ProjectileMovement->Activate();
 	bIsActive = true;
+
+	Tracer->DeactivateImmediate();
+	Tracer->Activate();
 }
 
 
@@ -79,7 +83,7 @@ void ABaseProjectile::DeactivateProjectile()
 	SetActorEnableCollision(false);
 
 	bIsActive = false;
-	Tracer->Deactivate();
+	Tracer->DeactivateImmediate();
 }
 
 void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
