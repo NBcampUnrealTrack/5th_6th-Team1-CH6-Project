@@ -133,10 +133,17 @@ void USpawnManagerSubsystem::PrepareWave()
 		return;
 	}
 
-	CachedGameState->SetInitWavePreparationTime(Row->WavePreparationTime);
-	CachedGameState->SetWavePreparationTime(Row->WavePreparationTime);
+	bIsWaveStarted = false;
+
+	int32 SpawnTime = Row->SpawnTime;
+	int32 WavePreparationTime = Row->WavePreparationTime;
+	int32 InitWavePreparationTime = SpawnTime + WavePreparationTime;
+	CachedGameState->SetSpawnTime(SpawnTime);
+	CachedGameState->SetWavePreparationTime(InitWavePreparationTime);
+	CachedGameState->SetInitWavePreparationTime(InitWavePreparationTime);
 	CachedGameState->OnRep_WavePreparationTime();
-	OnInitWaveTimeChanged.Broadcast(Row->WavePreparationTime);
+	CachedGameState->SetDate(WaveIndex + 1);
+	OnInitWaveTimeChanged.Broadcast(InitWavePreparationTime);
 
 	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::UpdatePreparationTime, 1.f, true);
 }
@@ -148,20 +155,32 @@ void USpawnManagerSubsystem::UpdatePreparationTime()
 	CachedGameState->SetWavePreparationTime(WavePreparationTime);
 	CachedGameState->OnRep_WavePreparationTime();
 
-	if (WavePreparationTime <= 0)
+	if (!bIsWaveStarted && WavePreparationTime <= CachedGameState->GetSpawnTime())
 	{
+		bIsWaveStarted = true;
 		StartWave();
+	}
+	if (WavePreparationTime == 0)
+	{
+		UWorld* World = GetWorld();
+		if (!IsValid(World))
+		{
+			return;
+		}
+		World->GetTimerManager().ClearTimer(WaveTimer);
+
+		ChangeWave();
 	}
 }
 
 void USpawnManagerSubsystem::StartWave()
 {
-	UWorld* World = GetWorld();
-	if (!IsValid(World))
-	{
-		return;
-	}
-	World->GetTimerManager().ClearTimer(WaveTimer);
+	//UWorld* World = GetWorld();
+	//if (!IsValid(World))
+	//{
+	//	return;
+	//}
+	// World->GetTimerManager().ClearTimer(WaveTimer);
 
 	if (IsValid(CachedGameState))
 	{
@@ -176,7 +195,7 @@ void USpawnManagerSubsystem::StartWave()
 	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), WaveIndex + 1));
 	EnemySpawnHandle.RowName = RowName;
 
-	GetWorld()->GetTimerManager().SetTimer(NextWaveTimer, this, &USpawnManagerSubsystem::ChangeWave, 100.f, false);
+	// GetWorld()->GetTimerManager().SetTimer(NextWaveTimer, this, &USpawnManagerSubsystem::ChangeWave, 100.f, false);
 
 	SpawnEnemies();
 }

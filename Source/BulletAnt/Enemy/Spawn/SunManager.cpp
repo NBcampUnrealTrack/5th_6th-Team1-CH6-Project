@@ -72,9 +72,9 @@ void ASunManager::TryCachingGameState()
 
 void ASunManager::SetSunInitRotator_Implementation(int32 InInitWaveTime)
 {
-    float TotalWaveTime = CachedGameState->GetInitWavePreparationTime() + 100.f;
+    float TotalWaveTime = CachedGameState->GetInitWavePreparationTime();
     RotationPerMSec = 360 * 0.1f / TotalWaveTime;
-    float NightAngle = 360.f * 100.f / TotalWaveTime;
+    float NightAngle = 360.f * CachedGameState->GetSpawnTime() / TotalWaveTime;
 
     float SafeAlpha = FMath::Clamp(NightAngle, 0.001f, 179.9f);
     float SafeTheta = FMath::Clamp(SunTiltAngle, 0.001f, 179.f);
@@ -88,12 +88,12 @@ void ASunManager::SetSunInitRotator_Implementation(int32 InInitWaveTime)
     float W_Rad = FMath::Atan(TanPart * SinPart);
     float W_Deg = FMath::RadiansToDegrees(W_Rad);
 
-    SunRise = FRotator(0, 90 - W_Deg, 0);
+    SunRise = FRotator(0, -(180 - W_Deg), 0);
     Sun->SetActorRotation(SunRise);
 
     FVector AxisY = FVector::RightVector;
     FVector RotationAxisX = FVector::ForwardVector;
-    CustomAxis = AxisY.RotateAngleAxis(-SunTiltAngle, RotationAxisX);
+    CustomAxis = RotationAxisX.RotateAngleAxis(-SunTiltAngle, AxisY);
 }
 
 void ASunManager::RotateSun()

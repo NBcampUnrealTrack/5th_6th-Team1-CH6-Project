@@ -198,6 +198,26 @@ void ABAGameState::SetWavePreparationTime(int32 InTime)
     WavePreparationTime = InTime;
 }
 
+int32 ABAGameState::GetSpawnTime() const
+{
+    return SpawnTime;
+}
+
+void ABAGameState::SetSpawnTime(int32 InTime)
+{
+    SpawnTime = InTime;
+}
+
+int32 ABAGameState::GetDate() const
+{
+    return Date;
+}
+
+void ABAGameState::SetDate(int32 InDate)
+{
+    Date = InDate;
+}
+
 void ABAGameState::OnRep_WavePreparationTime()
 {
     OnWaveTimeChanged.Broadcast();
