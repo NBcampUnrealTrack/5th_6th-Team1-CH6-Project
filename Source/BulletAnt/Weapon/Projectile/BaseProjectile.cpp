@@ -44,7 +44,7 @@ ABaseProjectile::ABaseProjectile()
 	
 }
 
-void ABaseProjectile::InitProjectile(const FVector& Start, const FVector& Direction, const float Radius, float Speed, float Damage,URangedWeaponDataAsset* Data, AActor* InOwner)
+void ABaseProjectile::InitProjectile(const FVector& Start, const FVector& Direction, const float Radius, float Speed, float Damage, URangedWeaponDataAsset* Data, AActor* InOwner)
 {
 	CollisionComponent->SetSphereRadius(Radius);
 
@@ -63,21 +63,23 @@ void ABaseProjectile::InitProjectile(const FVector& Start, const FVector& Direct
 
 void ABaseProjectile::ActivateProjectile()
 {
-	
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);
 
 	ProjectileMovement->Activate();
+	bIsActive = true;
 }
+
 
 void ABaseProjectile::DeactivateProjectile()
 {
 	ProjectileMovement->StopMovementImmediately();
+	ProjectileMovement->Deactivate();
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 
-	//Test
-	Destroy();
+	bIsActive = false;
+	Tracer->Deactivate();
 }
 
 void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)

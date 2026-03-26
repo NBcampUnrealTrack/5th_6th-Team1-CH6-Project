@@ -12,6 +12,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "TimerManager.h"
+#include "Weapon/Projectile/BulletPoolSubsystem.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -115,12 +116,8 @@ void UGA_Fire::FireOnce()
 			RangedData->SpreadDegree
 		);
 
-		ABaseProjectile* Prj = GetWorld()->SpawnActor<ABaseProjectile>(
-			RangedData->ProjectileClass,
-			Start,
-			FireDir.Rotation(),
-			Params
-		);
+		UBulletPoolSubsystem* Pool= SourceActor->GetWorld()->GetGameInstance()->GetSubsystem<UBulletPoolSubsystem>();
+		ABaseProjectile* Prj = Pool->GetProjectile(RangedData->ProjectileClass, SourceActor);
 
 		Prj->InitProjectile(
 			Start,
@@ -131,6 +128,7 @@ void UGA_Fire::FireOnce()
 			RangedData,
 			SourceActor
 		);
+
 		Prj->ActivateProjectile();
 	}
 }

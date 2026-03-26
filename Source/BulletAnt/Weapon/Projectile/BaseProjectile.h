@@ -48,6 +48,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DeactivateProjectile();
 
+	FORCEINLINE bool GetbIsActive() { return bIsActive; };
+
 protected:
 	UFUNCTION()
 	virtual void OnHit(
@@ -68,6 +70,9 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<URangedWeaponDataAsset> CachedData;
+
+	UPROPERTY()
+	bool bIsActive = false;
 
 	
 
