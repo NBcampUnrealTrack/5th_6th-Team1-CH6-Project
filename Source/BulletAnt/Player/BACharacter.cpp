@@ -1842,7 +1842,9 @@ void ABACharacter::ActivateReturnEffect()
 	{
 		EquippedWeapon->SetActorHiddenInGame(true);
 	}
+	SpringArm->SetRelativeLocation(ReturnArmLoaction);
 	SpringArm->TargetArmLength = ReturnArmLength;
+	SpringArm->SocketOffset = ReturnSocketOffset;
 	ReturnEffect->SetVisibility(true);
 	ReturnEffect->Activate();
 }
@@ -1854,7 +1856,9 @@ void ABACharacter::DeactivateReturnEffect()
 	{
 		EquippedWeapon->SetActorHiddenInGame(false);
 	}
-	SpringArm->TargetArmLength = DefaultArmLength;
+	SpringArm->SetRelativeLocation(DefaultSpringArmLocation);
+	SpringArm->TargetArmLength = DefaultSpringArmLength;
+	SpringArm->SocketOffset = DefaultSpringArmSocektOffset;
 	ReturnEffect->SetVisibility(false);
 	ReturnEffect->Deactivate();
 }
