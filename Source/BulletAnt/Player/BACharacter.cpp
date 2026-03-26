@@ -267,7 +267,6 @@ void ABACharacter::Tick(float DeltaTime)
 			HandleReturnMovement(DeltaTime);
 		}
 	}
-
 	float Speed = GetVelocity().Size2D();
 
 	if (HasAuthority())
@@ -329,7 +328,7 @@ void ABACharacter::Tick(float DeltaTime)
 		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
 		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
 	}
-	else if (!bIsAiming)
+	else if (ASC && !bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 0, DeltaTime, TALengthChangeSpeed);
 		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
@@ -1332,12 +1331,13 @@ void ABACharacter::Multicast_StopTurnMontage_Implementation()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && CurrentTurnMontage)
 	{
-		AnimInstance->Montage_Stop(0.f, CurrentTurnMontage);
+		AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
 	}
 	if (MotionWarpingComp)
 	{
 		MotionWarpingComp->DisableAllRootMotionModifiers();
 	}
+	LastBodyYaw = GetActorRotation().Yaw;
 	SetTurnStatus();
 }
 
@@ -1353,12 +1353,13 @@ void ABACharacter::IdleTurning(float DeltaTime)
 	if (ParkourComponent->bIsParkour || GetVelocity().Size2D() > 1.f || GetCharacterMovement()->IsFalling())
 	{
 		LastBodyYaw = GetActorRotation().Yaw;
+		RootYawOffset = 0.f;
 		return;
 	}
-	if (GEngine && (HasAuthority() || IsLocallyControlled())) // 디버그는 내 것만 뜨게
-	{
-		GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
-	}
+	//if (GEngine && (HasAuthority() || IsLocallyControlled()))
+	//{
+		//GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Red, FString::Printf(TEXT("현재 각도: %f"), RootYawOffset));
+	//}
 	RootYawOffset = UKismetMathLibrary::NormalizeAxis(LastBodyYaw - GetActorRotation().Yaw);
 	if (!HasAuthority() && !IsLocallyControlled()) return;
 	if (!bIsTurning)
@@ -1406,7 +1407,6 @@ void ABACharacter::IdleTurning(float DeltaTime)
 					FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
 					FTransform TargetTransform(GoalRot, GetActorLocation());
 					Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
-					LastBodyYaw = GetActorRotation().Yaw;
 				}
 			}
 		}
@@ -1455,7 +1455,6 @@ void ABACharacter::IdleTurning(float DeltaTime)
 				FRotator GoalRot = FRotator(0.f, GetControlRotation().Yaw, 0.f);
 				FTransform TargetTransform(GoalRot, GetActorLocation());
 				Multicast_PlayTurnMontage(CurrentTurnMontage, TargetTransform);
-				LastBodyYaw = GetActorRotation().Yaw;
 			}
 		}
 	}

@@ -302,7 +302,6 @@ public:
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
-
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsADS;
 

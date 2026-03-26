@@ -74,11 +74,12 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	/*FVector AimDir = FRotator(FinalPitch, FinalYaw, 0.f).Vector();
 	FVector LocalAimDir = Rotation.Quaternion().Inverse().RotateVector(AimDir);
 	FRotator DeltaRot = LocalAimDir.Rotation();*/
-	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (ASC && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
-		DeltaRot = CameraTargetOffset();
+		if(bIsAiming|| bIsFiring)
+			DeltaRot = CameraTargetOffset();
 	}
-	if (bIsAiming)
+	if (bIsAiming||bIsFiring)
 	{
 		AOPitch = -1*FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
 		AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, 0.f);
