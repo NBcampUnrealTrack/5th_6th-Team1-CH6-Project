@@ -127,6 +127,20 @@ void UUW_PlayerHUDWidget::SetAutoImage(bool bIsFullAuto)
 	}
 }
 
+void UUW_PlayerHUDWidget::SetCrossHairImage(bool bIsADS)
+{
+	if (bIsADS)
+	{
+		CurrentCrossHair->SetBrushFromTexture(ADSCrossHair);
+		CurrentCrossHair->SetOpacity(1.f);
+	}
+	else
+	{
+		CurrentCrossHair->SetBrushFromTexture(NormalCrossHair);
+		CurrentCrossHair->SetOpacity(1.f);
+	}
+}
+
 void UUW_PlayerHUDWidget::UpdateHealth(float Current, float Max)
 {
 	if (!HealthBar || Max <= 0.f)
