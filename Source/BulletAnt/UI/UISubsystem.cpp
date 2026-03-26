@@ -84,6 +84,19 @@ void UUISubsystem::HideUI(EUIType Type)
     }
 }
 
+void UUISubsystem::CloseUI(EUIType Type)
+{
+    if (TObjectPtr<UUserWidget>* Found = SingleWidgets.Find(Type))
+    {
+        if (IsValid(*Found))
+        {
+            (*Found)->RemoveFromParent();
+        }
+
+        SingleWidgets.Remove(Type);
+    }
+}
+
 void UUISubsystem::ResetAllUI()
 {
     for (auto& Pair : SingleWidgets)

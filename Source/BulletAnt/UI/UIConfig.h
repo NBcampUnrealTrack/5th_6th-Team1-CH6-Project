@@ -11,6 +11,8 @@ enum class EUIType : uint8
 {
     Root,
     Title,
+    RoomList,
+    RoomInfo,
     BuildMenu,
     RespawnBar,
     GroundScanner,

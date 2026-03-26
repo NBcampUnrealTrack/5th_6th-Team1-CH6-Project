@@ -12,6 +12,7 @@ ABaseTurret::ABaseTurret()
 {
 	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(false);
 
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
 	BodyMesh->SetupAttachment(StaticMeshComp);
@@ -311,10 +312,12 @@ void ABaseTurret::UpdateCurrentTarget()
 
 	if (!IsValid(PrevTarget) && IsValid(CurrentTarget))
 	{
+		SetActorTickEnabled(true);
 		StartFireLoop();
 	}
 	else if (IsValid(PrevTarget) && !IsValid(CurrentTarget))
 	{
+		SetActorTickEnabled(false);
 		StopFireLoop();
 	}
 }
