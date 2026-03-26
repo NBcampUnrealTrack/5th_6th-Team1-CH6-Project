@@ -4,6 +4,7 @@
 #include "UI/UW_WaveTimer.h"
 #include "Components/TextBlock.h"
 #include "Framework/BAGameState.h"
+#include "Components/Image.h"
 
 void UUW_WaveTimer::NativeConstruct()
 {
@@ -33,33 +34,23 @@ void UUW_WaveTimer::UpdateTime()
     int32 InitWaveTime = FMath::Max(0, CachedGameState->GetInitWavePreparationTime());
     int32 RemainingTime = FMath::Max(0, CachedGameState->GetWavePreparationTime());
 
-    if (RemainingTime == 0)
+    if (IsValid(DateBlock))
     {
-        TimeBlock->SetText(FText::FromString(TEXT("Monster Approaching")));
-        TimeBlock->SetColorAndOpacity(EndColor);
+        DateBlock->SetText(FText::FromString(FString::Printf(TEXT("Day %d"), CachedGameState->GetDate())));
     }
-    else
-    {
-        TimeBlock->SetText(FText::FromString(FString::Printf(TEXT("Remaining Time : %d"), RemainingTime)));
 
-        float Alpha = (InitWaveTime == 0) ? 1 : FMath::Clamp(static_cast<float>(RemainingTime) / InitWaveTime, 0.0f, 1.0f);
-        SetColor(Alpha);
+    if (IsValid(HandImage))
+    {
+        UpdateClockRotation(InitWaveTime, RemainingTime);
     }
 }
 
-void UUW_WaveTimer::SetColor(float Alpha)
+void UUW_WaveTimer::UpdateClockRotation(const int InitTime, const int CurrentTime)
 {
-    FLinearColor FinalColor;
-    if (Alpha > 0.5f)
-    {
-        Alpha = (Alpha - 0.5f) * 2;
-        FinalColor = FLinearColor::LerpUsingHSV(MidColor, StartColor, Alpha);
-    }
-    else
-    {
-        Alpha = Alpha * 2;
-        FinalColor = FLinearColor::LerpUsingHSV(EndColor, MidColor, Alpha);
-    }
+    float Progress = 1.0f - (static_cast<float>(CurrentTime) / InitTime);
+    Progress = FMath::Clamp(Progress, 0.0f, 1.0f);
 
-    TimeBlock->SetColorAndOpacity(FinalColor);
+    float NewAngle = Progress * 360.f;
+
+    HandImage->SetRenderTransformAngle(NewAngle);
 }
