@@ -74,7 +74,7 @@ void UGA_Fire::ActivateAbility(
 	else 
 	{
 		FireOnce();
-		EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 	}	
 }
 
@@ -89,12 +89,10 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 }
 
 void UGA_Fire::FireOnce()
-{
-	if (!CurrentActorInfo || !CurrentActorInfo->IsNetAuthority()) return;
-
+{	
 	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(CurrentActorInfo->AvatarActor.Get());
 	FVector Dir = IFireStartInterface::Execute_GetFireDirection(CurrentActorInfo->AvatarActor.Get());
-	
+
 	//총알 발사시 발생하는 이펙트 큐
 
 	FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
@@ -103,8 +101,10 @@ void UGA_Fire::FireOnce()
 
 	CachedASC->ExecuteGameplayCue(TAG_GameplayCue_Weapon_Fire, Context);
 
-	ContinuousBullet++;
+	if (!CurrentActorInfo || !CurrentActorInfo->IsNetAuthority()) return;
 
+	ContinuousBullet++;
+	
 	FActorSpawnParameters Params;
 	Params.Owner = SourceActor;
 
