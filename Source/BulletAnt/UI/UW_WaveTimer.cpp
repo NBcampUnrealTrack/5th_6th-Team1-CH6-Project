@@ -52,5 +52,5 @@ void UUW_WaveTimer::UpdateClockRotation(const int InitTime, const int CurrentTim
 
     float NewAngle = Progress * 360.f;
 
-    HandImage->SetRenderTransformAngle(NewAngle);
+    HandImage->SetRenderTransformAngle(-NewAngle);
 }
