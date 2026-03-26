@@ -118,24 +118,24 @@ void ABaseBuilding::BeginPlay()
 
 void ABaseBuilding::Use_Implementation(AActor* User)
 {
-	if (!IsValid(User))
-	{
-		return;
-	}
+	//if (!IsValid(User))
+	//{
+	//	return;
+	//}
 
-	ABACharacter* Character = Cast<ABACharacter>(User);
-	if (!Character)
-	{
-		return;
-	}
+	//ABACharacter* Character = Cast<ABACharacter>(User);
+	//if (!Character)
+	//{
+	//	return;
+	//}
 
-	UBuildManagerComponent* BuildManager = Character->FindComponentByClass<UBuildManagerComponent>();
-	if (!BuildManager)
-	{
-		return;
-	}
+	//UBuildManagerComponent* BuildManager = Character->FindComponentByClass<UBuildManagerComponent>();
+	//if (!BuildManager)
+	//{
+	//	return;
+	//}
 
-	BuildManager->RequestDemolish(this);
+	//BuildManager->RequestDemolish(this);
 }
 
 void ABaseBuilding::GetInteractionOptions_Implementation(AActor* User, TArray<FInteractionOption>& OutOptions) const
