@@ -208,12 +208,9 @@ void ABACharacter::BeginPlay()
 #pragma region InteractionUI
 	if (IsLocallyControlled())
 	{
-		ULocalPlayer* LP = PC->GetLocalPlayer();
-		if (!LP)
-		{
-			return;
-		}
-
+		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+		if (!GetWorld()) return;
+		ULocalPlayer* LP = FPC->GetLocalPlayer();
 		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
 		if (IsValid(UISubsystem))
 		{
@@ -490,7 +487,25 @@ void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
+#pragma region InteractionUI
+	if (IsLocallyControlled())
+	{
+		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+		if (!GetWorld()) return;
+		ULocalPlayer* LP = FPC->GetLocalPlayer();
+		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+		if (IsValid(UISubsystem))
+		{
+			InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
+			if (InteractionWidget)
+			{
+				InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+	}
+
 	StartInteractionTraceTimer();
+#pragma endregion
 }
 
 void ABACharacter::OnRep_PlayerState()
@@ -705,6 +720,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 
 	if (DefaultWeaponClass)
 	{
+		UpdateAmmo(OwnedEquipment[0]);
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
 
@@ -1126,10 +1142,10 @@ void ABACharacter::TryInteractionByKey(const FKey& PressedKey)
 		}
 	}
 
-	if (PressedKey == EKeys::F)
-	{
-		IBAItemInterface::Execute_Use(Target, this);
-	}
+	//if (PressedKey == EKeys::F)
+	//{
+	//	IBAItemInterface::Execute_Use(Target, this);
+	//}
 }
 
 

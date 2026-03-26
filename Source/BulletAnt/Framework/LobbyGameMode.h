@@ -20,4 +20,12 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 
+public:
+	void UpdateSessionParticipants();
+
+protected:
+	void CreateRoom();
+
+protected:
+	FDelegateHandle UpdateParticipantsHandle;
 };

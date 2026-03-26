@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
 THIRD_PARTY_INCLUDES_START
 #include "steam/steam_api.h"
 THIRD_PARTY_INCLUDES_END
@@ -11,6 +12,25 @@ THIRD_PARTY_INCLUDES_END
 class FOnlineSessionSearch;
 class IVoiceChatUser;
 enum class EOnSessionParticipantLeftReason : uint8;
+
+USTRUCT()
+struct FRoomInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 RoomIdx = 0;
+	UPROPERTY()
+	FString RoomName;
+	UPROPERTY()
+	int32 CurrentPlayers = 0;
+	UPROPERTY()
+	int32 MaxPlayers = 0;
+	UPROPERTY()
+	TArray<FString> ParticipantNicknames;
+
+	FOnlineSessionSearchResult SearchResult;
+};
 
 DECLARE_MULTICAST_DELEGATE(FOnSuccessLogin);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnCreateSession, FName, bool);
@@ -35,9 +55,21 @@ public:
 	void CreateSession(const FString& RoomName = TEXT("DefaultRoom"), int32 MaxPlayers = 8);
 	void SearchSessions(int32 MaxSearchCount = 16);
 	void JoinSession(int32 Index);
+	void JoinSession(const FOnlineSessionSearchResult& SearchResult);
 
-	void BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate);
+	// 세션 비참여자가 방 정보에서 참가자 정보를 확인할 수 있게, SessionSettings에서 참여자 닉네임 업데이트
+	void UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames);
+
+	bool GetRoomList(TArray<FRoomInfo>& OutRoomList);
+
+	FDelegateHandle BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate);
 	void UnbindOnSuccessLogin(const UObject* Object);
+
+	FDelegateHandle BindOnCreateSession(const FOnCreateSession::FDelegate& Delegate);
+	void UnbindOnCreateSession(const UObject* Object);
+	void UnbindOnCreateSession(FDelegateHandle Handle);
+	FDelegateHandle BindOnFindSessions(const FOnFindSessions::FDelegate& Delegate);
+	void UnbindOnFindSessions(const UObject* Object);
 
 	// 호스트는 non-seamless travel로 로비레벨 이동 후 세션 생성
 	void ServerTravelToLobby();
@@ -80,6 +112,7 @@ private:
 
 	static const FName SETTING_ROOMNAME;
 	static const FName SETTING_MAXPLAYERS;
+	static const FName SETTING_PARTICIPANTNICKNAMES;
 	static const FName SEARCH_PRESENCE;
 	
 	static const FName NAME_GAMESESSION;

@@ -6,6 +6,7 @@
 #include "UI/UISubsystem.h"
 #include "UI/UW_TitleScreen.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
+#include "UI/UW_RoomList.h"
 
 ATitlePlayerController::ATitlePlayerController()
 {
@@ -55,11 +56,25 @@ void ATitlePlayerController::ShowLoginPanel(bool bInShow)
 
 void ATitlePlayerController::HandleJoinRequested(const FText& InIpPort)
 {
-	UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (IsValid(LP) == false)
+		return;
+
+	UUISubsystem* UIS = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UIS) == false)
+		return;
+
+	UUW_RoomList* RoomListUI = UIS->ShowUI<UUW_RoomList>(EUIType::RoomList);
+	if (IsValid(RoomListUI) == false)
+		return;
+
+	RoomListUI->RefreshList();
+
+	/*UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
 	if (IsValid(MultiplayerSubSystem) == true)
 	{
 		MultiplayerSubSystem->SearchSessions();
-	}
+	}*/
 }
 
 void ATitlePlayerController::HandleOptionRequested()
