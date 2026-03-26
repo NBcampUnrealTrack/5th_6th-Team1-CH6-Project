@@ -26,23 +26,23 @@ void ALobbyGameMode::BeginPlay()
         });
 
     // 테스트용 임시
-    FTimerHandle TravelHandle;
-    GetWorldTimerManager().SetTimer(
-        TravelHandle,
-        [WeakThis]()
-        {
-            if (WeakThis.IsValid() == false)
-                return;
+    //FTimerHandle TravelHandle;
+    //GetWorldTimerManager().SetTimer(
+    //    TravelHandle,
+    //    [WeakThis]()
+    //    {
+    //        if (WeakThis.IsValid() == false)
+    //            return;
 
-            UMultiplayerSubsystem* MultiplayerSubsystem = WeakThis->GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
-            if (IsValid(MultiplayerSubsystem) == true)
-            {
-                // GameMode는 호스트만 가지므로, 별도의 필터링 X
-                MultiplayerSubsystem->ServerTravelToLevel("/Game/SpaceBase/Maps/MainLevel");
-            }
-        },
-        60.0f,
-        false);
+    //        UMultiplayerSubsystem* MultiplayerSubsystem = WeakThis->GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    //        if (IsValid(MultiplayerSubsystem) == true)
+    //        {
+    //            // GameMode는 호스트만 가지므로, 별도의 필터링 X
+    //            MultiplayerSubsystem->ServerTravelToLevel("/Game/SpaceBase/Maps/MainLevel");
+    //        }
+    //    },
+    //    60.0f,
+    //    false);
 }
 
 void ALobbyGameMode::HandleSeamlessTravelPlayer(AController*& C)

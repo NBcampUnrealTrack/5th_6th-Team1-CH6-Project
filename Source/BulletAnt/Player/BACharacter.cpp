@@ -1143,10 +1143,10 @@ void ABACharacter::TryInteractionByKey(const FKey& PressedKey)
 		}
 	}
 
-	if (PressedKey == EKeys::F)
-	{
-		IBAItemInterface::Execute_Use(Target, this);
-	}
+	//if (PressedKey == EKeys::F)
+	//{
+	//	IBAItemInterface::Execute_Use(Target, this);
+	//}
 }
 
 
