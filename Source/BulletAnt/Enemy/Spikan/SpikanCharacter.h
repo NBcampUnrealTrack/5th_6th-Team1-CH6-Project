@@ -14,4 +14,5 @@ class BULLETANT_API ASpikanCharacter : public ABaseEnemyCharacter
 {
 	GENERATED_BODY()
 	
+	ASpikanCharacter();
 };

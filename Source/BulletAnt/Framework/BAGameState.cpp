@@ -39,6 +39,9 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 
     DOREPLIFETIME(ThisClass, GroundInitParams);
     DOREPLIFETIME(ThisClass, WavePreparationTime);
+    DOREPLIFETIME(ThisClass, InitWavePreparationTime);
+    DOREPLIFETIME(ThisClass, SpawnTime);
+    DOREPLIFETIME(ThisClass, Date);
     DOREPLIFETIME(ThisClass, HaveWeaponArray);
 }
 
