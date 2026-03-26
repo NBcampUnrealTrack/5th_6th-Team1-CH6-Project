@@ -44,7 +44,8 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 		if (LocalIncomingDamage > 0.f)
 		{
-			if (TargetASC->HasMatchingGameplayTag(TAG_Team_Player))
+			UAbilitySystemComponent* InstigatorASC = Data.EffectSpec.GetContext().GetOriginalInstigatorAbilitySystemComponent();
+			if (InstigatorASC && InstigatorASC->HasMatchingGameplayTag(TAG_Team_Player) && TargetASC->HasMatchingGameplayTag(TAG_Team_Player))
 			{
 				LocalIncomingDamage = LocalIncomingDamage * 0.05f;
 			}

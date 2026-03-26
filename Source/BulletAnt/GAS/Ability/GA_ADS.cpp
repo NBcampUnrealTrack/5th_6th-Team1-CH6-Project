@@ -10,6 +10,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Weapon/Data/WeaponDataAsset.h"
+#include "UI/UW_PlayerHUDWidget.h"
 
 UGA_ADS::UGA_ADS()
 {
@@ -68,10 +69,13 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		Source->GetCamera()->FieldOfView = 90.f;
 		Source->EndAiming();
 
-		SpringArm->AttachToComponent(Source->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("spine_03"));
+		SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-		SpringArm->TargetArmLength = 223.f;
+		SpringArm->TargetArmLength = Source->CurrentArmLength;
+		SpringArm->SocketOffset = Source->CurrentSocketOffset;
 
+		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
+		HUD->SetCrossHairImage(false);
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
 			if (Data->WeaponType == EWeaponType::Sniper)
@@ -89,23 +93,26 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 void UGA_ADS::StartADS()
 {
 	Source->GetCharacterMovement()->bUseControllerDesiredRotation = false;
-	Source->bUseControllerRotationYaw = true;
+	Source->bUseControllerRotationYaw = true;	
 	if (IsLocallyControlled())
-	{	
-		SavedTargetPoint = ADSLineTrace();
+	{		
 		FVector SightLoc = CachedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
 		FRotator SightRot = CachedWeapon->GetWeaponMesh()->GetSocketRotation("ADS_Sight");
 
 		USpringArmComponent* SpringArm = Source->GetSpringArm();		
 		SpringArm->bUsePawnControlRotation = false;
-		Source->GetCamera()->FieldOfView = 70.f;
+		Source->GetCamera()->FieldOfView = 60.f;
 		Source->StartAiming();
 
 		SavedSpringArmTransform = SpringArm->GetRelativeTransform();
 		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-		SpringArm->TargetArmLength = 0.f;
+		SpringArm->TargetArmLength = 0;
+		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
 
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
+
+		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
+		HUD->SetCrossHairImage(true);
 		
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
@@ -113,7 +120,7 @@ void UGA_ADS::StartADS()
 			{
 				PC->StartADSUI();
 			}
-		}	
+		}
 	}
 
 }
@@ -125,7 +132,7 @@ void UGA_ADS::StopADS(FGameplayEventData Payload)
 
 FVector UGA_ADS::ADSLineTrace()
 {
-	FVector CamLoc;
+	FVector CamLoc = Source->GetCamera()->GetComponentLocation();
 	FRotator CamRot;
 	PC->GetPlayerViewPoint(CamLoc, CamRot);
 	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.f);

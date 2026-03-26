@@ -78,9 +78,8 @@ protected:
 	// 조준 상태
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsAiming;
-
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
-	bool bIsFiring = false;
+	bool bIsFiring;
 
 	// 공중 상태
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
@@ -112,7 +111,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	float GrabLeftHand;
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|TurnInPlace")
-	float RootYawOffset;
+	float LowerYaw;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Parkour")
 	float HandIKAlpha;

@@ -21,6 +21,7 @@ const FName UMultiplayerSubsystem::SETTING_ROOMNAME(TEXT("ROOMNAME"));
 const FName UMultiplayerSubsystem::SETTING_MAXPLAYERS(TEXT("MAXPLAYERS"));
 const FName UMultiplayerSubsystem::SEARCH_PRESENCE(TEXT("SEARCH_PRESENCE"));
 const FName UMultiplayerSubsystem::NAME_GAMESESSION(TEXT("GameSession"));
+const FName UMultiplayerSubsystem::SETTING_PARTICIPANTNICKNAMES(TEXT("ParticipantNicknames"));
 
 void UMultiplayerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -198,25 +199,104 @@ void UMultiplayerSubsystem::SearchSessions(int32 MaxSearchCount)
 
 void UMultiplayerSubsystem::JoinSession(int32 Index)
 {
+	if (SessionSearch->SearchResults.IsValidIndex(Index) == true)
+	{
+		JoinSession(SessionSearch->SearchResults[Index]);
+	}
+}
+
+void UMultiplayerSubsystem::JoinSession(const FOnlineSessionSearchResult& SearchResult)
+{
 	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
 	if (SessionInterface.IsValid() == false || SessionSearch.IsValid() == false)
 		return;
 
-	if (SessionSearch->SearchResults.Num() > Index)
-	{
-		SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UMultiplayerSubsystem::OnJoinSessionComplete);
-		SessionInterface->JoinSession(0, NAME_GAMESESSION, SessionSearch->SearchResults[Index]);		// SessionName은 내가 붙인 방의 별명
-	}
+	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UMultiplayerSubsystem::OnJoinSessionComplete);
+	SessionInterface->JoinSession(0, NAME_GAMESESSION, SearchResult);		// SessionName은 내가 붙인 방의 별명
 }
 
-void UMultiplayerSubsystem::BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate)
+void UMultiplayerSubsystem::UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames)
 {
-	OnSuccessLogin.Add(Delegate);
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	if (SessionInterface.IsValid() == false)
+		return;
+
+	FOnlineSessionSettings* CurrentSettings = SessionInterface->GetSessionSettings(NAME_GAMESESSION);
+	if (CurrentSettings == nullptr)
+		return;
+
+	FString CombinedNames = FString::Join(ParticipantNicknames, TEXT(","));
+	CurrentSettings->Set(SETTING_PARTICIPANTNICKNAMES, CombinedNames, EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionInterface->UpdateSession(NAME_GAMESESSION, *CurrentSettings);
+}
+
+bool UMultiplayerSubsystem::GetRoomList(TArray<FRoomInfo>& OutRoomList)
+{
+	if (SessionSearch.IsValid() == false)
+		return false;
+
+	const auto& SearchResult = SessionSearch->SearchResults;
+	if (SearchResult.IsEmpty() == true)
+		return false;
+
+	for (int32 ResultIdx = 0; ResultIdx < SearchResult.Num(); ++ResultIdx)
+	{
+		FRoomInfo NewInfo;
+		NewInfo.RoomIdx = ResultIdx;
+		const auto& SessionSetting = SearchResult[ResultIdx].Session.SessionSettings;
+		if (SessionSetting.Get(SETTING_ROOMNAME, NewInfo.RoomName) == false)
+		{
+			NewInfo.RoomName = TEXT("이름 없음");
+		}
+		NewInfo.MaxPlayers = SessionSetting.NumPublicConnections;
+		NewInfo.CurrentPlayers = NewInfo.MaxPlayers - SearchResult[ResultIdx].Session.NumOpenPublicConnections;		// NumOpenPublicConnections : 남은 자리 수
+		NewInfo.SearchResult = SearchResult[ResultIdx];
+
+		FString CombinedNames;
+		if (SessionSetting.Settings.Contains(SETTING_PARTICIPANTNICKNAMES) == true)
+		{
+			SessionSetting.Settings.Find(SETTING_PARTICIPANTNICKNAMES)->Data.GetValue(CombinedNames);
+			CombinedNames.ParseIntoArray(NewInfo.ParticipantNicknames, TEXT(","), true);
+		}
+
+		OutRoomList.Add(NewInfo);
+	}
+	return true;
+}
+
+FDelegateHandle UMultiplayerSubsystem::BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate)
+{
+	return OnSuccessLogin.Add(Delegate);
 }
 
 void UMultiplayerSubsystem::UnbindOnSuccessLogin(const UObject* Object)
 {
 	OnSuccessLogin.RemoveAll(Object);
+}
+
+FDelegateHandle UMultiplayerSubsystem::BindOnCreateSession(const FOnCreateSession::FDelegate& Delegate)
+{
+	return OnCreateSession.Add(Delegate);
+}
+
+void UMultiplayerSubsystem::UnbindOnCreateSession(const UObject* Object)
+{
+	OnCreateSession.RemoveAll(Object);
+}
+
+void UMultiplayerSubsystem::UnbindOnCreateSession(FDelegateHandle Handle)
+{
+	OnCreateSession.Remove(Handle);
+}
+
+FDelegateHandle UMultiplayerSubsystem::BindOnFindSessions(const FOnFindSessions::FDelegate& Delegate)
+{
+	return OnFindSessions.Add(Delegate);
+}
+
+void UMultiplayerSubsystem::UnbindOnFindSessions(const UObject* Object)
+{
+	OnFindSessions.RemoveAll(Object);
 }
 
 void UMultiplayerSubsystem::ServerTravelToLobby()
@@ -317,16 +397,6 @@ void UMultiplayerSubsystem::OnCreateSessionComplete(FName SessionName, bool bWas
 void UMultiplayerSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 {
 	OnFindSessions.Broadcast(bWasSuccessful);
-
-	if (bWasSuccessful == false)
-		return;
-	
-	// 임시
-	// UI 추가되면 목록에서 선택해서 참여
-	if (SessionSearch->SearchResults.IsEmpty() == false)
-	{
-		JoinSession(0);
-	}
 }
 
 void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)

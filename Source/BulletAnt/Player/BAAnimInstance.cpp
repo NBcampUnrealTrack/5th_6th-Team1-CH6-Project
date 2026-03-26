@@ -34,6 +34,15 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Super::NativeUpdateAnimation(DeltaSeconds);
 	//캐릭터 없으면 nullptr 반환
 	if (Character == nullptr || Movement == nullptr) return;
+
+	float ShoulderWidth = 30.f;
+	bIsAiming = Character->bIsAiming;
+	bIsTurning = Character->bIsTurning;
+	bIsParkour = ParkourComp->bIsParkour;
+	bIsFalling = Movement->IsFalling();
+	bIsCrouch = Character->bIsCrouched;
+	bIsRunning = Character->bIsRunning;
+	LowerYaw = Character->RootYawOffset;
 	if (!ASC)
 	{
 		ABAPlayerState* PS = Cast<ABAPlayerState>(Character->GetPlayerState());
@@ -61,26 +70,47 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	GroundSpeed = Velocity.Size2D();
 
 	FRotator Rotation = Character->GetActorRotation();
-
+	FRotator DeltaRot = FRotator::ZeroRotator;
 	Direction = (GroundSpeed > 3.f)
 		? UKismetAnimationLibrary::CalculateDirection(Velocity, Rotation)
 		: 0.f;
 
-	float FinalPitch = Character->SyncAimPitch;
-	float FinalYaw = Character->SyncAimYaw;
+	
 
-	FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
-	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
+	
 	/*FVector AimDir = FRotator(FinalPitch, FinalYaw, 0.f).Vector();
 	FVector LocalAimDir = Rotation.Quaternion().Inverse().RotateVector(AimDir);
 	FRotator DeltaRot = LocalAimDir.Rotation();*/
-	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (Character->IsLocallyControlled())
 	{
-		DeltaRot = CameraTargetOffset();
+		if(ASC && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			if (bIsAiming || bIsFiring)
+				DeltaRot = CameraTargetOffset();
+			else
+			{
+				FRotator ControlRot = Character->GetControlRotation();
+				DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, Rotation);
+			}
+		}
+		else
+		{
+			FRotator ControlRot = Character->GetControlRotation();
+			DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, Rotation);
+		}
 	}
-	if (bIsAiming)
+	else
 	{
-		AOPitch = -1*FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
+		float FinalPitch = Character->SyncAimPitch;
+		float FinalYaw = Character->SyncAimYaw;
+
+		FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
+		DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
+	}
+	if (bIsAiming||bIsFiring)
+	{
+		DeltaRot.Pitch *= -1;
+		AOPitch = FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
 		AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, 0.f);
 	}
 	else
@@ -96,19 +126,11 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
 	}
 	FVector RightDir = OwningActor->GetActorRightVector();
-
-	float ShoulderWidth = 30.f;
 	LeftTargetLocation = ParkourComp->WarpTargetLocation - (RightDir * ShoulderWidth);
 	RightTargetLocation = ParkourComp->WarpTargetLocation + (RightDir * ShoulderWidth);
-	bIsAiming = Character->bIsAiming;
-	bIsTurning = Character->bIsTurning;
-	bIsParkour = ParkourComp->bIsParkour;
-	bIsFalling = Movement->IsFalling();
-	bIsCrouch = Character->bIsCrouched;
-	bIsRunning = Character->bIsRunning;
+	
 	VerticalVelocity = Velocity.Z;
 
-	RootYawOffset = Character->RootYawOffset * -1;
 	IsGrabLeftHand(DeltaSeconds);
 	//Test
 	
@@ -151,10 +173,14 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 	}
 	else
 	{
-		FRotator BaseAimRot = Character->GetBaseAimRotation();
-		FRotator ActorRot = Character->GetActorRotation();
+		FVector TargetLocation = Character->ReplicatedAimTarget;
 
-		return UKismetMathLibrary::NormalizedDeltaRotator(BaseAimRot, ActorRot);
+		FVector StartLocation = Character->GetActorLocation() + FVector(0.0f, 0.0f, Character->BaseEyeHeight);
+
+		FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLocation, TargetLocation);
+
+		FRotator ActorRot = Character->GetActorRotation();
+		return UKismetMathLibrary::NormalizedDeltaRotator(LookAtRot, ActorRot);
 	}
 }
 

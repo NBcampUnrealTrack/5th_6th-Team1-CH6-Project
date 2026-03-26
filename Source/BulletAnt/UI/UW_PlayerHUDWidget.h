@@ -32,7 +32,11 @@ public:
 	void ShowAmmoText();
 	void HideAmmoText();
 
+	UFUNCTION()
+	void UpdateAmmo(float Current, float Max);
+
 	void SetAutoImage(bool bIsFullAuto);
+	void SetCrossHairImage(bool bIsADS);
 
 protected:
 	UFUNCTION()
@@ -40,9 +44,6 @@ protected:
 
 	UFUNCTION()
 	void UpdateEXP(float Current, float Max);
-
-	UFUNCTION()
-	void UpdateAmmo(float Current, float Max);
 
 	UFUNCTION()
 	void UpdateLevel(float Current, float OldLevel);
@@ -81,6 +82,15 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* CurrentShotImage;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* CurrentCrossHair;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* NormalCrossHair;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* ADSCrossHair;
 
 	UPROPERTY(meta = (BindWidget))
 	UVerticalBox* WeaponLogBox;
