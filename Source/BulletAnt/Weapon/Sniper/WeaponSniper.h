@@ -6,6 +6,7 @@
 #include "WeaponSniper.generated.h"
 
 class USceneCaptureComponent2D;
+class UTextureRenderTarget2D;
 
 UCLASS()
 class BULLETANT_API AWeaponSniper : public ABaseRangedWeapon
@@ -18,7 +19,13 @@ class BULLETANT_API AWeaponSniper : public ABaseRangedWeapon
 public:
 	AWeaponSniper();
 
+	FORCEINLINE USceneCaptureComponent2D* GetSceneCapture() { return SceneCapture; };
+
 protected:
 
 	virtual void BeginPlay() override;
+
+	UPROPERTY(EditDefaultsOnly)
+	UTextureRenderTarget2D* RT;
+
 };
