@@ -70,27 +70,47 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	GroundSpeed = Velocity.Size2D();
 
 	FRotator Rotation = Character->GetActorRotation();
-
+	FRotator DeltaRot = FRotator::ZeroRotator;
 	Direction = (GroundSpeed > 3.f)
 		? UKismetAnimationLibrary::CalculateDirection(Velocity, Rotation)
 		: 0.f;
 
-	float FinalPitch = Character->SyncAimPitch;
-	float FinalYaw = Character->SyncAimYaw;
+	
 
-	FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
-	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
+	
 	/*FVector AimDir = FRotator(FinalPitch, FinalYaw, 0.f).Vector();
 	FVector LocalAimDir = Rotation.Quaternion().Inverse().RotateVector(AimDir);
 	FRotator DeltaRot = LocalAimDir.Rotation();*/
-	if (ASC && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (Character->IsLocallyControlled())
 	{
-		if(bIsAiming|| bIsFiring)
-			DeltaRot = CameraTargetOffset();
+		if(ASC && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			if (bIsAiming || bIsFiring)
+				DeltaRot = CameraTargetOffset();
+			else
+			{
+				FRotator ControlRot = Character->GetControlRotation();
+				DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, Rotation);
+			}
+		}
+		else
+		{
+			FRotator ControlRot = Character->GetControlRotation();
+			DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, Rotation);
+		}
+	}
+	else
+	{
+		float FinalPitch = Character->SyncAimPitch;
+		float FinalYaw = Character->SyncAimYaw;
+
+		FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
+		DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
 	}
 	if (bIsAiming||bIsFiring)
 	{
-		AOPitch = -1*FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
+		DeltaRot.Pitch *= -1;
+		AOPitch = FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
 		AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, 0.f);
 	}
 	else
