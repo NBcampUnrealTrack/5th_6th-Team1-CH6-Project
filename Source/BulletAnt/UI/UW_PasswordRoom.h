@@ -2,51 +2,42 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "UW_CreateRoom.generated.h"
+#include "Multiplayer/MultiplayerSubsystem.h"
+#include "UW_PasswordRoom.generated.h"
 
-class UTextBlock;
-class UButton;
-class USlider;
 class UEditableTextBox;
 class UCheckBox;
+class UButton;
 
 UCLASS()
-class BULLETANT_API UUW_CreateRoom : public UUserWidget
+class BULLETANT_API UUW_PasswordRoom : public UUserWidget
 {
 	GENERATED_BODY()
-	
+
 public:
 	virtual void NativeConstruct() override;
 
-protected:
-	UFUNCTION()
-	void OnRoomNameChanged(const FText& Text);
-	UFUNCTION()
-	void OnMaxPlayersValueChanged(float Value);
+	void SetRoomInfo(const FRoomInfo& InRoomInfo);
+
 	UFUNCTION()
 	void OnPasswordChanged(const FText& Text);
 	UFUNCTION()
 	void HidePassword(bool bHide);
-
 	UFUNCTION()
-	void CreateRoom();
+	void JoinRoom();
 	UFUNCTION()
 	void Cancel();
-
+	
 protected:
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UEditableTextBox> ETBRoomName;
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<USlider> SliderMaxPlayers;
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> TextMaxPlayers;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UEditableTextBox> ETBPassword;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCheckBox> CheckBoxShowPassword;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> BtnCreate;
+	TObjectPtr<UButton> BtnJoin;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> BtnCancel;
+
+	FRoomInfo RoomInfo;
 };
