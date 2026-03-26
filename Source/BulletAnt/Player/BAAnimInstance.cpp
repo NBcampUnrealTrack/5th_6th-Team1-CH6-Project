@@ -34,6 +34,15 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Super::NativeUpdateAnimation(DeltaSeconds);
 	//캐릭터 없으면 nullptr 반환
 	if (Character == nullptr || Movement == nullptr) return;
+
+	float ShoulderWidth = 30.f;
+	bIsAiming = Character->bIsAiming;
+	bIsTurning = Character->bIsTurning;
+	bIsParkour = ParkourComp->bIsParkour;
+	bIsFalling = Movement->IsFalling();
+	bIsCrouch = Character->bIsCrouched;
+	bIsRunning = Character->bIsRunning;
+	LowerYaw = Character->RootYawOffset;
 	if (!ASC)
 	{
 		ABAPlayerState* PS = Cast<ABAPlayerState>(Character->GetPlayerState());
@@ -97,17 +106,9 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
 	}
 	FVector RightDir = OwningActor->GetActorRightVector();
-
-	float ShoulderWidth = 30.f;
 	LeftTargetLocation = ParkourComp->WarpTargetLocation - (RightDir * ShoulderWidth);
 	RightTargetLocation = ParkourComp->WarpTargetLocation + (RightDir * ShoulderWidth);
-	bIsAiming = Character->bIsAiming;
-	bIsTurning = Character->bIsTurning;
-	bIsParkour = ParkourComp->bIsParkour;
-	bIsFalling = Movement->IsFalling();
-	bIsCrouch = Character->bIsCrouched;
-	bIsRunning = Character->bIsRunning;
-	LowerYaw = Character->RootYawOffset;
+	
 	VerticalVelocity = Velocity.Z;
 
 	IsGrabLeftHand(DeltaSeconds);

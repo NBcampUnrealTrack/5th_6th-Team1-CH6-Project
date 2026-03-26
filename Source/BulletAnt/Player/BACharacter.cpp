@@ -1968,7 +1968,10 @@ void ABACharacter::HidingCharacter(UCameraComponent* CameraComp)
 	{
 		float DistanceToCamera = FVector::Dist(GetActorLocation(), CameraComp->GetComponentLocation());
 
-		float HideThreshold = 150.0f;
+		float HideThreshold = 150.f;
+
+		if (bIsAiming)
+			HideThreshold = 100.f;
 
 		if (DistanceToCamera < HideThreshold)
 		{
