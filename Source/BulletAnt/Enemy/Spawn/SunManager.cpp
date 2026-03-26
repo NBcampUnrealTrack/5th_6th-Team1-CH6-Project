@@ -72,9 +72,9 @@ void ASunManager::TryCachingGameState()
 
 void ASunManager::SetSunInitRotator_Implementation(int32 InInitWaveTime)
 {
-    float TotalWaveTime = CachedGameState->GetInitWavePreparationTime() + 100.f;
+    float TotalWaveTime = CachedGameState->GetInitWavePreparationTime();
     RotationPerMSec = 360 * 0.1f / TotalWaveTime;
-    float NightAngle = 360.f * 100.f / TotalWaveTime;
+    float NightAngle = 360.f * CachedGameState->GetSpawnTime() / TotalWaveTime;
 
     float SafeAlpha = FMath::Clamp(NightAngle, 0.001f, 179.9f);
     float SafeTheta = FMath::Clamp(SunTiltAngle, 0.001f, 179.f);
