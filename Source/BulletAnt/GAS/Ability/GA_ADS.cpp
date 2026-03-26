@@ -75,7 +75,8 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 
 		SpringArm->AttachToComponent(Source->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 		SpringArm->SetRelativeTransform(SavedSpringArmTransform);
-		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
+		SpringArm->TargetArmLength = Source->CurrentArmLength;
+		SpringArm->SocketOffset = Source->CurrentSocketOffset;
 
 		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
 		if (HUD)
@@ -127,7 +128,8 @@ void UGA_ADS::StartADS()
 
 		SavedSpringArmTransform = SpringArm->GetRelativeTransform();
 		SpringArm->AttachToComponent(CachedWeapon->GetWeaponMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "ADS_Sight");
-		SpringArm->SocketOffset = FVector(228.f, 0.f, 0.f);
+		SpringArm->TargetArmLength = 0;
+		SpringArm->SocketOffset = FVector(0.f, 0.f, 0.f);
 
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
 

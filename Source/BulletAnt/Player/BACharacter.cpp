@@ -319,18 +319,24 @@ void ABACharacter::Tick(float DeltaTime)
 		FVector ExactTarget = bHit ? Hit.ImpactPoint : TraceEnd;
 		Server_UpdateAimTarget(ExactTarget);
 	}
-	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if(ASC && !bIsReturning)
 	{
-		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 133, DeltaTime, TALengthChangeSpeed);
-		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
-		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
+		if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			HidingCharacter(CameraComponent);
+			if (bIsAiming)
+			{
+				SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, 125, DeltaTime, TALengthChangeSpeed);
+				CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
+			}
+		}
+		else if (!bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, CurrentArmLength, DeltaTime, TALengthChangeSpeed);
+			CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+		}
 	}
-	else if (ASC && !bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
-	{
-		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 0, DeltaTime, TALengthChangeSpeed);
-		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
-		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
-	}
+		
 	IdleTurning(DeltaTime);
 }
 
@@ -1836,7 +1842,9 @@ void ABACharacter::ActivateReturnEffect()
 	{
 		EquippedWeapon->SetActorHiddenInGame(true);
 	}
+	SpringArm->SetRelativeLocation(ReturnArmLoaction);
 	SpringArm->TargetArmLength = ReturnArmLength;
+	SpringArm->SocketOffset = ReturnSocketOffset;
 	ReturnEffect->SetVisibility(true);
 	ReturnEffect->Activate();
 }
@@ -1848,7 +1856,9 @@ void ABACharacter::DeactivateReturnEffect()
 	{
 		EquippedWeapon->SetActorHiddenInGame(false);
 	}
-	SpringArm->TargetArmLength = DefaultArmLength;
+	SpringArm->SetRelativeLocation(DefaultSpringArmLocation);
+	SpringArm->TargetArmLength = DefaultSpringArmLength;
+	SpringArm->SocketOffset = DefaultSpringArmSocektOffset;
 	ReturnEffect->SetVisibility(false);
 	ReturnEffect->Deactivate();
 }
@@ -1953,5 +1963,37 @@ void ABACharacter::UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass)
 			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
 			NewMaxAmmo
 		);
+	}
+}
+
+void ABACharacter::HidingCharacter(UCameraComponent* CameraComp)
+{
+	if (CameraComp && GetMesh())
+	{
+		float DistanceToCamera = FVector::Dist(GetActorLocation(), CameraComp->GetComponentLocation());
+
+		float HideThreshold = 150.f;
+
+		if (bIsAiming)
+			HideThreshold = 100.f;
+
+		if (DistanceToCamera < HideThreshold)
+		{
+			GetMesh()->SetOwnerNoSee(true);
+
+			if (EquippedWeapon && EquippedWeapon->GetWeaponMesh())
+			{
+				EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(true);
+			}
+		}
+		else
+		{
+			GetMesh()->SetOwnerNoSee(false);
+
+			if (EquippedWeapon && EquippedWeapon->GetWeaponMesh())
+			{
+				EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(false);
+			}
+		}
 	}
 }

@@ -293,17 +293,26 @@ protected:
 
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
+
+
+    UFUNCTION()
+    void HidingCharacter(UCameraComponent* CameraComp);
 public:
     UPROPERTY(Replicated, Transient, BlueprintReadOnly, Category = "Aim")
     FVector_NetQuantize ReplicatedAimTarget;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
-
     //조준상태
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsAiming;
     UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
     bool bIsADS;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    float CurrentArmLength = 180;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+    FVector CurrentSocketOffset = FVector(0.f, 60.f, 10.f);
 
     UPROPERTY(BlueprintReadWrite, Category = "Camera")
     float AimingFieldOfView = 80.f;
@@ -352,7 +361,9 @@ public:
     float RootYawOffset;
     float TurnStartYaw;
 
-    float DefaultArmLength = 233.0f;
+    FVector DefaultSpringArmLocation = FVector(0.0f, 0.0f, 70.0f);
+    float DefaultSpringArmLength = 180.0f;
+    FVector DefaultSpringArmSocektOffset = FVector(0.0f, 60.0f, 10.0f);
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation|Turn")
@@ -632,7 +643,11 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
     float ReturnSpeed = 1500.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
-    float ReturnArmLength = 50.0f;
+    FVector ReturnArmLoaction = FVector(0.0f, 0.0f, 30.0f);
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ReturnArmLength = 150.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    FVector ReturnSocketOffset = FVector::ZeroVector;
     
     float ReturnDistance = 0.0f;
 

@@ -17,6 +17,8 @@
 #include "Building/BuildManagerComponent.h"
 #include "Player/BACharacter.h"
 #include "Building/BuildingRow.h"
+#include <Field/FieldSystemObjects.h>
+#include <Field\FieldSystemTypes.h>
 
 ABaseBuilding::ABaseBuilding()
 {
@@ -753,10 +755,17 @@ void ABaseBuilding::Multicast_PlayDestruction_Implementation(const FVector& Impu
 	// 시뮬 켬
 	DestructionComp->SetSimulatePhysics(true);
 
-	// 임펄스
-	const float Strength = 500.f;
-	FVector Dir = (GetActorLocation() - ImpulseOrigin);
-	Dir = Dir.IsNearlyZero() ? FVector(1, 0, 1).GetSafeNormal() : Dir.GetSafeNormal();
+	// 결합 깨기
+	URadialFalloff* Strain = NewObject<URadialFalloff>(this);
+	Strain->SetRadialFalloff(1000000.f, 0.f, 1.f, 0.f, 300.f, GetActorLocation(), EFieldFalloffType::Field_FallOff_None);
+	DestructionComp->ApplyPhysicsField(true, EGeometryCollectionPhysicsTypeEnum::Chaos_ExternalClusterStrain, nullptr, Strain);
 
-	DestructionComp->AddImpulse(Dir * Strength, NAME_None, true);
+	// 임펄스
+	DestructionComp->AddRadialImpulse(
+		ImpulseOrigin,
+		500.f,        // Radius
+		500.f,       // Strength
+		ERadialImpulseFalloff::RIF_Linear,
+		true
+	);
 }
