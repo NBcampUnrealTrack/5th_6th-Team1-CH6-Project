@@ -88,12 +88,12 @@ void ASunManager::SetSunInitRotator_Implementation(int32 InInitWaveTime)
     float W_Rad = FMath::Atan(TanPart * SinPart);
     float W_Deg = FMath::RadiansToDegrees(W_Rad);
 
-    SunRise = FRotator(0, 90 - W_Deg, 0);
+    SunRise = FRotator(0, -(180 - W_Deg), 0);
     Sun->SetActorRotation(SunRise);
 
     FVector AxisY = FVector::RightVector;
     FVector RotationAxisX = FVector::ForwardVector;
-    CustomAxis = AxisY.RotateAngleAxis(-SunTiltAngle, RotationAxisX);
+    CustomAxis = RotationAxisX.RotateAngleAxis(-SunTiltAngle, AxisY);
 }
 
 void ASunManager::RotateSun()
