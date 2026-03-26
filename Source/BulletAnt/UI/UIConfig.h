@@ -13,6 +13,8 @@ enum class EUIType : uint8
     Title,
     RoomList,
     RoomInfo,
+    CreateRoom,
+    PasswordRoom,
     BuildMenu,
     RespawnBar,
     GroundScanner,

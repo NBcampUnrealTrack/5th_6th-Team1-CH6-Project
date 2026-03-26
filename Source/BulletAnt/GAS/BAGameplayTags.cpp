@@ -17,6 +17,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Dead, "State.Combat.Dead");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Reload, "State.Combat.Reload");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_ADS, "State.Combat.ADS");
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Cooldown, "State.Combat.Cooldown");
+UE_DEFINE_GAMEPLAY_TAG(TAG_State, "State");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Melee, "Weapon.Equipped.Melee");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Equipped_Mining, "Weapon.Equipped.Mining");

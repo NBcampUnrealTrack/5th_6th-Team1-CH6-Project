@@ -16,12 +16,15 @@
 #include "EOSSettings.h"
 #include "steam/steam_api.h"
 #include "Framework/BAGameInstance.h"
+#include "Misc/SecureHash.h"
 
 const FName UMultiplayerSubsystem::SETTING_ROOMNAME(TEXT("ROOMNAME"));
 const FName UMultiplayerSubsystem::SETTING_MAXPLAYERS(TEXT("MAXPLAYERS"));
+const FName UMultiplayerSubsystem::SETTING_PASSWORD(TEXT("PASSWORD"));
+const FName UMultiplayerSubsystem::SETTING_PRIVATE(TEXT("PRIVATE"));
+const FName UMultiplayerSubsystem::SETTING_PARTICIPANTNICKNAMES(TEXT("ParticipantNicknames"));
 const FName UMultiplayerSubsystem::SEARCH_PRESENCE(TEXT("SEARCH_PRESENCE"));
 const FName UMultiplayerSubsystem::NAME_GAMESESSION(TEXT("GameSession"));
-const FName UMultiplayerSubsystem::SETTING_PARTICIPANTNICKNAMES(TEXT("ParticipantNicknames"));
 
 void UMultiplayerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -151,7 +154,7 @@ void UMultiplayerSubsystem::ProcessEOSLogin(FString CredentialType, FString Cred
 	}
 }
 
-void UMultiplayerSubsystem::CreateSession(const FString& RoomName, int32 MaxPlayers)
+void UMultiplayerSubsystem::CreateSession()
 {
 	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
 	if (SessionInterface.IsValid() == false)
@@ -159,19 +162,22 @@ void UMultiplayerSubsystem::CreateSession(const FString& RoomName, int32 MaxPlay
 
 	FOnlineSessionSettings SessionSettings;
 	SessionSettings.bIsLANMatch = false;
-	SessionSettings.NumPublicConnections = MaxPlayers;			// 최대 인원
-	SessionSettings.bAllowJoinInProgress = true;				// 게임 중 난입 허용
-	SessionSettings.bAllowJoinViaPresence = true;				// 에픽 친구 시스템 연동
-	SessionSettings.bShouldAdvertise = true;					// 방 목록에 노출
-	SessionSettings.bUsesPresence = true;						// 유저 상태 표시
+	SessionSettings.NumPublicConnections = HostRoomSetting.MaxPlayers;			// 최대 인원
+	SessionSettings.bAllowJoinInProgress = true;								// 게임 중 난입 허용
+	SessionSettings.bAllowJoinViaPresence = true;								// 에픽 친구 시스템 연동
+	SessionSettings.bShouldAdvertise = true;									// 방 목록에 노출
+	SessionSettings.bUsesPresence = true;										// 유저 상태 표시
 	SessionSettings.bAllowInvites = true;
-	SessionSettings.bUseLobbiesIfAvailable = true;				// 로비 사용
-	SessionSettings.bUseLobbiesVoiceChatIfAvailable = true;		// 보이스챗 가능
+	SessionSettings.bUseLobbiesIfAvailable = true;								// 로비 사용
+	SessionSettings.bUseLobbiesVoiceChatIfAvailable = true;						// 보이스챗 가능
 
 	// 방 목록에서 보여줄 커스텀 세팅들 (이것들 이용해서 필터링 가능)
 	//SessionSettings.Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
-	SessionSettings.Set(SETTING_ROOMNAME, RoomName, EOnlineDataAdvertisementType::ViaOnlineService);
-	SessionSettings.Set(SETTING_MAXPLAYERS, MaxPlayers, EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionSettings.Set(SETTING_ROOMNAME, HostRoomSetting.RoomName, EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionSettings.Set(SETTING_MAXPLAYERS, HostRoomSetting.MaxPlayers, EOnlineDataAdvertisementType::ViaOnlineService);
+	SessionSettings.Set(SETTING_PASSWORD, HashPassword(HostRoomSetting.Password), EOnlineDataAdvertisementType::ViaOnlineService);
+	bool bIsPrivateRoom = HostRoomSetting.bIsPrivate;
+	SessionSettings.Set(SETTING_PRIVATE, bIsPrivateRoom, EOnlineDataAdvertisementType::ViaOnlineService);
 	SessionSettings.Set(SEARCH_PRESENCE, true, EOnlineDataAdvertisementType::ViaOnlineService);
 	// 그냥 true로 보내면 설정 안됨. FString으로 변환해서 보내야 설정됨.
 	//FString StrTrue = TEXT("true");
@@ -246,11 +252,15 @@ bool UMultiplayerSubsystem::GetRoomList(TArray<FRoomInfo>& OutRoomList)
 		const auto& SessionSetting = SearchResult[ResultIdx].Session.SessionSettings;
 		if (SessionSetting.Get(SETTING_ROOMNAME, NewInfo.RoomName) == false)
 		{
-			NewInfo.RoomName = TEXT("이름 없음");
+			NewInfo.RoomName = TEXT("DefaultRoom");
 		}
 		NewInfo.MaxPlayers = SessionSetting.NumPublicConnections;
 		NewInfo.CurrentPlayers = NewInfo.MaxPlayers - SearchResult[ResultIdx].Session.NumOpenPublicConnections;		// NumOpenPublicConnections : 남은 자리 수
-		NewInfo.SearchResult = SearchResult[ResultIdx];
+		bool bIsPrivate = false;
+		SessionSetting.Get(SETTING_PRIVATE, bIsPrivate);
+		NewInfo.bIsPrivate = bIsPrivate;
+		SessionSetting.Get(SETTING_PASSWORD, NewInfo.HashedPassword);
+		NewInfo.SearchResult = MakeShared<FOnlineSessionSearchResult>(SearchResult[ResultIdx]);
 
 		FString CombinedNames;
 		if (SessionSetting.Settings.Contains(SETTING_PARTICIPANTNICKNAMES) == true)
@@ -262,6 +272,14 @@ bool UMultiplayerSubsystem::GetRoomList(TArray<FRoomInfo>& OutRoomList)
 		OutRoomList.Add(NewInfo);
 	}
 	return true;
+}
+
+FString UMultiplayerSubsystem::HashPassword(const FString& Password)
+{
+	if (Password.IsEmpty() == true)
+		return FString();
+
+	return FMD5::HashAnsiString(*Password);
 }
 
 FDelegateHandle UMultiplayerSubsystem::BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate)
@@ -299,7 +317,7 @@ void UMultiplayerSubsystem::UnbindOnFindSessions(const UObject* Object)
 	OnFindSessions.RemoveAll(Object);
 }
 
-void UMultiplayerSubsystem::ServerTravelToLobby()
+void UMultiplayerSubsystem::ServerTravelToLobby(const FRoomSetting& InSetting)
 {
 	UWorld* World = GetWorld();
 	if (IsValid(World) == false || World->GetNetMode() == NM_Client)
@@ -307,6 +325,8 @@ void UMultiplayerSubsystem::ServerTravelToLobby()
 		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel Failed 0"));
 		return;
 	}
+
+	HostRoomSetting = InSetting;
 
 	UBAGameInstance* GameInstance = Cast<UBAGameInstance>(GetGameInstance());
 	UMapConfig* MapConfig = IsValid(GameInstance) == true ? GameInstance->GetMapConfig() : nullptr;

@@ -1316,7 +1316,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
 	DOREPLIFETIME(ABACharacter, EquippedWeapon);
 	DOREPLIFETIME(ABACharacter, OwnedEquipment);
-	DOREPLIFETIME(ABACharacter, bIsReturning);
+	DOREPLIFETIME_CONDITION_NOTIFY(ABACharacter, bIsReturning, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(ABACharacter, ReplicatedAimTarget);
 }
 
@@ -1769,6 +1769,28 @@ void ABACharacter::Multicast_RemovePoints_Implementation(int32 LastIdx)
 
 void ABACharacter::SetIsReturning(bool bInReturning)
 {
+	if (IsValid(ASC) == true)
+	{
+		if (bInReturning == true)
+		{
+			FGameplayTagContainer Container;
+			Container.AddTag(TAG_State);
+			Container.AddTag(TAG_Event_Weapon_Switch);
+			if (ASC->HasAnyMatchingGameplayTags(Container) == true)
+				return;
+
+			Container.RemoveTag(TAG_State_Combat_Dead);
+			ASC->BlockAbilitiesWithTags(Container);
+		}
+		else
+		{
+			FGameplayTagContainer Container;
+			Container.AddTag(TAG_State);
+			Container.AddTag(TAG_Event_Weapon_Switch);
+			ASC->UnBlockAbilitiesWithTags(Container);
+		}
+	}
+
 	bIsReturning = bInReturning;
 	OnRep_IsReturning();
 }
@@ -1821,10 +1843,6 @@ void ABACharacter::StopReturning()
 
 void ABACharacter::Server_StartReturning_Implementation()
 {
-	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	if (IsValid(Movement) == false)
-		return;
-
 	ReturnDistance = PathSpline->GetSplineLength();
 
 	SetIsReturning(true);
