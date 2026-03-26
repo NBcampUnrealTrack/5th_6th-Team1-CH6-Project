@@ -37,6 +37,7 @@ public class BulletAnt : ModuleRules
 
 			// ChaosDestruction
 			"GeometryCollectionEngine",
+            "FieldSystemEngine",
 
 			// UI
 			"UMG",
