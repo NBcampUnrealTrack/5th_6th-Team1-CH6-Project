@@ -43,12 +43,6 @@ protected:
 
 private:
 	UFUNCTION()
-	void OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	
-	UFUNCTION()
-	void OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-	UFUNCTION()
 	void UpdateCurrentTarget();
 
 protected:
@@ -60,9 +54,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
 	TObjectPtr<UTurretDataAsset> TurretData;
-
-	UPROPERTY(VisibleAnywhere, Category = "Turret|Targeting")
-	TObjectPtr<USphereComponent> TargetSearchingSphere;
 
 	UPROPERTY()
 	TArray<TWeakObjectPtr<AActor>> TargetCandidates;

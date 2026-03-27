@@ -19,6 +19,7 @@ ABaseSpitterEnemy::ABaseSpitterEnemy()
 	NiagaraComp->SetRelativeLocation(FVector::ZeroVector);
 	NiagaraComp->SetRelativeRotation(FRotator::ZeroRotator);
 	NiagaraComp->bAutoActivate = false;
+	NiagaraComp->SetCanEverAffectNavigation(false);
 }
 
 void ABaseSpitterEnemy::BeginPlay()

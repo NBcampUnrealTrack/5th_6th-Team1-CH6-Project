@@ -12,7 +12,7 @@ class BULLETANT_API ABaseFlyEnemy : public ABaseEnemyCharacter
 	GENERATED_BODY()
 
 public:
-	virtual void ApplyTribe() override;
+	virtual void OnRep_TribeType() override;
 
 	void SetDiveMode();
 	void UnSetDiveMode();
