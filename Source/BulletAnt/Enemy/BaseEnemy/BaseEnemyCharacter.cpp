@@ -332,12 +332,13 @@ void ABaseEnemyCharacter::SetTribeType(UTribeDataAsset* InTribeType)
 	TribeType = InTribeType;
 }
 
-void ABaseEnemyCharacter::ApplyTribe()
+void ABaseEnemyCharacter::OnRep_TribeType()
 {
-	Multicast_ApplyTribeMaterial();
-	ApplyTribePriority();
+	ApplyTribeMaterial();
 	if (HasAuthority())
 	{
+		ApplyTribePriority();
+
 		if (!ensureMsgf(IsValid(BaseEnemyDataAsset), TEXT("BaseEnemyCharacter ApplyTribe : DataAsset Missing")))
 		{
 			return;
@@ -355,7 +356,7 @@ void ABaseEnemyCharacter::ApplyTribe()
 	}
 }
 
-void ABaseEnemyCharacter::Multicast_ApplyTribeMaterial_Implementation()
+void ABaseEnemyCharacter::ApplyTribeMaterial()
 {
 	if (!ensureMsgf(IsValid(TribeType), TEXT("BaseEnemyCharacter Multicast_ApplyTribeMaterial : TribeDataAsset Missing")))
 	{
