@@ -7,6 +7,7 @@
 #include "Building/TurretDataAsset.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "AbilitySystemComponent.h"
+#include "Engine/OverlapResult.h"
 
 ABaseTurret::ABaseTurret()
 {
@@ -16,15 +17,12 @@ ABaseTurret::ABaseTurret()
 
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
 	BodyMesh->SetupAttachment(StaticMeshComp);
+	BodyMesh->SetCanEverAffectNavigation(false);
 
 	BarrelMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BarrelMesh"));
 	BarrelMesh->SetupAttachment(BodyMesh);
 	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	TargetSearchingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("TargetSearchingSphere"));
-	TargetSearchingSphere->SetupAttachment(BarrelMesh);
-	TargetSearchingSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	TargetSearchingSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BarrelMesh->SetCanEverAffectNavigation(false);
 }
 
 void ABaseTurret::BeginPlay()
@@ -35,25 +33,15 @@ void ABaseTurret::BeginPlay()
 
 	if (HasAuthority() && TurretData)
 	{
-		TargetSearchingSphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnTargetBeginOverlap);
-		TargetSearchingSphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnTargetEndOverlap);
-
-		TargetSearchingSphere->UpdateOverlaps();
-
-		TArray<AActor*> OverlappingActors;
-		TargetSearchingSphere->GetOverlappingActors(OverlappingActors, ABaseEnemyCharacter::StaticClass());
-
-		for (AActor* Enemy : OverlappingActors)
-		{
-			TargetCandidates.AddUnique(Enemy);
-		}
+		const float InitialDelay = FMath::FRandRange(0.f, TurretData->TargetSearchInterval);
 
 		GetWorldTimerManager().SetTimer(
 			TargetSearchTimer,
 			this,
 			&ThisClass::UpdateCurrentTarget,
 			TurretData->TargetSearchInterval,
-			true
+			true,
+			InitialDelay
 		);
 	}
 }
@@ -94,12 +82,6 @@ void ABaseTurret::SetPreviewMode(bool bInPreview)
 	for (int32 i = 0; i < BarrelMaterials; ++i)
 	{
 		BarrelMesh->SetMaterial(i, PreviewMID);
-	}
-
-	if (TargetSearchingSphere)
-	{
-		TargetSearchingSphere->SetGenerateOverlapEvents(false);
-		TargetSearchingSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
 	if(ASC)
@@ -146,14 +128,6 @@ void ABaseTurret::ExecuteAttack()
 
 void ABaseTurret::ApplyTurretData()
 {
-	if (!TurretData || !TargetSearchingSphere)
-	{
-		return;
-	}
-
-	TargetSearchingSphere->SetSphereRadius(TurretData->SearchRadius);
-	TargetSearchingSphere->SetCollisionResponseToChannel(TurretData->EnemyTraceChannel, ECR_Overlap);
-	TargetSearchingSphere->SetCollisionResponseToChannel(ECC_GameTraceChannel12, ECR_Overlap);
 }
 
 void ABaseTurret::UpdateAim(float DeltaSeconds)
@@ -201,14 +175,43 @@ void ABaseTurret::UpdateAim(float DeltaSeconds)
 
 AActor* ABaseTurret::SelectBestTarget() const
 {
+	UWorld* World = GetWorld();
+	if (!World || !TurretData)
+	{
+		return nullptr;
+	}
+
+	TArray<FOverlapResult> Overlaps;
+
+	FCollisionObjectQueryParams ObjectQuery;
+	ObjectQuery.AddObjectTypesToQuery(TurretData->EnemyTraceChannel);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TurretTargetSearch), false);
+	QueryParams.AddIgnoredActor(this);
+
+	const FCollisionShape SphereShape = FCollisionShape::MakeSphere(TurretData->SearchRadius);
+
+	const bool bHit = World->OverlapMultiByObjectType(
+		Overlaps,
+		GetActorLocation(),
+		FQuat::Identity,
+		ObjectQuery,
+		SphereShape,
+		QueryParams
+	);
+
+	if (!bHit)
+	{
+		return nullptr;
+	}
+
 	AActor* BestTarget = nullptr;
 	float BestDistSq = FLT_MAX;
-
 	const FVector MyLoc = GetActorLocation();
 
-	for (const TWeakObjectPtr<AActor>& CandidatePtr : TargetCandidates)
+	for (const FOverlapResult& OverResult : Overlaps)
 	{
-		AActor* Candidate = CandidatePtr.Get();
+		AActor* Candidate = OverResult.GetActor();
 		if (!IsValid(Candidate))
 		{
 			continue;
@@ -272,26 +275,6 @@ void ABaseTurret::HandleAttackTick()
 	ExecuteAttack();
 }
 
-void ABaseTurret::OnTargetBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (!OtherActor || OtherActor == this)
-	{
-		return;
-	}
-
-	TargetCandidates.AddUnique(OtherActor);
-}
-
-void ABaseTurret::OnTargetEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	TargetCandidates.Remove(OtherActor);
-
-	if (CurrentTarget == OtherActor)
-	{
-		CurrentTarget = nullptr;
-	}
-}
-
 void ABaseTurret::UpdateCurrentTarget()
 {
 	if (!HasAuthority() || bDead || !TurretData)
@@ -299,15 +282,19 @@ void ABaseTurret::UpdateCurrentTarget()
 		return;
 	}
 
-	for (int32 i = TargetCandidates.Num() - 1; i >= 0; --i)
+	AActor* PrevTarget = CurrentTarget;
+
+	if (IsValid(CurrentTarget))
 	{
-		if (!IsValid(TargetCandidates[i].Get()))
+		const float DistSq = FVector::DistSquared(GetActorLocation(), CurrentTarget->GetActorLocation());
+		if (DistSq <= FMath::Square(TurretData->SearchRadius))
 		{
-			TargetCandidates.RemoveAt(i);
+			return;
 		}
+
+		CurrentTarget = nullptr;
 	}
 
-	AActor* PrevTarget = CurrentTarget;
 	CurrentTarget = SelectBestTarget();
 
 	if (!IsValid(PrevTarget) && IsValid(CurrentTarget))

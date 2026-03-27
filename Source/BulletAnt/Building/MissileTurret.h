@@ -17,6 +17,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void UpdateAim(float DeltaSeconds) override;
 
 protected:
 	virtual void ExecuteAttack() override;
@@ -31,6 +32,13 @@ private:
 
 	bool PrepareLaunchSolution();
 	void UpdateMissileAim(float DeltaSeconds);
+
+	bool RefreshLaunchSolution();
+	void StartLaunchSolutionTimer();
+	void StopLaunchSolutionTimer();
+	void RefreshLaunchSolutionTick();
+
+	bool IsCurrentTargetStillValid() const;
 
 	float GetCycleDuration() const;
 	float GetFireStepInterval() const;
@@ -68,4 +76,12 @@ private:
 	FVector CachedImpactPoint = FVector::ZeroVector;
 
 	FTimerHandle SequenceTimerHandle;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> CachedSolutionTarget;
+
+	UPROPERTY(Transient)
+	FVector CachedSolutionTargetLocation = FVector::ZeroVector;
+
+	FTimerHandle LaunchSolutionTimerHandle;
 };

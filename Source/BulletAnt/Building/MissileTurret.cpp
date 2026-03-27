@@ -16,12 +16,20 @@ void AMissileTurret::BeginPlay()
 	Super::BeginPlay();
 
 	BuildMissileVisuals();
+
+	if (HasAuthority())
+	{
+		StartLaunchSolutionTimer();
+	}
 }
 
 void AMissileTurret::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+}
 
+void AMissileTurret::UpdateAim(float DeltaSeconds)
+{
 	UpdateMissileAim(DeltaSeconds);
 }
 
@@ -115,7 +123,7 @@ void AMissileTurret::FireSequenceStep()
 
 	CurrentMuzzleIndex = SequenceIndex;
 
-	if (PrepareLaunchSolution())
+	if (RefreshLaunchSolution())
 	{
 		FGameplayTagContainer FireTags;
 		FireTags.AddTag(RangedTurretData->WeaponData->WeaponTag);
@@ -180,18 +188,66 @@ void AMissileTurret::ReloadSequenceStep()
 
 bool AMissileTurret::PrepareLaunchSolution()
 {
+	return RefreshLaunchSolution();
+}
+
+void AMissileTurret::UpdateMissileAim(float DeltaSeconds)
+{
+	if (!CurrentTarget || !BodyMesh || !BarrelMesh)
+	{
+		return;
+	}
+
+	if (!bHasValidLaunchSolution)
+	{
+		return;
+	}
+
+	const FVector ToTarget = CurrentTarget->GetActorLocation() - BodyMesh->GetComponentLocation();
+	if (ToTarget.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator TargetRot = ToTarget.Rotation();
+
+	const float CurrentYaw = BodyMesh->GetComponentRotation().Yaw;
+	const float NewYaw = FMath::FixedTurn(
+		CurrentYaw,
+		TargetRot.Yaw,
+		TurretData ? TurretData->TurnSpeedDegPerSec * DeltaSeconds : 360.f * DeltaSeconds
+	);
+
+	BodyMesh->SetWorldRotation(FRotator(0.f, NewYaw, 0.f));
+
+	const FRotator LaunchWorldRot = CachedLaunchDirection.Rotation();
+	const FRotator CurrentBodyRot = BodyMesh->GetComponentRotation();
+	const FRotator RelativeRot = (LaunchWorldRot - CurrentBodyRot).GetNormalized();
+
+	const float CurrentPitch = BarrelMesh->GetRelativeRotation().Pitch;
+	const float TargetPitch = RelativeRot.Pitch;
+	const float NewPitch = FMath::FixedTurn(
+		CurrentPitch,
+		TargetPitch,
+		TurretData ? TurretData->TurnSpeedDegPerSec * DeltaSeconds : 360.f * DeltaSeconds
+	);
+
+	BarrelMesh->SetRelativeRotation(FRotator(NewPitch, 0.f, 0.f));
+}
+
+bool AMissileTurret::RefreshLaunchSolution()
+{
 	bHasValidLaunchSolution = false;
 
-	if (!CurrentTarget || !RangedTurretData || !RangedTurretData->WeaponData)
+	if (!IsValid(CurrentTarget) || !RangedTurretData || !RangedTurretData->WeaponData || !BarrelMesh)
 	{
 		return false;
 	}
 
-	const FVector Start = BarrelMesh->GetComponentLocation();
+	const FVector Start = GetFireStartLocation_Implementation();
 	const FVector TargetPoint = CurrentTarget->GetActorLocation();
 
 	FVector LaunchVelocity;
-
 	const bool bSuccess = UGameplayStatics::SuggestProjectileVelocity(
 		this,
 		LaunchVelocity,
@@ -211,34 +267,82 @@ bool AMissileTurret::PrepareLaunchSolution()
 
 	CachedLaunchDirection = LaunchVelocity.GetSafeNormal();
 	CachedImpactPoint = TargetPoint;
+	CachedSolutionTarget = CurrentTarget;
+	CachedSolutionTargetLocation = TargetPoint;
 	bHasValidLaunchSolution = true;
 
 	return true;
 }
 
-void AMissileTurret::UpdateMissileAim(float DeltaSeconds)
+void AMissileTurret::StartLaunchSolutionTimer()
 {
-	if (!CurrentTarget || !BodyMesh || !BarrelMesh)
+	if (!HasAuthority())
 	{
 		return;
 	}
 
-	if (!PrepareLaunchSolution())
+	GetWorldTimerManager().SetTimer(
+		LaunchSolutionTimerHandle,
+		this,
+		&AMissileTurret::RefreshLaunchSolutionTick,
+		GetAttackInterval() * 0.9f,
+		true,
+		FMath::FRandRange(0.f, GetAttackInterval() * 0.9f)
+	);
+}
+
+void AMissileTurret::StopLaunchSolutionTimer()
+{
+	if (LaunchSolutionTimerHandle.IsValid())
+	{
+		GetWorldTimerManager().ClearTimer(LaunchSolutionTimerHandle);
+		LaunchSolutionTimerHandle.Invalidate();
+	}
+}
+
+void AMissileTurret::RefreshLaunchSolutionTick()
+{
+	if (!HasAuthority() || bDead)
 	{
 		return;
 	}
 
-	const FVector ToTarget = CurrentTarget->GetActorLocation() - BodyMesh->GetComponentLocation();
-	const FRotator TargetRot = ToTarget.Rotation();
+	if (!IsCurrentTargetStillValid())
+	{
+		bHasValidLaunchSolution = false;
+		CachedSolutionTarget.Reset();
+		return;
+	}
 
-	const FRotator BodyWorldRot(0.f, TargetRot.Yaw, 0.f);
-	BodyMesh->SetWorldRotation(BodyWorldRot);
+	if (!CurrentTarget)
+	{
+		bHasValidLaunchSolution = false;
+		CachedSolutionTarget.Reset();
+		return;
+	}
 
-	const FRotator LaunchWorldRot = CachedLaunchDirection.Rotation();
-	const FRotator CurrentBodyRot = BodyMesh->GetComponentRotation();
-	const FRotator RelativeRot = (LaunchWorldRot - CurrentBodyRot).GetNormalized();
+	const FVector TargetLoc = CurrentTarget->GetActorLocation();
 
-	BarrelMesh->SetRelativeRotation(FRotator(RelativeRot.Pitch, 0.f, 0.f));
+	const bool bTargetChanged = CachedSolutionTarget.Get() != CurrentTarget;
+	const bool bMovedFarEnough =
+		FVector::DistSquared(TargetLoc, CachedSolutionTargetLocation) >
+		FMath::Square(100.f);
+
+	if (bTargetChanged || bMovedFarEnough || !bHasValidLaunchSolution)
+	{
+		RefreshLaunchSolution();
+	}
+}
+
+bool AMissileTurret::IsCurrentTargetStillValid() const
+{
+	if (!IsValid(CurrentTarget) || !TurretData)
+	{
+		return false;
+	}
+
+	const float DistSq = FVector::DistSquared(GetActorLocation(), CurrentTarget->GetActorLocation());
+	return DistSq <= FMath::Square(TurretData->SearchRadius);
 }
 
 void AMissileTurret::BuildMissileVisuals()
