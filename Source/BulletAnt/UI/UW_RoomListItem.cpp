@@ -1,6 +1,7 @@
 ﻿#include "UI/UW_RoomListItem.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
+#include "Components/Image.h"
 #include "UI/UISubsystem.h"
 #include "UI/UW_RoomInfo.h"
 
@@ -18,6 +19,7 @@ void UUW_RoomListItem::SetRoomInfo(const FRoomInfo& InRoomInfo)
 	TextRoomName->SetText(FText::FromString(RoomInfo.RoomName));
 	TextCurrentPlayers->SetText(FText::FromString(FString::FromInt(RoomInfo.CurrentPlayers)));
 	TextMaxPlayers->SetText(FText::FromString(FString::FromInt(RoomInfo.MaxPlayers)));
+	ImgPrivate->SetVisibility(RoomInfo.bIsPrivate == true ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
 
 void UUW_RoomListItem::OpenRoomInfo()

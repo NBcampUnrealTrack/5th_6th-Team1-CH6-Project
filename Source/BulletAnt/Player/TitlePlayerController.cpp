@@ -7,6 +7,7 @@
 #include "UI/UW_TitleScreen.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
 #include "UI/UW_RoomList.h"
+#include "UI/UW_CreateRoom.h"
 
 ATitlePlayerController::ATitlePlayerController()
 {
@@ -79,9 +80,19 @@ void ATitlePlayerController::HandleJoinRequested(const FText& InIpPort)
 
 void ATitlePlayerController::HandleOptionRequested()
 {
-	UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (IsValid(LP) == false)
+		return;
+
+	UUISubsystem* UIS = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UIS) == false)
+		return;
+
+	UUW_CreateRoom* CreateRoomUI = UIS->ShowUI<UUW_CreateRoom>(EUIType::CreateRoom);
+
+	/*UMultiplayerSubsystem* MultiplayerSubSystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
 	if (IsValid(MultiplayerSubSystem) == true)
 	{
 		MultiplayerSubSystem->ServerTravelToLobby();
-	}
+	}*/
 }

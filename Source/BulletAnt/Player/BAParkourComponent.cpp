@@ -147,7 +147,7 @@ bool UBAParkourComponent::DetectWall()
 	WallThickness = 0.0f;
 	WarpTargetLocation = FVector::ZeroVector;
 	WarpTargetRotation = FRotator::ZeroRotator;
-
+	CurrentDepth = 0.0f;
 	WallHitResult.Reset();
 
 	FVector Start = Owner->GetActorLocation();

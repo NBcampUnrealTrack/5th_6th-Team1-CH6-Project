@@ -9,6 +9,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
 #include "BAPlayerController.h"
+#include "Components/SpotLightComponent.h"
 #include "MotionWarpingComponent.h"
 #include "BAAnimInstance.h"
 #include "BAParkourComponent.h"
@@ -74,6 +75,9 @@ ABACharacter::ABACharacter()
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	CameraComponent->bUsePawnControlRotation = false;
 	CameraComponent->SetupAttachment(SpringArm);
+
+	SpotlightComp = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotlightComp"));
+	SpotlightComp->SetupAttachment(RootComponent);
 
 	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
 	MotionWarpingComp->bAutoActivate = true;
@@ -302,17 +306,32 @@ void ABACharacter::Tick(float DeltaTime)
 		FVector ExactTarget = bHit ? Hit.ImpactPoint : TraceEnd;
 		Server_UpdateAimTarget(ExactTarget);
 	}
-	if (ASC && bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if(ASC && !bIsReturning)
 	{
-		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 133, DeltaTime, TALengthChangeSpeed);
-		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
-		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
+		if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			HidingCharacter(CameraComponent);
+			if (bIsAiming)
+			{
+				SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, 125, DeltaTime, TALengthChangeSpeed);
+				CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
+			}
+		}
+		else if (!bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, CurrentArmLength, DeltaTime, TALengthChangeSpeed);
+			CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+		}
 	}
-	else if (ASC && !bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+	if (SpotlightComp && Controller)
 	{
-		float ChangeLength = FMath::FInterpTo(SpringArm->SocketOffset.X, 0, DeltaTime, TALengthChangeSpeed);
-		SpringArm->SocketOffset = FVector(ChangeLength, 0.f, 0.f);
-		CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+		FRotator TargetRot = GetControlRotation();
+
+		FRotator CurrentRot = SpotlightComp->GetComponentRotation();
+
+		FRotator SmoothRot = FMath::RInterpTo(CurrentRot, TargetRot + FRotator(0.f, 5.f, 0.f), DeltaTime, 30.0f);
+
+		SpotlightComp->SetWorldRotation(SmoothRot);
 	}
 	IdleTurning(DeltaTime);
 }
@@ -1281,7 +1300,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, SyncAimPitch);
 	DOREPLIFETIME(ABACharacter, EquippedWeapon);
 	DOREPLIFETIME(ABACharacter, OwnedEquipment);
-	DOREPLIFETIME(ABACharacter, bIsReturning);
+	DOREPLIFETIME_CONDITION_NOTIFY(ABACharacter, bIsReturning, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(ABACharacter, ReplicatedAimTarget);
 }
 
@@ -1734,6 +1753,28 @@ void ABACharacter::Multicast_RemovePoints_Implementation(int32 LastIdx)
 
 void ABACharacter::SetIsReturning(bool bInReturning)
 {
+	if (IsValid(ASC) == true)
+	{
+		if (bInReturning == true)
+		{
+			FGameplayTagContainer Container;
+			Container.AddTag(TAG_State);
+			Container.AddTag(TAG_Event_Weapon_Switch);
+			if (ASC->HasAnyMatchingGameplayTags(Container) == true)
+				return;
+
+			Container.RemoveTag(TAG_State_Combat_Dead);
+			ASC->BlockAbilitiesWithTags(Container);
+		}
+		else
+		{
+			FGameplayTagContainer Container;
+			Container.AddTag(TAG_State);
+			Container.AddTag(TAG_Event_Weapon_Switch);
+			ASC->UnBlockAbilitiesWithTags(Container);
+		}
+	}
+
 	bIsReturning = bInReturning;
 	OnRep_IsReturning();
 }
@@ -1786,10 +1827,6 @@ void ABACharacter::StopReturning()
 
 void ABACharacter::Server_StartReturning_Implementation()
 {
-	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	if (IsValid(Movement) == false)
-		return;
-
 	ReturnDistance = PathSpline->GetSplineLength();
 
 	SetIsReturning(true);
@@ -1802,24 +1839,42 @@ void ABACharacter::Server_StopReturning_Implementation()
 
 void ABACharacter::ActivateReturnEffect()
 {
-	GetMesh()->SetVisibility(false);
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	if (IsValid(CharacterMesh) == true)
+	{
+		CharacterMesh->SetVisibility(false);
+		CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CharacterMesh->SetActive(false);
+		CharacterMesh->SetComponentTickEnabled(false);
+	}
 	if (IsValid(EquippedWeapon) == true)
 	{
 		EquippedWeapon->SetActorHiddenInGame(true);
 	}
+	SpringArm->SetRelativeLocation(ReturnArmLoaction);
 	SpringArm->TargetArmLength = ReturnArmLength;
+	SpringArm->SocketOffset = ReturnSocketOffset;
 	ReturnEffect->SetVisibility(true);
 	ReturnEffect->Activate();
 }
 
 void ABACharacter::DeactivateReturnEffect()
 {
-	GetMesh()->SetVisibility(true);
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	if (IsValid(CharacterMesh) == true)
+	{
+		CharacterMesh->SetVisibility(true);
+		CharacterMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CharacterMesh->SetActive(true);
+		CharacterMesh->SetComponentTickEnabled(true);
+	}
 	if (IsValid(EquippedWeapon) == true)
 	{
 		EquippedWeapon->SetActorHiddenInGame(false);
 	}
-	SpringArm->TargetArmLength = DefaultArmLength;
+	SpringArm->SetRelativeLocation(DefaultSpringArmLocation);
+	SpringArm->TargetArmLength = DefaultSpringArmLength;
+	SpringArm->SocketOffset = DefaultSpringArmSocektOffset;
 	ReturnEffect->SetVisibility(false);
 	ReturnEffect->Deactivate();
 }
@@ -1924,5 +1979,55 @@ void ABACharacter::UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass)
 			UAmmoAttributeSet::GetCurrentAmmoAttribute(),
 			NewMaxAmmo
 		);
+	}
+}
+
+FVector ABACharacter::LineTraceTarget(FCollisionQueryParams Params)
+{
+	if (!GetController()) return GetActorLocation() + (GetActorForwardVector() * 1000.f);
+
+	FVector CamLoc;
+	FRotator CamRot;
+	GetController()->GetPlayerViewPoint(CamLoc, CamRot);
+
+	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.0f);
+
+	FHitResult Hit;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+
+	return bHit ? Hit.ImpactPoint : TraceEnd;
+}
+
+void ABACharacter::HidingCharacter(UCameraComponent* CameraComp)
+{
+	if (CameraComp && GetMesh())
+	{
+		float DistanceToCamera = FVector::Dist(GetActorLocation(), CameraComp->GetComponentLocation());
+
+		float HideThreshold = 150.f;
+
+		if (bIsAiming)
+			HideThreshold = 100.f;
+
+		if (DistanceToCamera < HideThreshold)
+		{
+			GetMesh()->SetOwnerNoSee(true);
+
+			if (EquippedWeapon && EquippedWeapon->GetWeaponMesh())
+			{
+				EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(true);
+			}
+		}
+		else
+		{
+			GetMesh()->SetOwnerNoSee(false);
+
+			if (EquippedWeapon && EquippedWeapon->GetWeaponMesh())
+			{
+				EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(false);
+			}
+		}
 	}
 }

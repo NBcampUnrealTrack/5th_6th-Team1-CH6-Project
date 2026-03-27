@@ -27,15 +27,18 @@ struct FVoxelGroundChunkData
 
 	UPROPERTY()
 	EChunkState ChunkState = EChunkState::Ground;
-	UPROPERTY()
-	TArray<uint8> DensityValues;						// 200 초과: 기반암
-	UPROPERTY()
-	TArray<EVoxelType> VoxelTypes;
+
+	TSharedRef<TArray<uint8>> DensityValues{};
+	TSharedRef<TArray<EVoxelType>> VoxelTypes{};
+
 	UPROPERTY()
 	int32 LODLevel = 0;									// 0이 가장 정밀한 LOD
 
 	UPROPERTY()
 	int32 GroundVoxelCount = 0;
+
+	FVoxelGroundChunkData()
+		: DensityValues(MakeShared<TArray<uint8>>()), VoxelTypes(MakeShared<TArray<EVoxelType>>()) {}
 };
 
 // 정점 Density 변경 후 반환할 데이터

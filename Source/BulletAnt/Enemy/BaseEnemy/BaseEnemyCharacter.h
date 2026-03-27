@@ -175,10 +175,10 @@ public:
 
 	void SetTribeType(UTribeDataAsset* InTribeType);
 
-	virtual void ApplyTribe();
+	UFUNCTION()
+	virtual void OnRep_TribeType();
 
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_ApplyTribeMaterial();
+	void ApplyTribeMaterial();
 
 	void ApplyTribePriority();
 
@@ -194,7 +194,7 @@ public:
 
 protected:
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "Config")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_TribeType, Category = "Config")
 	TObjectPtr<UTribeDataAsset> TribeType;
 
 #pragma endregion

@@ -12,10 +12,9 @@
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GameplayEffect.h"
 
-void ABaseFlyEnemy::ApplyTribe()
+void ABaseFlyEnemy::OnRep_TribeType()
 {
-	Multicast_ApplyTribeMaterial();
-	// 	ApplyTribePriority();
+	ApplyTribeMaterial();
 
 	if (HasAuthority())
 	{

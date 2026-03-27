@@ -57,9 +57,10 @@ protected:
 	UPROPERTY()
 	TObjectPtr<ABAGameState> CachedGameState;
 
+	bool bIsWaveStarted = false;
+
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
-	FTimerHandle NextWaveTimer;
 
 public:
 	FOnInitWaveTimeChanged OnInitWaveTimeChanged;

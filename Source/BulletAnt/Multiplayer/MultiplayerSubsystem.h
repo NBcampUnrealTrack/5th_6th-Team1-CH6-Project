@@ -14,6 +14,21 @@ class IVoiceChatUser;
 enum class EOnSessionParticipantLeftReason : uint8;
 
 USTRUCT()
+struct FRoomSetting
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FString RoomName = TEXT("DefaultRoom");
+	UPROPERTY()
+	int32 MaxPlayers = 1;
+	UPROPERTY()
+	FString Password;
+	UPROPERTY()
+	uint8 bIsPrivate : 1 = false;
+};
+
+USTRUCT()
 struct FRoomInfo
 {
 	GENERATED_BODY()
@@ -27,9 +42,13 @@ struct FRoomInfo
 	UPROPERTY()
 	int32 MaxPlayers = 0;
 	UPROPERTY()
+	uint8 bIsPrivate : 1 = false;
+	UPROPERTY()
+	FString HashedPassword;
+	UPROPERTY()
 	TArray<FString> ParticipantNicknames;
 
-	FOnlineSessionSearchResult SearchResult;
+	TSharedPtr<FOnlineSessionSearchResult> SearchResult;
 };
 
 DECLARE_MULTICAST_DELEGATE(FOnSuccessLogin);
@@ -52,7 +71,7 @@ public:
 
 	void ProcessEOSLogin(FString CredentialType, FString CredentialId, FString AuthToken);
 
-	void CreateSession(const FString& RoomName = TEXT("DefaultRoom"), int32 MaxPlayers = 8);
+	void CreateSession();
 	void SearchSessions(int32 MaxSearchCount = 16);
 	void JoinSession(int32 Index);
 	void JoinSession(const FOnlineSessionSearchResult& SearchResult);
@@ -61,6 +80,7 @@ public:
 	void UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames);
 
 	bool GetRoomList(TArray<FRoomInfo>& OutRoomList);
+	FString HashPassword(const FString& Password);
 
 	FDelegateHandle BindOnSuccessLogin(const FOnSuccessLogin::FDelegate& Delegate);
 	void UnbindOnSuccessLogin(const UObject* Object);
@@ -72,7 +92,7 @@ public:
 	void UnbindOnFindSessions(const UObject* Object);
 
 	// 호스트는 non-seamless travel로 로비레벨 이동 후 세션 생성
-	void ServerTravelToLobby();
+	void ServerTravelToLobby(const FRoomSetting& InSetting);
 	// 로비 모집 종료 후에는 seamless travel로 함께 이동
 	void ServerTravelToLevel(const FString& LevelPath);
 	void ClientTravel(FName SessionName);
@@ -100,6 +120,8 @@ private:
 	FOnFindSessions OnFindSessions;
 	FOnJoinSession OnJoinSession;
 
+	FRoomSetting HostRoomSetting;
+
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 
 	class IVoiceChat* VoiceChat = nullptr;
@@ -112,6 +134,8 @@ private:
 
 	static const FName SETTING_ROOMNAME;
 	static const FName SETTING_MAXPLAYERS;
+	static const FName SETTING_PASSWORD;
+	static const FName SETTING_PRIVATE;
 	static const FName SETTING_PARTICIPANTNICKNAMES;
 	static const FName SEARCH_PRESENCE;
 	
