@@ -205,23 +205,6 @@ void ABACharacter::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 	PC = Cast<ABAPlayerController>(GetController());
 
-#pragma region InteractionUI
-	if (IsLocallyControlled())
-	{
-		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
-		if (!GetWorld()) return;
-		ULocalPlayer* LP = FPC->GetLocalPlayer();
-		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-		if (IsValid(UISubsystem))
-		{
-			InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
-			if (InteractionWidget)
-			{
-				InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
-			}
-		}
-	}
-#pragma endregion
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -493,25 +476,7 @@ void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
-#pragma region InteractionUI
-	if (IsLocallyControlled())
-	{
-		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
-		if (!GetWorld()) return;
-		ULocalPlayer* LP = FPC->GetLocalPlayer();
-		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-		if (IsValid(UISubsystem))
-		{
-			InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
-			if (InteractionWidget)
-			{
-				InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
-			}
-		}
-	}
-
 	StartInteractionTraceTimer();
-#pragma endregion
 }
 
 void ABACharacter::OnRep_PlayerState()
@@ -730,7 +695,9 @@ void ABACharacter::PossessedBy(AController* NewController)
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
 
+#pragma region InteractionUI
 	StartInteractionTraceTimer();
+#pragma endregion
 }
 
 
@@ -979,16 +946,21 @@ void ABACharacter::SetCurrentInteractActor(AActor* NewActor)
 
 void ABACharacter::UpdateInteractionUI()
 {
-	if (!InteractionWidget)
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	if (!GetWorld()) return;
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (!IsValid(UISubsystem))
 	{
 		return;
 	}
 
+	InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
 	AActor* Target = CurrentInteractActor.Get();
 
 	if (!Target)
 	{
-		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+		UISubsystem->HideUI(EUIType::Interaction);
 		InteractionWidget->ClearInteraction();
 		return;
 	}
@@ -998,11 +970,10 @@ void ABACharacter::UpdateInteractionUI()
 
 	if (Options.Num() == 0)
 	{
-		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+		UISubsystem->HideUI(EUIType::Interaction);
 		return;
 	}
 
-	InteractionWidget->SetVisibility(ESlateVisibility::Visible);
 	InteractionWidget->SetInteractionOptions(Options);
 }
 
