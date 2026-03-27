@@ -9,6 +9,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Engine/World.h"
 #include "BAPlayerController.h"
+#include "Components/SpotLightComponent.h"
 #include "MotionWarpingComponent.h"
 #include "BAAnimInstance.h"
 #include "BAParkourComponent.h"
@@ -74,6 +75,9 @@ ABACharacter::ABACharacter()
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	CameraComponent->bUsePawnControlRotation = false;
 	CameraComponent->SetupAttachment(SpringArm);
+
+	SpotlightComp = CreateDefaultSubobject<USpotLightComponent>(TEXT("SpotlightComp"));
+	SpotlightComp->SetupAttachment(RootComponent);
 
 	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
 	MotionWarpingComp->bAutoActivate = true;
@@ -205,23 +209,6 @@ void ABACharacter::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 	PC = Cast<ABAPlayerController>(GetController());
 
-#pragma region InteractionUI
-	if (IsLocallyControlled())
-	{
-		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
-		if (!GetWorld()) return;
-		ULocalPlayer* LP = FPC->GetLocalPlayer();
-		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-		if (IsValid(UISubsystem))
-		{
-			InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
-			if (InteractionWidget)
-			{
-				InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
-			}
-		}
-	}
-#pragma endregion
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -336,7 +323,16 @@ void ABACharacter::Tick(float DeltaTime)
 			CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
 		}
 	}
-		
+	if (SpotlightComp && Controller)
+	{
+		FRotator TargetRot = GetControlRotation();
+
+		FRotator CurrentRot = SpotlightComp->GetComponentRotation();
+
+		FRotator SmoothRot = FMath::RInterpTo(CurrentRot, TargetRot + FRotator(0.f, 5.f, 0.f), DeltaTime, 30.0f);
+
+		SpotlightComp->SetWorldRotation(SmoothRot);
+	}
 	IdleTurning(DeltaTime);
 }
 
@@ -493,25 +489,7 @@ void ABACharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
 
-#pragma region InteractionUI
-	if (IsLocallyControlled())
-	{
-		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
-		if (!GetWorld()) return;
-		ULocalPlayer* LP = FPC->GetLocalPlayer();
-		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
-		if (IsValid(UISubsystem))
-		{
-			InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
-			if (InteractionWidget)
-			{
-				InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
-			}
-		}
-	}
-
 	StartInteractionTraceTimer();
-#pragma endregion
 }
 
 void ABACharacter::OnRep_PlayerState()
@@ -730,7 +708,9 @@ void ABACharacter::PossessedBy(AController* NewController)
 		Server_EquipWeapon(DefaultWeaponClass);
 	}
 
+#pragma region InteractionUI
 	StartInteractionTraceTimer();
+#pragma endregion
 }
 
 
@@ -979,16 +959,21 @@ void ABACharacter::SetCurrentInteractActor(AActor* NewActor)
 
 void ABACharacter::UpdateInteractionUI()
 {
-	if (!InteractionWidget)
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	if (!GetWorld()) return;
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (!IsValid(UISubsystem))
 	{
 		return;
 	}
 
+	InteractionWidget = UISubsystem->ShowUI<UUW_Interaction>(EUIType::Interaction);
 	AActor* Target = CurrentInteractActor.Get();
 
 	if (!Target)
 	{
-		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+		UISubsystem->HideUI(EUIType::Interaction);
 		InteractionWidget->ClearInteraction();
 		return;
 	}
@@ -998,11 +983,10 @@ void ABACharacter::UpdateInteractionUI()
 
 	if (Options.Num() == 0)
 	{
-		InteractionWidget->SetVisibility(ESlateVisibility::Collapsed);
+		UISubsystem->HideUI(EUIType::Interaction);
 		return;
 	}
 
-	InteractionWidget->SetVisibility(ESlateVisibility::Visible);
 	InteractionWidget->SetInteractionOptions(Options);
 }
 
@@ -1982,6 +1966,24 @@ void ABACharacter::UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass)
 			NewMaxAmmo
 		);
 	}
+}
+
+FVector ABACharacter::LineTraceTarget(FCollisionQueryParams Params)
+{
+	if (!GetController()) return GetActorLocation() + (GetActorForwardVector() * 1000.f);
+
+	FVector CamLoc;
+	FRotator CamRot;
+	GetController()->GetPlayerViewPoint(CamLoc, CamRot);
+
+	FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.0f);
+
+	FHitResult Hit;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+
+	return bHit ? Hit.ImpactPoint : TraceEnd;
 }
 
 void ABACharacter::HidingCharacter(UCameraComponent* CameraComp)
