@@ -893,6 +893,11 @@ void ABACharacter::OnLevelChangedCallback(const FOnAttributeChangeData& Data)
 	}
 }
 
+void ABACharacter::OnDropCallback()
+{
+	OnDropDelegate.Broadcast(this);
+}
+
 void ABACharacter::SetRecoil(float InPitch, float InYaw)
 {
 	if (!IsValid(this)) return;

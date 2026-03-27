@@ -6,11 +6,18 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "UI/UISubsystem.h"
 #include "UI/UW_Scope.h"
+#include "Player/BACharacter.h"
 
 AWeaponSniper::AWeaponSniper()
 {
 	SceneCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture"));
 	SceneCapture->SetupAttachment(WeaponMesh, "ADS_Sight");
+}
+
+void AWeaponSniper::SceneCaptureHideArrowMesh(ABACharacter* Player)
+{
+	if (!IsValid(Player)) return;
+	SceneCapture->HideComponent(Player->GetArrowMesh());
 }
 
 void AWeaponSniper::BeginPlay()
@@ -24,9 +31,11 @@ void AWeaponSniper::BeginPlay()
 		{
 			const TArray<TWeakObjectPtr<ABACharacter>> CharacterArray = GS->GetActiveCharacters();
 
-			for (auto Player : CharacterArray)
+			for (const auto& Player : CharacterArray)
 			{
-				SceneCapture->HideComponent(Player->GetArrowMesh());
+				if (!Player.IsValid()) continue;	
+				SceneCaptureHideArrowMesh(Player.Get());
+				Player->OnDropDelegate.AddDynamic(this, &AWeaponSniper::SceneCaptureHideArrowMesh);
 			}
 		}
 	}

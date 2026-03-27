@@ -7,6 +7,7 @@
 
 class USceneCaptureComponent2D;
 class UTextureRenderTarget2D;
+class ABACharacter;
 
 UCLASS()
 class BULLETANT_API AWeaponSniper : public ABaseRangedWeapon
@@ -23,6 +24,8 @@ public:
 
 protected:
 
+	UFUNCTION()
+	void SceneCaptureHideArrowMesh(ABACharacter* Player);
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditDefaultsOnly)

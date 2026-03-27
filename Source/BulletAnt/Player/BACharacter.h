@@ -16,7 +16,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthAttributeChangedDelegate, 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChangedDelegate, float, CurrentAmmoValue, float, MaxAmmoValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEXPChangedDelegate, float, CurrentEXPValue, float, MaxEXPValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLevelChangedDelegate, float, CurrentLevel, float, OldLevel);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDropDelegate, ABACharacter*, Player);
 
 class UCapsuleComponent;
 class USpringArmComponent;
@@ -418,6 +418,9 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
     FOnLevelChangedDelegate OnLevelChanged;
 
+    UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+    FOnDropDelegate OnDropDelegate;
+
     virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
     void ShowAmmo();
@@ -427,6 +430,8 @@ public:
     void LevelUp();
 
     void UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass);
+
+    void OnDropCallback();
 
 protected:
     void OnHealthChangedCallback(const FOnAttributeChangeData& Data) const;

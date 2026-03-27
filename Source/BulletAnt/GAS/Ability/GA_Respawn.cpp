@@ -115,6 +115,7 @@ void UGA_Respawn::HandleRespawn()
 
 			Source->SetActorHiddenInGame(true);
 			Source->EquippedWeapon->SetActorHiddenInGame(true);
+			Source->OnDropCallback();
 			
 			const UHealthAttributeSet* HealthSet = ASC->GetSet<UHealthAttributeSet>();
 
