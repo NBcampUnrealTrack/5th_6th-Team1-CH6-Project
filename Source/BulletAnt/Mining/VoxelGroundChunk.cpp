@@ -14,11 +14,11 @@ void UVoxelGroundChunk::InitializeChunk(int32 InGridSize, float InVoxelSize, uin
 	IsoLevel = InIsoLevel;
 }
 
-void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, const TArray<uint8>& DensityValues, const TArray<EVoxelType> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel)
+void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* VoxelGround, TSharedRef<const TArray<uint8>> DensityValues, TSharedRef<const TArray<EVoxelType>> VoxelTypes, const FNeighborLOD& NeighborLOD, int32 LODLevel)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(CalculateMeshDataAsync);
 
-	if (DensityValues.IsEmpty() == true)
+	if (DensityValues->IsEmpty() == true)
 		return;
 
 	if (LODLevel >= 0)
@@ -26,8 +26,6 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 		CurrentLODLevel = LODLevel;
 	}
 
-	TArray<uint8> LocalDensity = DensityValues;
-	TArray<EVoxelType> LocalVoxelTypes = VoxelTypes;
 	TWeakObjectPtr<UVoxelGroundChunk> WeakThis(this);
 	TWeakObjectPtr<AVoxelGround> WeakGround(VoxelGround);
 
@@ -40,7 +38,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 	const int32 LocalChunkIdx = ChunkIdxV;
 
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
-		[UpdateID, LocalChunkIdx, WeakThis, WeakGround, LocalDensity = MoveTemp(LocalDensity), LocalVoxelTypes = MoveTemp(LocalVoxelTypes), NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
+		[UpdateID, LocalChunkIdx, WeakThis, WeakGround, DensityValues, VoxelTypes, NeighborLOD, LocalLODLevel, LocalVoxelSize, LocalGridSize, LocalIsoLevel]()
 		{
 			FChunkMeshData MeshData;
 			TMap<uint64, int32> VertexCache;
@@ -58,7 +56,7 @@ void UVoxelGroundChunk::CalculateMeshDataAsync(int32 UpdateID, AVoxelGround* Vox
 				}
 			}
 
-			FVoxelGenerationContext Context(LocalDensity, LocalVoxelTypes, LocalLODLevel, Step, LocalVoxelSize, LocalGridSize, LocalIsoLevel, NeighborMask, MeshData, VertexCache);
+			FVoxelGenerationContext Context(DensityValues, VoxelTypes, LocalLODLevel, Step, LocalVoxelSize, LocalGridSize, LocalIsoLevel, NeighborMask, MeshData, VertexCache);
 
 			auto CallGenerateTransition = [&](int32 X, int32 Y, int32 Z, int32 FaceIdx)
 				{
@@ -171,8 +169,8 @@ void UVoxelGroundChunk::GenerateRegularCell(int32 X, int32 Y, int32 Z, const FVo
 		FIntVector Corner(X + CornerTable[Idx][0] * Context.Step, Y + CornerTable[Idx][1] * Context.Step, Z + CornerTable[Idx][2] * Context.Step);
 		FVector LocalPos = FVector(Corner.X, Corner.Y, Corner.Z) * Context.VoxelSize;
 		int32 PointIdx = GetIndex(Corner.X, Corner.Y, Corner.Z, Context.GridSize);
-		Density[Idx] = Context.Density[PointIdx];
-		VoxelTypes[Idx] = Context.VoxelTypes[PointIdx];
+		Density[Idx] = (*Context.Density)[PointIdx];
+		VoxelTypes[Idx] = (*Context.VoxelTypes)[PointIdx];
 		uint8 ShrinkMask = GetAdjustedPosition(LocalPos, Pos[Idx], Context.LODLevel, Context.NeighborMask, Context.VoxelSize, Context.GridSize);
 		VertexInfo[Idx] = GetVertexInfoForKey(Corner.X, Corner.Y, Corner.Z, ShrinkMask);
 	}
@@ -250,8 +248,8 @@ void UVoxelGroundChunk::GenerateTransitionCell(int32 FaceIdx, int32 X, int32 Y, 
 		VIdx[Idx] = FIntVector(X, Y, Z) + SwizzledPos;
 		Pos[Idx] = FVector(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z) * Context.VoxelSize;
 		int32 PointIdx = GetIndex(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, Context.GridSize);
-		Density[Idx] = Context.Density[PointIdx];
-		VoxelTypes[Idx] = Context.VoxelTypes[PointIdx];
+		Density[Idx] = (*Context.Density)[PointIdx];
+		VoxelTypes[Idx] = (*Context.VoxelTypes)[PointIdx];
 		VertexInfo[Idx] = GetVertexInfoForKey(VIdx[Idx].X, VIdx[Idx].Y, VIdx[Idx].Z, 0);
 	}
 

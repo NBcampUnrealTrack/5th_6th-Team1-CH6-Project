@@ -1839,7 +1839,14 @@ void ABACharacter::Server_StopReturning_Implementation()
 
 void ABACharacter::ActivateReturnEffect()
 {
-	GetMesh()->SetVisibility(false);
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	if (IsValid(CharacterMesh) == true)
+	{
+		CharacterMesh->SetVisibility(false);
+		CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CharacterMesh->SetActive(false);
+		CharacterMesh->SetComponentTickEnabled(false);
+	}
 	if (IsValid(EquippedWeapon) == true)
 	{
 		EquippedWeapon->SetActorHiddenInGame(true);
@@ -1853,7 +1860,14 @@ void ABACharacter::ActivateReturnEffect()
 
 void ABACharacter::DeactivateReturnEffect()
 {
-	GetMesh()->SetVisibility(true);
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	if (IsValid(CharacterMesh) == true)
+	{
+		CharacterMesh->SetVisibility(true);
+		CharacterMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CharacterMesh->SetActive(true);
+		CharacterMesh->SetComponentTickEnabled(true);
+	}
 	if (IsValid(EquippedWeapon) == true)
 	{
 		EquippedWeapon->SetActorHiddenInGame(false);

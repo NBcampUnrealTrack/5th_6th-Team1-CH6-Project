@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Weapon/Data/WeaponDataAsset.h"
+#include "Mining/VoxelData.h"
 #include "MiningWeaponDataAsset.generated.h"
 
 UCLASS()
@@ -18,6 +19,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 1.f));
 	float DigPerMinute = 180.f;
+
+	UPROPERTY(EditDefaultsOnly);
+	TMap<EOreType, float> OreEXPMap;
 
 	UPROPERTY(EditDefaultsOnly)
 	TObjectPtr<UAnimMontage> MiningMontage;
