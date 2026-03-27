@@ -199,7 +199,6 @@ void UGA_Mine::MiningOnce()
 
 void UGA_Mine::EndMining()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Montage Cancelled"));
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
 }
 
