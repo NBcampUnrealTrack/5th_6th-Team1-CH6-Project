@@ -918,6 +918,8 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 	NewChunk->SetMaterial(0, Setting->GroundMaterial);
 	NewChunk->bUseAsyncCooking = true;
 	NewChunk->bCastVolumetricTranslucentShadow = false;
+	NewChunk->SetLightingChannels(false, false, true);
+	NewChunk->SetCanEverAffectNavigation(false);
 	NewChunk->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	NewChunk->SetCollisionResponseToAllChannels(ECR_Ignore);
 	NewChunk->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
