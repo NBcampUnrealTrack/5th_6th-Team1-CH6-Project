@@ -505,6 +505,8 @@ void ABACharacter::OnRep_PlayerState()
 				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetMaxAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
 				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
@@ -685,8 +687,11 @@ void ABACharacter::PossessedBy(AController* NewController)
 				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetMaxAmmoAttribute())
+				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
 				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
+			
 
 			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,

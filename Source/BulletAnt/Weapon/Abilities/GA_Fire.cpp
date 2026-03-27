@@ -135,8 +135,6 @@ void UGA_Fire::FireOnce()
 
 void UGA_Fire::StartAutoFireLoop()
 {
-	
-
 	GetWorld()->GetTimerManager().SetTimer(
 		FireTimerHandler,
 		this,

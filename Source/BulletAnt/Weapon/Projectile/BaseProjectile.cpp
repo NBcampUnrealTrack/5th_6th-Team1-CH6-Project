@@ -42,7 +42,8 @@ ABaseProjectile::ABaseProjectile()
 	SetReplicateMovement(true);
 	bReplicates = true;
 
-	
+	BulletMesh->SetCanEverAffectNavigation(false);
+	CollisionComponent->SetCanEverAffectNavigation(false);
 }
 
 void ABaseProjectile::InitProjectile(const FVector& Start, const FVector& Direction, const float Radius, float Speed, float Damage, URangedWeaponDataAsset* Data, AActor* InOwner)
