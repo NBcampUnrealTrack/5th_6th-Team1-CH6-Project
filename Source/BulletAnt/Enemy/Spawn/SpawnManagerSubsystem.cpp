@@ -262,8 +262,8 @@ void USpawnManagerSubsystem::SpawnEnemies()
 				if (IsValid(TribeDataAsset))
 				{
 					Enemy->SetTribeType(TribeDataAsset);
+					Enemy->OnRep_TribeType();
 				}
-				Enemy->ApplyTribe();
 			}
 		}
 		else
