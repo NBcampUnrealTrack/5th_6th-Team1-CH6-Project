@@ -128,6 +128,8 @@ ABACharacter::ABACharacter()
 
 	ReturnPathEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("ReturnPathEffect"));
 	ReturnPathEffect->SetupAttachment(PathSpline);
+
+	GetMesh()->SetCanEverAffectNavigation(false);
 }
 
 // Called when the game starts or when spawned
@@ -289,21 +291,12 @@ void ABACharacter::Tick(float DeltaTime)
 	}
 	if (IsLocallyControlled())
 	{
-		FVector CamLoc;
-		FRotator CamRot;
-		GetController()->GetPlayerViewPoint(CamLoc, CamRot);
-
-		FVector TraceEnd = CamLoc + (CamRot.Vector() * 10000.0f);
-
-		FHitResult Hit;
 		FCollisionQueryParams Params;
 		Params.AddIgnoredActor(this);
 		if (EquippedWeapon)
 			Params.AddIgnoredActor(EquippedWeapon);
-
-		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel11, Params);
-
-		FVector ExactTarget = bHit ? Hit.ImpactPoint : TraceEnd;
+		
+		FVector ExactTarget = LineTraceTarget(Params, ECC_GameTraceChannel11);
 		Server_UpdateAimTarget(ExactTarget);
 	}
 	if(ASC && !bIsReturning)
@@ -1339,10 +1332,10 @@ void ABACharacter::Multicast_StopTurnMontage_Implementation()
 	{
 		AnimInstance->Montage_Stop(0.5f, CurrentTurnMontage);
 	}
-	if (MotionWarpingComp)
-	{
-		MotionWarpingComp->DisableAllRootMotionModifiers();
-	}
+	//if (MotionWarpingComp)
+	//{
+		//MotionWarpingComp->DisableAllRootMotionModifiers();
+	//}
 	LastBodyYaw = GetActorRotation().Yaw;
 	SetTurnStatus();
 }
@@ -1982,7 +1975,7 @@ void ABACharacter::UpdateAmmo(TSubclassOf<ABaseWeapon> InWeaponClass)
 	}
 }
 
-FVector ABACharacter::LineTraceTarget(FCollisionQueryParams Params)
+FVector ABACharacter::LineTraceTarget(FCollisionQueryParams Params, ECollisionChannel ECC)
 {
 	if (!GetController()) return GetActorLocation() + (GetActorForwardVector() * 1000.f);
 
@@ -1995,7 +1988,7 @@ FVector ABACharacter::LineTraceTarget(FCollisionQueryParams Params)
 	FHitResult Hit;
 	Params.AddIgnoredActor(this);
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_Visibility, Params);
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC, Params);
 
 	return bHit ? Hit.ImpactPoint : TraceEnd;
 }
