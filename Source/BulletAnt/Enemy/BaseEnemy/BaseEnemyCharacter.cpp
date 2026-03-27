@@ -68,6 +68,14 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 
 	TargetActor = nullptr;
 	TargetActorPriority = ETargetPriorityType::Max;
+
+
+	GetCapsuleComponent()->SetCanEverAffectNavigation(false);
+	AbilitySystemComponent->SetCanEverAffectNavigation(false);
+	StateTreeComponent->SetCanEverAffectNavigation(false);
+	GetMesh()->SetCanEverAffectNavigation(false);
+	GetCharacterMovement()->SetCanEverAffectNavigation(false);
+	DetectionSphere->SetCanEverAffectNavigation(false);
 }
 
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
