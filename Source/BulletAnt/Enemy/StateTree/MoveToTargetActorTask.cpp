@@ -162,7 +162,6 @@ void UMoveToTargetActorTask::StartMoveToTarget()
 	}
 	else	// Failed
 	{
-		UE_LOG(LogTemp, Warning, TEXT("else"))
 		MoveRequestResult = EMoveRequestResult::Failed;
 	}
 }
