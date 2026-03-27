@@ -7,6 +7,7 @@
 
 class UTextBlock;
 class UButton;
+class UImage;
 
 UCLASS()
 class BULLETANT_API UUW_RoomListItem : public UUserWidget
@@ -30,6 +31,8 @@ protected:
 	TObjectPtr<UTextBlock> TextCurrentPlayers;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> TextMaxPlayers;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImgPrivate;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> BtnOpenRoomInfo;

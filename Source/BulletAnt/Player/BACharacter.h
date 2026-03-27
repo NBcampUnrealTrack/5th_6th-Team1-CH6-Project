@@ -35,6 +35,7 @@ class UUISubsystem;
 class UGameplayEffect;
 class USplineComponent;
 class UNiagaraComponent;
+class USpotLightComponent;
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -117,6 +118,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Motion Warping")
     TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Light")
+    USpotLightComponent* SpotlightComp;
 
     ABAPlayerController* PC;
 
@@ -294,7 +298,7 @@ protected:
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
 
-
+    FVector LineTraceTarget(FCollisionQueryParams Params);
     UFUNCTION()
     void HidingCharacter(UCameraComponent* CameraComp);
 public:
