@@ -132,7 +132,7 @@ void UUW_PlayerHUDWidget::SetCrossHairImage(bool bIsADS)
 	if (bIsADS)
 	{
 		CurrentCrossHair->SetBrushFromTexture(ADSCrossHair);
-		CurrentCrossHair->SetOpacity(1.f);
+		CurrentCrossHair->SetOpacity(0.4f);
 	}
 	else
 	{

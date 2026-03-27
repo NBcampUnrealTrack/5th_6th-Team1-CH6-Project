@@ -78,11 +78,6 @@ protected:
 	FTimerHandle RespawnBarTimer;
 #pragma region Weapon
 public:
-	UFUNCTION()
-	void StartADSUI();
-
-	UFUNCTION()
-	void StopADSUI();
 
 	void ShowAmmo();
 	void HideAmmo();

@@ -27,18 +27,19 @@ void AMissileProjectile::HandleActorHit(
 	FVector NormalImpulse,
 	const FHitResult& Hit)
 {
-	if (bExplosionProcessed)
+	/*if (bExplosionProcessed)
 	{
 		return;
-	}
+	}*/
 
-	if (OtherActor == this)
+	/*if (OtherActor == this)
 	{
 		return;
-	}
+	}*/
 
 	bExplosionProcessed = true;
 	Explode(Hit);
+	DeactivateProjectile();
 }
 
 void AMissileProjectile::Explode(const FHitResult& Hit)

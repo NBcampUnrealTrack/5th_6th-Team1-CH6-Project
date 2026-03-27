@@ -11,6 +11,10 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Weapon/Data/WeaponDataAsset.h"
 #include "UI/UW_PlayerHUDWidget.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_Scope.h"
+#include "Weapon/Sniper/WeaponSniper.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 UGA_ADS::UGA_ADS()
 {
@@ -75,12 +79,30 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		SpringArm->SocketOffset = Source->CurrentSocketOffset;
 
 		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
-		HUD->SetCrossHairImage(false);
+		if (HUD)
+		{
+			HUD->SetCrossHairImage(false);
+		}
+
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
 			if (Data->WeaponType == EWeaponType::Sniper)
 			{
-				PC->StopADSUI();
+				APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+				if (!GetWorld()) return;
+				ULocalPlayer* LP = FPC->GetLocalPlayer();
+				if (!LP) return;
+
+				UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+				if (IsValid(UISubsystem))
+				{
+					UISubsystem->HideUI(EUIType::Scope);		
+					AWeaponSniper* Sniper = Cast<AWeaponSniper>(const_cast<ABaseWeapon*>(CachedWeapon));
+					if (Sniper)
+					{
+						Sniper->GetSceneCapture()->SetActive(false);
+					}
+				}
 			}
 		}
 
@@ -112,13 +134,33 @@ void UGA_ADS::StartADS()
 		Source->GetMesh()->HideBoneByName(FName("head"), EPhysBodyOp::PBO_None);
 
 		UUW_PlayerHUDWidget* HUD = PC->GetHUD();
-		HUD->SetCrossHairImage(true);
+		if (HUD)
+		{
+			HUD->SetCrossHairImage(true);
+		}
 		
 		if (UWeaponDataAsset* Data = CachedWeapon->GetWeaponData())
 		{
 			if (Data->WeaponType == EWeaponType::Sniper)
 			{
-				PC->StartADSUI();
+				APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+				if (!GetWorld()) return;
+				ULocalPlayer* LP = FPC->GetLocalPlayer();
+				if (!LP) return;
+
+				UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+				if (IsValid(UISubsystem))
+				{
+					UUW_Scope* Scope = UISubsystem->ShowUI<UUW_Scope>(EUIType::Scope);
+					if (Scope)
+					{
+						AWeaponSniper* Sniper = Cast<AWeaponSniper>(const_cast<ABaseWeapon*>(CachedWeapon));
+						if (Sniper)
+						{
+							Sniper->GetSceneCapture()->SetActive(true);
+						}
+					}
+				}
 			}
 		}
 	}
