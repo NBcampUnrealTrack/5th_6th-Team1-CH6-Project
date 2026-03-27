@@ -9,6 +9,10 @@
 class UTextBlock;
 class ABAGameState;
 
+
+
+class UImage;
+
 UCLASS()
 class BULLETANT_API UUW_WaveTimer : public UUserWidget
 {
@@ -19,21 +23,19 @@ public:
 
 protected:
 	void UpdateTime();
-	void SetColor(float alpha);
+
+	void UpdateClockRotation(const int InitTime, const int CurrentTime);
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
-	TObjectPtr<UTextBlock> TimeBlock;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI Settings")
-	FLinearColor StartColor = FLinearColor::Green;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI Settings")
-	FLinearColor MidColor = FLinearColor::Yellow;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI Settings")
-	FLinearColor EndColor = FLinearColor::Red;
-
 	UPROPERTY()
 	TObjectPtr<ABAGameState> CachedGameState;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
+	TObjectPtr<UTextBlock> DateBlock;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
+	TObjectPtr<UImage> ClockImage;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
+	TObjectPtr<UImage> HandImage;
 };

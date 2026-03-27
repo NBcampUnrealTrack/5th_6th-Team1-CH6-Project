@@ -103,6 +103,12 @@ public:
 	int32 GetWavePreparationTime() const;
 	void SetWavePreparationTime(int32 InTime);
 
+	int32 GetSpawnTime() const;
+	void SetSpawnTime(int32 InTime);
+
+	int32 GetDate() const;
+	void SetDate(int32 InDate);
+
 	UFUNCTION()
 	void OnRep_WavePreparationTime();
 
@@ -112,6 +118,12 @@ protected:
 
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_WavePreparationTime)
 	int32 WavePreparationTime;
+
+	UPROPERTY(Replicated)
+	int32 SpawnTime;
+
+	UPROPERTY(Replicated)
+	int32 Date;
 
 public:
 	FOnWaveTimeChanged OnWaveTimeChanged;

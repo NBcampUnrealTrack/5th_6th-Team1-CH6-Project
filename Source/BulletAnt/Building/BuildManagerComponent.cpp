@@ -372,9 +372,9 @@ void UBuildManagerComponent::SpawnPreview(TSubclassOf<ABaseBuilding> BuildingCla
     }
 
     PreviewActor->SetReplicates(false);
-    PreviewActor->SetPreviewMode(true);
 
     UGameplayStatics::FinishSpawningActor(PreviewActor, SpawnTransform);
+    PreviewActor->SetPreviewMode(true);
 }
 
 bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRotator& OutRotation, bool& bOutHasValidSurface)

@@ -39,6 +39,9 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
 
     DOREPLIFETIME(ThisClass, GroundInitParams);
     DOREPLIFETIME(ThisClass, WavePreparationTime);
+    DOREPLIFETIME(ThisClass, InitWavePreparationTime);
+    DOREPLIFETIME(ThisClass, SpawnTime);
+    DOREPLIFETIME(ThisClass, Date);
     DOREPLIFETIME(ThisClass, HaveWeaponArray);
 }
 
@@ -196,6 +199,26 @@ int32 ABAGameState::GetWavePreparationTime() const
 void ABAGameState::SetWavePreparationTime(int32 InTime)
 {
     WavePreparationTime = InTime;
+}
+
+int32 ABAGameState::GetSpawnTime() const
+{
+    return SpawnTime;
+}
+
+void ABAGameState::SetSpawnTime(int32 InTime)
+{
+    SpawnTime = InTime;
+}
+
+int32 ABAGameState::GetDate() const
+{
+    return Date;
+}
+
+void ABAGameState::SetDate(int32 InDate)
+{
+    Date = InDate;
 }
 
 void ABAGameState::OnRep_WavePreparationTime()

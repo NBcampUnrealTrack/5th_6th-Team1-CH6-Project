@@ -2,4 +2,9 @@
 
 
 #include "Enemy/Spikan/SpikanCharacter.h"
+#include "Components/SphereComponent.h"
 
+ASpikanCharacter::ASpikanCharacter()
+{
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Ignore);	// Building
+}

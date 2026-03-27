@@ -7,6 +7,7 @@
 
 class UTextBlock;
 class UButton;
+class UImage;
 class UUniformGridPanel;
 class UUW_RoomParticipantNickname;
 
@@ -34,6 +35,8 @@ protected:
 	TObjectPtr<UTextBlock> TextCurrentPlayers;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> TextMaxPlayers;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ImgPrivate;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UUniformGridPanel> NicknameParent;
 
