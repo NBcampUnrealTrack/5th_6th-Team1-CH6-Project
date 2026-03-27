@@ -151,7 +151,7 @@ bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const F
 					uint8 DistDensity = FMath::RoundToInt(SmoothAlpha * 200.0f);
 					uint8 CurrentDensity = GetChunkDensityValue(ChunkIdx, PointIdx);
 					uint8 TargetDensity = FMath::Min(CurrentDensity, (uint8)FMath::Clamp(DistDensity, 0, 200));
-					if (ChunkDatas[ChunkIdx].VoxelTypes[PointIdx] != EVoxelType::BedRock && TargetDensity < CurrentDensity)
+					if ((*ChunkDatas[ChunkIdx].VoxelTypes)[PointIdx] != EVoxelType::BedRock && TargetDensity < CurrentDensity)
 					{
 						FVoxelChangedResult OutResult;
 						bool bChanged = ChangeChunkDensityValue(ChunkIdx, PointIdx, TargetDensity, OutResult);
@@ -204,7 +204,7 @@ bool AVoxelGround::MakeChunkSaveData(int32 ChunkIdx, FVoxelGroundChunkSaveData& 
 	if (ChunkDatas.IsValidIndex(ChunkIdx) == false)
 		return false;
 
-	const TArray<uint8>& RawData = ChunkDatas[ChunkIdx].DensityValues;
+	const TArray<uint8>& RawData = *ChunkDatas[ChunkIdx].DensityValues;
 	int32 RawSize = RawData.Num();
 
 	TArray<uint8> CompressedBuffer;
@@ -249,7 +249,7 @@ bool AVoxelGround::LoadChunkSaveData(const FVoxelGroundChunkSaveData& Data)
 	if (bSuccess == true)
 	{
 		ChunkDatas[Data.ChunkIdx].ChunkState = Data.ChunkState;
-		ChunkDatas[Data.ChunkIdx].DensityValues = MoveTemp(DecompressedBuffer);
+		*ChunkDatas[Data.ChunkIdx].DensityValues = MoveTemp(DecompressedBuffer);
 	}
 
 	return bSuccess;
@@ -357,8 +357,8 @@ void AVoxelGround::InitializeChunkData(int32 ChunkIdx)
 
 	if (ChunkDatas[ChunkIdx].ChunkState != EChunkState::Complex)
 	{
-		ChunkDatas[ChunkIdx].DensityValues.Empty(0);
-		ChunkDatas[ChunkIdx].VoxelTypes.Empty(0);
+		ChunkDatas[ChunkIdx].DensityValues->Empty(0);
+		ChunkDatas[ChunkIdx].VoxelTypes->Empty(0);
 	}
 }
 
@@ -620,8 +620,8 @@ void AVoxelGround::InitializeChunkDensities(int32 ChunkIdx)
 	ChunkDatas[ChunkIdx].ChunkState = NewChunkState;
 
 	ChunkDatas[ChunkIdx].GroundVoxelCount = GroundVoxelCount;
-	ChunkDatas[ChunkIdx].DensityValues = MoveTemp(TempDensities);
-	ChunkDatas[ChunkIdx].VoxelTypes = MoveTemp(TempVoxelTypes);
+	*ChunkDatas[ChunkIdx].DensityValues = MoveTemp(TempDensities);
+	*ChunkDatas[ChunkIdx].VoxelTypes = MoveTemp(TempVoxelTypes);
 }
 
 void AVoxelGround::PlaceObjectsByCell()
@@ -905,7 +905,7 @@ void AVoxelGround::SpawnChunk(int32 ChunkIdx)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(SpawnChunk);
 
-	if (ChunkDatas[ChunkIdx].ChunkState != EChunkState::Complex || ChunkDatas[ChunkIdx].DensityValues.IsEmpty() == true)
+	if (ChunkDatas[ChunkIdx].ChunkState != EChunkState::Complex || ChunkDatas[ChunkIdx].DensityValues->IsEmpty() == true)
 		return;
 
 	FIntVector Coord = GetChunkCoord(ChunkIdx);
@@ -1052,7 +1052,7 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 		return false;
 
 	bool bIsGroundNew = NewDensityValue > Setting->IsoLevel;
-	if (ChunkDatas[ChunkIdx].DensityValues.IsEmpty() == true)
+	if (ChunkDatas[ChunkIdx].DensityValues->IsEmpty() == true)
 	{
 		ensureMsgf(ChunkDatas[ChunkIdx].ChunkState != EChunkState::Complex, TEXT("Complex Chunk, but no density values"));
 		if ((bIsGroundNew == true && ChunkDatas[ChunkIdx].ChunkState == EChunkState::Ground) ||
@@ -1063,19 +1063,19 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 	}
 
 	// 기반암이면 변경 X
-	if (ChunkDatas[ChunkIdx].DensityValues[PointIdx] > 200)
+	if ((*ChunkDatas[ChunkIdx].DensityValues)[PointIdx] > 200)
 		return false;
 
 	const uint8 IsoLevel = Setting->IsoLevel;
 
-	OutResult.PrevDensity = ChunkDatas[ChunkIdx].DensityValues[PointIdx];
+	OutResult.PrevDensity = (*ChunkDatas[ChunkIdx].DensityValues)[PointIdx];
 	OutResult.CurrDensity = NewDensityValue;
-	OutResult.PrevType = ChunkDatas[ChunkIdx].VoxelTypes[PointIdx];
+	OutResult.PrevType = (*ChunkDatas[ChunkIdx].VoxelTypes)[PointIdx];
 	OutResult.CurrType = NewDensityValue <= IsoLevel ? EVoxelType::None : OutResult.PrevType;
 	OutResult.bTypeChanged = OutResult.PrevType != OutResult.CurrType;
 
-	bool bIsGroundOld = ChunkDatas[ChunkIdx].DensityValues[PointIdx] > IsoLevel;
-	ChunkDatas[ChunkIdx].DensityValues[PointIdx] = NewDensityValue;
+	bool bIsGroundOld = (*ChunkDatas[ChunkIdx].DensityValues)[PointIdx] > IsoLevel;
+	(*ChunkDatas[ChunkIdx].DensityValues)[PointIdx] = NewDensityValue;
 	if (bIsGroundOld != bIsGroundNew)
 	{
 		ChunkDatas[ChunkIdx].GroundVoxelCount += bIsGroundNew == true ? 1 : -1;
@@ -1086,8 +1086,8 @@ bool AVoxelGround::ChangeChunkDensityValue(int32 ChunkIdx, int32 PointIdx, int32
 		else
 		{
 			ChunkDatas[ChunkIdx].ChunkState = ChunkDatas[ChunkIdx].GroundVoxelCount == 0 ? EChunkState::Air : EChunkState::Ground;
-			ChunkDatas[ChunkIdx].DensityValues.Empty(0);
-			ChunkDatas[ChunkIdx].VoxelTypes.Empty(0);
+			ChunkDatas[ChunkIdx].DensityValues->Empty(0);
+			ChunkDatas[ChunkIdx].VoxelTypes->Empty(0);
 		}
 	}
 
@@ -1099,8 +1099,8 @@ uint8 AVoxelGround::GetChunkDensityValue(int32 ChunkIdx, int32 PointIdx)
 	if (ChunkDatas.IsValidIndex(ChunkIdx) == false)
 		return 0;
 
-	if (ChunkDatas[ChunkIdx].DensityValues.IsValidIndex(PointIdx) == true)
-		return ChunkDatas[ChunkIdx].DensityValues[PointIdx];
+	if (ChunkDatas[ChunkIdx].DensityValues->IsValidIndex(PointIdx) == true)
+		return (*ChunkDatas[ChunkIdx].DensityValues)[PointIdx];
 
 	if (ChunkDatas[ChunkIdx].ChunkState == EChunkState::Ground)
 		return 200;
