@@ -136,7 +136,25 @@ void UGA_Mine::DigGround(FGameplayEventData Payload)
 					Parameters.Location = HitResult.ImpactPoint;
 					ASC->ExecuteGameplayCue(TAG_GameplayCue_Mining_Hit, Parameters);
 
-					Owner->GetEXP(10.f);
+
+					IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(SourceActor);
+					if (!DataAssetInterface)
+						return;
+
+					MiningData = Cast<UMiningWeaponDataAsset>(DataAssetInterface->GetDataAsset());
+					if (!MiningData)
+						return;
+
+					float GainEXP = 0.0f;
+					const auto& OreEXPMap = MiningData->OreEXPMap;
+					for (const auto& Pair : MinedOreMap)
+					{
+						if (OreEXPMap.Contains(Pair.Key) == false)
+							continue;
+						
+						GainEXP += OreEXPMap[Pair.Key] * Pair.Value;
+					}
+					Owner->GetEXP(GainEXP);
 				}
 			}		
 		}
