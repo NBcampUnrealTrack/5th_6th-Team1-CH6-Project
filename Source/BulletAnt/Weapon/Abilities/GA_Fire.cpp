@@ -12,6 +12,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "TimerManager.h"
+#include "Weapon/Projectile/BulletPoolSubsystem.h"
 
 UGA_Fire::UGA_Fire()
 {
@@ -74,7 +75,7 @@ void UGA_Fire::ActivateAbility(
 	else 
 	{
 		FireOnce();
-		EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 	}	
 }
 
@@ -89,12 +90,10 @@ void UGA_Fire::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 }
 
 void UGA_Fire::FireOnce()
-{
-	if (!CurrentActorInfo || !CurrentActorInfo->IsNetAuthority()) return;
-
+{	
 	FVector Start = IFireStartInterface::Execute_GetFireStartLocation(CurrentActorInfo->AvatarActor.Get());
 	FVector Dir = IFireStartInterface::Execute_GetFireDirection(CurrentActorInfo->AvatarActor.Get());
-	
+
 	//총알 발사시 발생하는 이펙트 큐
 
 	FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
@@ -103,8 +102,10 @@ void UGA_Fire::FireOnce()
 
 	CachedASC->ExecuteGameplayCue(TAG_GameplayCue_Weapon_Fire, Context);
 
-	ContinuousBullet++;
+	if (!CurrentActorInfo || !CurrentActorInfo->IsNetAuthority()) return;
 
+	ContinuousBullet++;
+	
 	FActorSpawnParameters Params;
 	Params.Owner = SourceActor;
 
@@ -115,12 +116,8 @@ void UGA_Fire::FireOnce()
 			RangedData->SpreadDegree
 		);
 
-		ABaseProjectile* Prj = GetWorld()->SpawnActor<ABaseProjectile>(
-			RangedData->ProjectileClass,
-			Start,
-			FireDir.Rotation(),
-			Params
-		);
+		UBulletPoolSubsystem* Pool= SourceActor->GetWorld()->GetGameInstance()->GetSubsystem<UBulletPoolSubsystem>();
+		ABaseProjectile* Prj = Pool->GetProjectile(RangedData->ProjectileClass, SourceActor);
 
 		Prj->InitProjectile(
 			Start,
@@ -131,14 +128,13 @@ void UGA_Fire::FireOnce()
 			RangedData,
 			SourceActor
 		);
+
 		Prj->ActivateProjectile();
 	}
 }
 
 void UGA_Fire::StartAutoFireLoop()
 {
-	
-
 	GetWorld()->GetTimerManager().SetTimer(
 		FireTimerHandler,
 		this,

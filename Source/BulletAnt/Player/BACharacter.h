@@ -298,7 +298,7 @@ protected:
     UFUNCTION(Server, Reliable)
     void Server_SetRunning(bool bNewIsRunning);
 
-    FVector LineTraceTarget(FCollisionQueryParams Params);
+    FVector LineTraceTarget(FCollisionQueryParams Params, ECollisionChannel ECC);
     UFUNCTION()
     void HidingCharacter(UCameraComponent* CameraComp);
 public:
