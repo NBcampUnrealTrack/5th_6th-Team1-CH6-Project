@@ -262,11 +262,11 @@ void UBuildManagerComponent::Server_RequestRepair_Implementation(ABaseBuilding* 
         return;
     }
 
-    const float MaxUseDist = 500.f;
-    if (FVector::DistSquared(OwnerPawn->GetActorLocation(), TargetBuilding->GetActorLocation()) > FMath::Square(MaxUseDist))
-    {
-        return;
-    }
+    //const float MaxUseDist = 500.f;
+    //if (FVector::DistSquared(OwnerPawn->GetActorLocation(), TargetBuilding->GetActorLocation()) > FMath::Square(MaxUseDist))
+    //{
+    //    return;
+    //}
 
     if (!TargetBuilding->CanRepair())
     {
