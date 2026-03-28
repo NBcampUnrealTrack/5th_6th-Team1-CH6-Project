@@ -52,11 +52,15 @@ void UMultiplayerSubsystem::Login()
 
 void UMultiplayerSubsystem::EpicLogin()
 {
+	Platform = EPlatform::EAS;
+
 	ProcessEOSLogin(TEXT("accountportal"), TEXT(""), TEXT(""));
 }
 
 void UMultiplayerSubsystem::SteamLogin()
 {
+	Platform = EPlatform::Steam;
+
 	if (SteamAPI_Init() == false || SteamAPI_IsSteamRunning() == false || SteamUser() == nullptr)
 	{
 		// SteamAPI_RestartAppIfNecessary는 프로세스가 스팀을 통해 정상적으로 실행되지 않았다면,
@@ -130,11 +134,11 @@ void UMultiplayerSubsystem::ProcessEOSLogin(FString CredentialType, FString Cred
 
 	if (Subsystem)
 	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("EOSSubsystem Valid"));
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("EOSSubsystem Valid"));
 		IOnlineIdentityPtr Identity = Subsystem->GetIdentityInterface();
 		if (Identity.IsValid() == true)
 		{
-			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Identity Valid"));
+			//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Identity Valid"));
 			if (LoginHandle.IsValid() == true)
 			{
 				Identity->ClearOnLoginCompleteDelegate_Handle(0, LoginHandle);
@@ -143,7 +147,7 @@ void UMultiplayerSubsystem::ProcessEOSLogin(FString CredentialType, FString Cred
 			LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateUObject(
 				this, &ThisClass::OnLoginComplete));
 
-			UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("Start Login %s"), *AuthToken));
+			//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("Start Login %s"), *AuthToken));
 			FOnlineAccountCredentials Credentials;
 			Credentials.Type = CredentialType;
 			Credentials.Id = CredentialId;
@@ -220,25 +224,65 @@ void UMultiplayerSubsystem::JoinSession(int32 Index)
 
 void UMultiplayerSubsystem::JoinSession(const FOnlineSessionSearchResult& SearchResult)
 {
-	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
-	if (SessionInterface.IsValid() == false || SessionSearch.IsValid() == false)
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld(), EOS_SUBSYSTEM);
+	if (SessionInterface.IsValid() == false || SearchResult.IsValid() == false)
 		return;
 
 	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UMultiplayerSubsystem::OnJoinSessionComplete);
 	SessionInterface->JoinSession(0, NAME_GAMESESSION, SearchResult);		// SessionName은 내가 붙인 방의 별명
 }
 
-void UMultiplayerSubsystem::ShowInviteUI()
+void UMultiplayerSubsystem::JoinSessionById(FString TargetId)
+{
+	//UKismetSystemLibrary::PrintString(GetWorld(), TargetId);
+
+	PendingSessionTargetId = TargetId;
+
+	JoinSessionByIdHandle = OnFindSessions.AddLambda(
+		[this](bool bWasSuccessful)
+		{
+			OnFindSessions.Remove(JoinSessionByIdHandle);
+			JoinSessionByIdHandle.Reset();
+
+			if (bWasSuccessful == false || SessionSearch.IsValid() == false)
+				return;
+
+			for (const auto& Result : SessionSearch->SearchResults)
+			{
+				FString FoundId = Result.Session.GetSessionIdStr();
+				//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s / %s"), *FoundId, *PendingSessionTargetId));
+				
+				if (Result.Session.GetSessionIdStr() == PendingSessionTargetId)
+				{
+					//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Target Session Found! Joining..."));
+					JoinSession(Result);
+					return;
+				}
+			}
+			//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Failed to find the specific session by ID."));
+		});
+
+	SearchSessions(100);
+	bIsJoiningSteamInvitation = false;
+}
+
+void UMultiplayerSubsystem::ReadFriendsList()
 {
 	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
 	if (Subsystem == nullptr)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Subsystem not valid"));
 		return;
+	}
 
-	IOnlineExternalUIPtr ExternalUI = Subsystem->GetExternalUIInterface(); Online::GetExternalUIInterface(GetWorld());
-	if (ExternalUI.IsValid() == false)
+	IOnlineFriendsPtr FriendsInterface = Subsystem->GetFriendsInterface();
+	if (FriendsInterface.IsValid() == false)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("FriendsInterface not valid"));
 		return;
+	}
 
-	ExternalUI->ShowInviteUI(0, NAME_GAMESESSION);
+	FriendsInterface->ReadFriendsList(0, TEXT("Default"), FOnReadFriendsListComplete::CreateUObject(this, &ThisClass::OnReadFriendsComplete));
 }
 
 void UMultiplayerSubsystem::SyncNicknameToPlayerState()
@@ -444,16 +488,32 @@ EVoiceChatTransmitMode UMultiplayerSubsystem::GetTransmitMode()
 void UMultiplayerSubsystem::OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
 {
 	FString StrSuccess = bWasSuccessful == true ? TEXT("Login Success") : TEXT("Login Failed");
-	UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
+	//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
 
 	if (bWasSuccessful == false)
 		return;
 
 	bLogin = true;
 
-	if (SteamAPI_Init() == true)
+	if (Platform == EPlatform::Steam)
 	{
 		PlayerNickname = FString(UTF8_TO_TCHAR(SteamFriends()->GetPersonaName()));
+
+		// connect 더미 데이터를 이용한 버튼 활성화 이후, RichPresence로 전달한 SessionID로 방 참여
+		// 이를 위한 Callback 등록
+		CallbackRichPresenceUpdate.Register(this, &ThisClass::OnSteamRichPresenceUpdate);
+		CallbackJoinRequested.Register(this, &ThisClass::OnSteamJoinRequested);
+		CallbackLobbyJoinRequested.Register(this, &ThisClass::OnSteamLobbyJoinRequested);
+
+		GetWorld()->GetTimerManager().SetTimer(
+			JoinInviteTimer,
+			[this]()
+			{
+				//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Try Get Callback"));
+				SteamAPI_RunCallbacks();
+			},
+			0.5f,
+			true);
 	}
 	else
 	{
@@ -464,7 +524,15 @@ void UMultiplayerSubsystem::OnLoginComplete(int32 LocalUserNum, bool bWasSuccess
 		}
 	}
 
-	UKismetSystemLibrary::PrintString(GetWorld(), PlayerNickname.IsEmpty() == false ? FString::Printf(TEXT("%s"), *PlayerNickname) : TEXT("PlayerNickname not valid"));
+	IOnlineSessionPtr SessionSteam = Online::GetSessionInterface(GetWorld(), STEAM_SUBSYSTEM);
+	SessionSteam->AddOnSessionUserInviteAcceptedDelegate_Handle(
+		FOnSessionUserInviteAcceptedDelegate::CreateUObject(
+			this, &ThisClass::OnSessionUserInviteAccepted));
+
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld(), EOS_SUBSYSTEM);
+	SessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(
+		FOnSessionUserInviteAcceptedDelegate::CreateUObject(
+			this, &ThisClass::OnSessionUserInviteAccepted));
 
 	OnSuccessLogin.Broadcast();
 	OnSuccessLogin.Clear();
@@ -479,12 +547,20 @@ void UMultiplayerSubsystem::OnCreateSessionComplete(FName SessionName, bool bWas
 
 	CurrentSessionName = SessionName;
 
-	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld(), EOS_SUBSYSTEM);
 	if (SessionInterface.IsValid() == true)
 	{
-		SessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(
-			FOnSessionUserInviteAcceptedDelegate::CreateUObject(
-				this, &ThisClass::OnSessionUserInviteAccepted));
+		FNamedOnlineSession* NamedSession = SessionInterface->GetNamedSession(NAME_GAMESESSION);
+		if (NamedSession != nullptr && SteamFriends())
+		{
+			//FString Old = TCHAR_TO_UTF8(*NamedSession->GetSessionIdStr());
+			FString SessionId = NamedSession->GetSessionIdStr();
+			FTCHARToUTF8 Converter(*SessionId);
+			FString New = Converter.Get();
+			//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s / %s"), *Old, *New));
+			SteamFriends()->SetRichPresence("connect", "1");	// 스팀 파싱 에러를 피하기 위한 더미
+			SteamFriends()->SetRichPresence("EOS_SESSION_ID", Converter.Get());
+		}
 	}
 
 	//SetupNotifications();
@@ -532,28 +608,86 @@ void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSess
 		2.0f);
 }
 
+void UMultiplayerSubsystem::OnReadFriendsComplete(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
+{
+	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
+	if (Subsystem == nullptr)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Subsystem not valid"));
+		return;
+	}
+
+	IOnlineFriendsPtr FriendsInterface = Subsystem->GetFriendsInterface();
+	if (FriendsInterface.IsValid() == false)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("FriendsInterface not valid"));
+		return;
+	}
+
+	TArray<TSharedRef<FOnlineFriend>> OutFriends;
+	FriendsInterface->GetFriendsList(0, TEXT("Default"), OutFriends);
+
+	TArray<FString> Names;
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OutFriends valid"));
+	for (const auto& Friend : OutFriends)
+	{
+		if (Friend->GetDisplayName() == TEXT("cf"))
+		{
+			IOnlineSubsystem* EOSSubsystem = Online::GetSubsystem(GetWorld(), EOS_SUBSYSTEM);
+			if (EOSSubsystem == nullptr)
+			{
+				UKismetSystemLibrary::PrintString(GetWorld(), TEXT("EOS_SUBSYSTEM not valid"));
+			}
+			else
+			{
+				IOnlineSessionPtr Session = EOSSubsystem->GetSessionInterface();
+				if (Session.IsValid() == false)
+				{
+					UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Session not valid"));
+				}
+				else
+				{
+					FNamedOnlineSession* NamedSession = Session->GetNamedSession(NAME_GAMESESSION);
+					if (NamedSession == nullptr)
+					{
+						UKismetSystemLibrary::PrintString(GetWorld(), TEXT("NamedSession not valid"));
+					}
+					else
+					{
+						SteamFriends()->SetRichPresence("connect", TCHAR_TO_UTF8(*NamedSession->GetSessionIdStr()));
+						//FUniqueNetIdRepl TargetId = Friend->GetUserId();
+						//Session->SendSessionInviteToFriend(0, NAME_GAMESESSION, *TargetId.GetUniqueNetId());
+						UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SendSessionInviteToFriend"));
+					}
+				}
+			}
+		}
+		Names.Add(Friend->GetDisplayName());
+	}
+	UKismetSystemLibrary::PrintString(GetWorld(), FString::Join(Names, TEXT(",")));
+}
+
+void UMultiplayerSubsystem::OnSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& InviterId, const FString& InviteData)
+{
+	SearchSessions();
+}
+
 void UMultiplayerSubsystem::OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
 {
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Session Result =>"));
 	if (bWasSuccessful == false)
 	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Invite not accepted"));
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnSessionUserInviteAccepted failed"));
 		return;
 	}
 
-	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
-	if (SessionInterface.IsValid() == false)
+	if (InviteResult.IsValid() == false)
 	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Session not valid"));
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("InviteResult not valid"));
 		return;
 	}
 
-	if (SessionInterface->GetNamedSession(NAME_GAMESESSION) != nullptr)
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Already in session"));
-
-		// 기존 세션 나오기
-	}
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("JoinSession"));
+	JoinSessionById(InviteResult.Session.GetSessionIdStr());
 }
 
 void UMultiplayerSubsystem::SetVoiceChatUser()
@@ -621,6 +755,51 @@ void UMultiplayerSubsystem::OnGetAuthTicketForWebApiCompleted(GetTicketForWebApi
 				TEXT(""),
 				TokenString);
 		});
+}
+
+void UMultiplayerSubsystem::OnSteamRichPresenceUpdate(FriendRichPresenceUpdate_t* pCallback)
+{
+	// 상태가 변한 친구 확인
+	HandleSteamJoin(pCallback->m_steamIDFriend);
+}
+
+void UMultiplayerSubsystem::OnSteamJoinRequested(GameRichPresenceJoinRequested_t* pCallback)
+{
+	HandleSteamJoin(pCallback->m_steamIDFriend);
+}
+
+void UMultiplayerSubsystem::OnSteamLobbyJoinRequested(GameLobbyJoinRequested_t* pCallback)
+{
+	HandleSteamJoin(pCallback->m_steamIDFriend);
+}
+
+void UMultiplayerSubsystem::HandleSteamJoin(CSteamID HostID)
+{
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnSteamRichPresenceUpdate 0"));
+	if (bIsJoiningSteamInvitation == true)
+		return;
+
+	// 호스트가 숨겨둔 진짜 EOS 세션 ID가 있는지 확인
+	const char* RawEOSID = SteamFriends()->GetFriendRichPresence(HostID, "EOS_SESSION_ID");
+	const char* ConnectKey = SteamFriends()->GetFriendRichPresence(HostID, "connect");
+
+	UKismetSystemLibrary::PrintString(GetWorld(), FString(RawEOSID));
+
+	// 친구가 '참여' 버튼을 눌렀거나 내 상태를 확인 중일 때 실행
+	if (RawEOSID && strlen(RawEOSID) > 0)
+	{
+		FString TargetSessionId = FString(UTF8_TO_TCHAR(RawEOSID));
+		//UKismetSystemLibrary::PrintString(GetWorld(), TargetSessionId);
+
+		// 이미 세션에 들어가 있지 않은 경우에만 조인 시도
+		IOnlineSessionPtr SessionInt = Online::GetSessionInterface(GetWorld(), EOS_SUBSYSTEM);
+		if (SessionInt->GetNamedSession(NAME_GAMESESSION) == nullptr)
+		{
+			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnSteamRichPresenceUpdate 2"));
+			bIsJoiningSteamInvitation = true;
+			JoinSessionById(TargetSessionId);
+		}
+	}
 }
 
 void UMultiplayerSubsystem::SetVolume(int32 LocalUserNum, float InVolume)
