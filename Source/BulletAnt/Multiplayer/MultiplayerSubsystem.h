@@ -13,6 +13,13 @@ class FOnlineSessionSearch;
 class IVoiceChatUser;
 enum class EOnSessionParticipantLeftReason : uint8;
 
+UENUM()
+enum class EPlatform
+{
+	Steam,
+	EAS,
+};
+
 USTRUCT()
 struct FRoomSetting
 {
@@ -77,8 +84,9 @@ public:
 	void SearchSessions(int32 MaxSearchCount = 16);
 	void JoinSession(int32 Index);
 	void JoinSession(const FOnlineSessionSearchResult& SearchResult);
+	void JoinSessionById(FString TargetId);
 
-	void ShowInviteUI();
+	void ReadFriendsList();
 
 	// 세션 비참여자가 방 정보에서 참가자 정보를 확인할 수 있게, SessionSettings에서 참여자 닉네임 업데이트
 	void SyncNicknameToPlayerState();
@@ -118,6 +126,8 @@ private:
 	void OnFindSessionsComplete(bool bWasSuccessful);
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 
+	void OnReadFriendsComplete(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr);
+	void OnSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& InviterId, const FString& InviteData);
 	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
 	void SetVoiceChatUser();
@@ -145,6 +155,11 @@ private:
 	FName CurrentSessionName;
 	FString PlayerNickname;
 
+	UPROPERTY()
+	EPlatform Platform = EPlatform::Steam;
+
+	uint8 bLogin : 1 = false;
+
 	static const FName SETTING_ROOMNAME;
 	static const FName SETTING_MAXPLAYERS;
 	static const FName SETTING_PASSWORD;
@@ -158,14 +173,27 @@ private:
 
 public:
 	void OnGetAuthTicketForWebApiCompleted(struct GetTicketForWebApiResponse_t* Response);
+	void OnSteamRichPresenceUpdate(FriendRichPresenceUpdate_t* pCallback);
+	void OnSteamJoinRequested(GameRichPresenceJoinRequested_t* pCallback);
+	void OnSteamLobbyJoinRequested(GameLobbyJoinRequested_t* pCallback);
+	
+private:
+	void HandleSteamJoin(CSteamID HostID);
 
 private:
 	FTimerHandle SteamAuthTimer;
-
 	HAuthTicket AuthTicketHandle;
 	CCallbackManual<UMultiplayerSubsystem, GetTicketForWebApiResponse_t> CallbackGetTicketForWebApi;
 
-	uint8 bLogin : 1 = false;
+	FTimerHandle JoinInviteTimer;
+	CCallbackManual<UMultiplayerSubsystem, FriendRichPresenceUpdate_t> CallbackRichPresenceUpdate;
+	CCallbackManual<UMultiplayerSubsystem, GameRichPresenceJoinRequested_t> CallbackJoinRequested;
+	CCallbackManual<UMultiplayerSubsystem ,GameLobbyJoinRequested_t> CallbackLobbyJoinRequested;
+	FDelegateHandle JoinSessionByIdHandle;
+
+	FString PendingSessionTargetId;
+
+	uint8 bIsJoiningSteamInvitation : 1 = false;
 
 #pragma endregion
 

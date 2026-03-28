@@ -81,5 +81,5 @@ void UUW_RoomInfo::CloseUI()
 	if (IsValid(UISubsystem) == false)
 		return;
 
-	UISubsystem->HideUI(EUIType::RoomInfo);
+	UISubsystem->CloseUI(EUIType::RoomInfo);
 }

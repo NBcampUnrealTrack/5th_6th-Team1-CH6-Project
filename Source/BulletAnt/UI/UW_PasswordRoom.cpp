@@ -90,5 +90,5 @@ void UUW_PasswordRoom::Cancel()
     if (IsValid(UISubsystem) == false)
         return;
 
-    UISubsystem->HideUI(EUIType::PasswordRoom);
+    UISubsystem->CloseUI(EUIType::PasswordRoom);
 }
