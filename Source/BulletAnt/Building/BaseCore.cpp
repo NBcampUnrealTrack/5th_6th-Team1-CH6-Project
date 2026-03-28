@@ -4,6 +4,9 @@
 #include "Building/BaseCore.h"
 #include "Framework/BAGameState.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
+#include "Kismet/GameplayStatics.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_GameOver.h"
 
 void ABaseCore::Use_Implementation(AActor* User)
 {
@@ -45,6 +48,23 @@ void ABaseCore::BeginPlay()
 
 	HealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UHealthAttributeSet::GetHealthAttribute()).AddUObject(this, &ABaseCore::HandleHealthChanged);
 	UpdateCoreMaterialHealthRatio();
+}
+
+void ABaseCore::OnDeath()
+{
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (!PC) return;
+
+	ULocalPlayer* LP = PC->GetLocalPlayer();
+	if (!LP) return;
+
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (UISubsystem)
+	{
+		UUW_GameOver* Widget = UISubsystem->ShowUI<UUW_GameOver>(EUIType::GameOver);
+		UISubsystem->ApplyUIOnlyInputMode(Widget);
+		Widget->InitText();
+	}
 }
 
 void ABaseCore::FindAnchors()

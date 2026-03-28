@@ -34,6 +34,27 @@ void ABAPlayerState::InitAbility()
 	}
 }
 
+void ABAPlayerState::AddKillCount()
+{
+	KillCount++;
+}
+
+const uint32 ABAPlayerState::GetKillCount()
+{
+	return KillCount;
+}
+
+void ABAPlayerState::AddTotalDamage(float Damage)
+{
+	uint32 LocalDamage = FMath::Floor(Damage);
+	TotalDamage += LocalDamage;
+}
+
+const uint64 ABAPlayerState::GetTotalDamage()
+{
+	return TotalDamage;
+}
+
 UAbilitySystemComponent* ABAPlayerState::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
@@ -60,6 +81,8 @@ void ABAPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ThisClass, PlayerColorIdx);
+	DOREPLIFETIME(ThisClass, TotalDamage);
+	DOREPLIFETIME(ThisClass, KillCount);
 }
 
 void ABAPlayerState::CopyProperties(APlayerState* NewPlayerState)

@@ -75,4 +75,20 @@ protected:
 
 
 #pragma endregion
+
+#pragma region GameResult
+public:
+	void AddKillCount();
+	const uint32 GetKillCount();
+
+	void AddTotalDamage(float Damage);
+	const uint64 GetTotalDamage();
+
+protected:
+	UPROPERTY(Replicated)
+	uint32 KillCount = 0;
+
+	UPROPERTY(Replicated)
+	uint64 TotalDamage = 0;
+#pragma endregion
 };

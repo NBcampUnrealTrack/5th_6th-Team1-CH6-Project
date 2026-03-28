@@ -24,6 +24,7 @@ protected:
 	ABaseCore();
 
 	virtual void BeginPlay() override;
+	virtual void OnDeath() override;
 
 	void FindAnchors();
 	void InitializeCoreMaterial();

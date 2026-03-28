@@ -8,6 +8,7 @@
 #include "Player/BACharacter.h"
 #include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
+#include "Player/BAPlayerState.h"
 
 UHealthAttributeSet::UHealthAttributeSet()
 {
@@ -67,17 +68,31 @@ void UHealthAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 				Payload
 			);
 
-			if (GetHealth() == 0.f)
-			{	
-				ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
-				if (PlayerCharacter)
+			ABACharacter* PlayerCharacter = Cast<ABACharacter>(Data.EffectSpec.GetContext().GetInstigator());
+			if (PlayerCharacter)
+			{
+				ABAPlayerState* PS = Cast<ABAPlayerState>(PlayerCharacter->GetPlayerState());
+				if (PS)
 				{
+					PS->AddTotalDamage(LocalIncomingDamage);
+				}
+			}
+
+			if (GetHealth() == 0.f)
+			{					
+				if (PlayerCharacter)
+				{			
 					if (ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(TargetActor))
 					{
 						if (Enemy)
 						{
 							float EXP = Enemy->GetEXP();
 							PlayerCharacter->GetEXP(EXP);
+							ABAPlayerState* PS = Cast<ABAPlayerState>(PlayerCharacter->GetPlayerState());
+							if (PS)
+							{
+								PS->AddKillCount();
+							}
 						}
 					}
 				}
