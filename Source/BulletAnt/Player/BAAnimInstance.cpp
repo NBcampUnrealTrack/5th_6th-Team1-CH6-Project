@@ -43,6 +43,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsCrouch = Character->bIsCrouched;
 	bIsRunning = Character->bIsRunning;
 	LowerYaw = Character->RootYawOffset;
+	bIsJetPack = Character->bIsJetPack;
 	if (!ASC)
 	{
 		ABAPlayerState* PS = Cast<ABAPlayerState>(Character->GetPlayerState());
@@ -62,6 +63,8 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			CurrentEquipmentType = EEquipmentType::Mining;
 		if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Melee))
 			CurrentEquipmentType = EEquipmentType::Melee;
+		if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+			CurrentEquipmentType = EEquipmentType::Jetpack;
 	}
 
 	//UCharacterMovementComponent에서 Velocity 변수 가져오기
