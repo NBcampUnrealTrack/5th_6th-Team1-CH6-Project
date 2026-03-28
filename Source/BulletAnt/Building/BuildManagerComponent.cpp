@@ -9,6 +9,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Pawn.h"
 #include <Kismet/GameplayStatics.h>
+#include "AbilitySystemComponent.h"
+#include "GAS/BAGameplayTags.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
@@ -689,6 +691,17 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
     }
 
     Spawned->Server_RegisterSupports(Supporters);
+
+    if (UAbilitySystemComponent* BuildingASC = Spawned->GetAbilitySystemComponent())
+    {
+        FGameplayCueParameters CueParams;
+        CueParams.Location = Spawned->GetActorLocation();
+        CueParams.Instigator = GetOwner();
+        CueParams.EffectCauser = Spawned;
+        CueParams.EffectContext = BuildingASC->MakeEffectContext();
+
+        BuildingASC->ExecuteGameplayCue(TAG_GameplayCue_Building_Placed, CueParams);
+    }
 }
 
 bool UBuildManagerComponent::CheckCanPlaceAt() const

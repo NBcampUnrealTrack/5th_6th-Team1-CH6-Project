@@ -173,7 +173,7 @@ void UUW_BuildMenu::UpdateSelectedInfo(FName BuildingRowName)
 
 	if (IsValid(SelectedInfoText))
 	{
-		const FString InfoString = FString::Printf(TEXT("체력 : %.0f"), Row->Health);
+		const FString InfoString = FString::Printf(TEXT("Health : %.0f"), Row->Health);
 
 		SelectedInfoText->SetText(FText::FromString(InfoString));
 	}
@@ -206,10 +206,10 @@ FText UUW_BuildMenu::MakeBuildCostText(const TMap<EOreType, int32>& BuildCost) c
 {
 	if (BuildCost.IsEmpty())
 	{
-		return FText::FromString(TEXT("비용 : 없음"));
+		return FText::FromString(TEXT("Cost : None"));
 	}
 
-	FString Result = TEXT("비용 :\n");
+	FString Result = TEXT("-- Cost --\n");
 
 	for (const TPair<EOreType, int32>& Pair : BuildCost)
 	{

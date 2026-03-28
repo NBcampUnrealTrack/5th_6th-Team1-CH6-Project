@@ -212,6 +212,19 @@ void ABaseBuilding::OnDeath()
 	Multicast_PlayDestruction(GetActorLocation());
 	bDead = true;
 	OnRep_Dead();
+
+	if (ASC)
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = GetActorLocation();
+		CueParams.Instigator = GetInstigator();
+		CueParams.EffectCauser = this;
+		CueParams.RawMagnitude = 1.f;
+		CueParams.EffectContext = ASC->MakeEffectContext();
+
+		ASC->ExecuteGameplayCue(TAG_GameplayCue_Building_Destroyed, CueParams);
+	}
+
 	SetLifeSpan(DebrisLifeSeconds);
 
 	Server_UnregisterFromSupports();
