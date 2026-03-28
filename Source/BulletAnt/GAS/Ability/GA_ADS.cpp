@@ -101,7 +101,7 @@ void UGA_ADS::StartADS()
 
 		USpringArmComponent* SpringArm = Source->GetSpringArm();		
 		SpringArm->bUsePawnControlRotation = false;
-		Source->GetCamera()->FieldOfView = 60.f;
+		Source->GetCamera()->FieldOfView = 45.f;
 		Source->StartAiming();
 
 		SavedSpringArmTransform = SpringArm->GetRelativeTransform();

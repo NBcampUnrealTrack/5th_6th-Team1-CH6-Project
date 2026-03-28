@@ -245,7 +245,17 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (GEngine)
+	{
+		FString BoolText = bIsJetPack ? TEXT("True") : TEXT("False");
 
+		GEngine->AddOnScreenDebugMessage(
+			1,
+			5.0f,         // 화면에 떠 있을 시간 (초)
+			FColor::Cyan, // 텍스트 색상 (원하는 색으로 변경 가능!)
+			FString::Printf(TEXT("체크 중인 불 값: %s"), *BoolText)
+		);
+	}
 	if (bIsReturning == true)
 	{
 		if (HasAuthority() == true || IsLocallyControlled() == true)
@@ -309,11 +319,11 @@ void ABACharacter::Tick(float DeltaTime)
 				SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, 125, DeltaTime, TALengthChangeSpeed);
 				CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
 			}
-		}
-		else if (!bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
-		{
-			SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, CurrentArmLength, DeltaTime, TALengthChangeSpeed);
-			CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+			else
+			{
+				SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, CurrentArmLength, DeltaTime, TALengthChangeSpeed);
+				CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+			}
 		}
 	}
 	if (SpotlightComp && Controller)
@@ -623,13 +633,14 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!ASC) return;
 	if (!EquippedWeapon) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged) && ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
+	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+		bIsJetPack = true;
 
 	FGameplayTagContainer Tag;
 
 	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
 	if (!WeaponData) return;
 	Tag.AddTag(WeaponData->WeaponTag);
-
 	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
@@ -647,7 +658,8 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 {
 	if (!ASC) return;
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
-
+	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+		bIsJetPack = false;
 	FGameplayTagContainer CancelTags;
 	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
@@ -1295,6 +1307,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, OwnedEquipment);
 	DOREPLIFETIME_CONDITION_NOTIFY(ABACharacter, bIsReturning, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(ABACharacter, ReplicatedAimTarget);
+	DOREPLIFETIME(ABACharacter, bIsJetPack);
 }
 
 void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)

@@ -57,9 +57,10 @@ enum class EAbilityInputID : uint8
 UENUM(BlueprintType)
 enum class EEquipmentType : uint8
 {
-    Ranged       UMETA(DisplayName = "Ranged"),
+    Ranged      UMETA(DisplayName = "Ranged"),
     Mining      UMETA(DisplayName = "Mining"),
-    Melee       UMETA(DisplayName = "Melee")
+    Melee       UMETA(DisplayName = "Melee"),
+    Jetpack     UMETA(DisplayName = "Jetpack")
 };
 USTRUCT(BlueprintType)
 struct FAnimChoice : public FTableRowBase
@@ -307,10 +308,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim Data")
     TArray<FAnimChoice> AnimDataBase;
     //조준상태
-    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
+    UPROPERTY(Replicated)
     bool bIsAiming;
-    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Input")
+    UPROPERTY(Replicated)
     bool bIsADS;
+    UPROPERTY(Replicated)
+    bool bIsJetPack;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     float CurrentArmLength = 180;
@@ -318,7 +321,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     FVector CurrentSocketOffset = FVector(0.f, 60.f, 10.f);
 
-    UPROPERTY(BlueprintReadWrite, Category = "Camera")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
     float AimingFieldOfView = 80.f;
     UPROPERTY(BlueprintReadWrite, Category = "SpringArm")
     float AimingTALength = 100.f;
