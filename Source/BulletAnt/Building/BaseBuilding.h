@@ -99,9 +99,9 @@ public:
 	float GetCurrentHealth() const;
 	float GetMaxHealth() const;
 
-protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
 
+protected:
 	UFUNCTION()
 	virtual void OnRep_Dead();
 

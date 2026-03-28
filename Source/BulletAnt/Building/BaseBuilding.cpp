@@ -76,9 +76,9 @@ void ABaseBuilding::OnConstruction(const FTransform& Transform)
 	LocalCenter.Z = Min.Z;
 
 	StaticMeshComp->SetRelativeLocation(-LocalCenter);
-	EdgesRoot->SetRelativeLocation(-LocalCenter);
 	PlacementRoot->SetRelativeLocation(-LocalCenter);
 	SupportRoot->SetRelativeLocation(-LocalCenter);
+	EdgesRoot->SetRelativeLocation(-LocalCenter);
 
 	RebuildCachedLocalEdges();
 }
@@ -281,31 +281,30 @@ void ABaseBuilding::RebuildCachedLocalEdges()
 	TArray<USceneComponent*> EdgeComps;
 	EdgesRoot->GetChildrenComponents(true, EdgeComps);
 
-	const FTransform WorldToActor = GetActorTransform().Inverse();
-
 	for (USceneComponent* EdgeComp : EdgeComps)
 	{
-		if (USplineComponent* Edge = Cast<USplineComponent>(EdgeComp))
+		USplineComponent* Edge = Cast<USplineComponent>(EdgeComp);
+		if (!Edge)
 		{
-			if (!Edge) 
-			{
-				continue;
-			}
-
-			if (Edge->GetNumberOfSplinePoints() < 2)
-			{
-				continue;
-			}
-
-			FVector WA = Edge->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
-			FVector WB = Edge->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
-
-			FBuildingEdge E;
-			E.A = WorldToActor.TransformPosition(WA);
-			E.B = WorldToActor.TransformPosition(WB);
-
-			CachedLocalEdges.Add(E);
+			continue;
 		}
+
+		if (Edge->GetNumberOfSplinePoints() < 2)
+		{
+			continue;
+		}
+
+		const FVector WA = Edge->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
+		const FVector WB = Edge->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
+
+		const FVector A = GetActorTransform().InverseTransformPosition(WA);
+		const FVector B = GetActorTransform().InverseTransformPosition(WB);
+
+		FBuildingEdge NewEdge;
+		NewEdge.A = A;
+		NewEdge.B = B;
+
+		CachedLocalEdges.Add(NewEdge);
 	}
 }
 

@@ -135,14 +135,14 @@ private:
 	float SnapSearchRadius = 4000.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
-	float SnapMaxDistance = 50.f;
+	float SnapMaxDistance = 100.f;
 
 	// 면 스냅 cos(각도). 0.7071 ≈ 45도
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
 	float EdgeParallelCosThreshold = 0.7071f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
-	float KeyPointSnapMaxDistance = 100.f;
+	float KeyPointSnapMaxDistance = 200.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	float MaxBuildDistance = 2000.f;
