@@ -6,6 +6,8 @@
 #include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
+#include "Multiplayer/MultiplayerSubsystem.h"
+#include "Player/BACharacter.h"
 
 ABAPlayerState::ABAPlayerState()
 {
@@ -71,6 +73,7 @@ void ABAPlayerState::CopyProperties(APlayerState* NewPlayerState)
 		return;
 
 	NewPS->PlayerColorIdx = this->PlayerColorIdx;
+	NewPS->SetPlayerName(this->GetPlayerName());
 }
 
 void ABAPlayerState::BeginPlay()
@@ -80,6 +83,32 @@ void ABAPlayerState::BeginPlay()
 	FGameplayTagContainer DefaultTags;
 	DefaultTags.AddTag(TAG_Team_Player);
 	AbilitySystemComponent->AddLooseGameplayTags(DefaultTags);
+}
+
+void ABAPlayerState::PostNetInit()
+{
+	Super::PostNetInit();
+
+	APlayerController* PC = GetPlayerController();
+	if (IsValid(PC) == true && PC->IsLocalController() == true)
+	{
+		UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+		if (IsValid(MultiplayerSubsystem) == false)
+			return;
+
+		MultiplayerSubsystem->SyncNicknameToPlayerState();
+	}
+}
+
+void ABAPlayerState::OnRep_PlayerName()
+{
+	Super::OnRep_PlayerName();
+
+	ABACharacter* BACharacter = Cast<ABACharacter>(GetPawn());
+	if (IsValid(BACharacter) == false)
+		return;
+
+	BACharacter->UpdateNicknameUI();
 }
 
 void ABAPlayerState::SetPlayerColorIdx(int32 NewIdx)
@@ -106,6 +135,20 @@ void ABAPlayerState::UnbindOnChangedPlayerColor(const UObject* Object)
 void ABAPlayerState::UnbindOnChangedPlayerColor(FDelegateHandle Handle)
 {
 	OnChangedPlayerColor.Remove(Handle);
+}
+
+void ABAPlayerState::Server_UpdatePlayerName_Implementation(const FString& NewName)
+{
+	bSetNickname = true;
+	SetPlayerName(NewName);
+
+	OnRep_PlayerName();
+
+	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	if (IsValid(MultiplayerSubsystem) == false)
+		return;
+
+	MultiplayerSubsystem->UpdateSessionParticipants();
 }
 
 void ABAPlayerState::OnRep_PlayerColorIdx()

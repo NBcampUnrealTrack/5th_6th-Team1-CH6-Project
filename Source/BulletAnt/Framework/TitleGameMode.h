@@ -18,6 +18,4 @@ public:
 	void OnSuccessLogin();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	uint8 bAlreadyLogin : 1 = false;
 };
