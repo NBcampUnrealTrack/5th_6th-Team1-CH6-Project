@@ -55,10 +55,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	TObjectPtr <UCharacterMovementComponent> Movement;
 
-	FGameplayTag Tag_Ranged;
-	FGameplayTag Tag_Mining;
-    FGameplayTag Tag_Melee;
-
 	UAbilitySystemComponent* ASC;
 	AActor* OwningActor;
 
@@ -94,6 +90,8 @@ protected:
 	bool bIsCrouch;
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
 	bool bIsTurning;
+	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")
+	bool bIsJetPack;
 
 	//수직 이동 속도
 	UPROPERTY(BlueprintReadOnly, Category = "AnimCharacter")

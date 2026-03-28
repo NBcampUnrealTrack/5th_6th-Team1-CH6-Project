@@ -24,25 +24,6 @@ void ALobbyGameMode::BeginPlay()
 
             WeakThis->CreateRoom();
         });
-
-    // 테스트용 임시
-    //FTimerHandle TravelHandle;
-    //GetWorldTimerManager().SetTimer(
-    //    TravelHandle,
-    //    [WeakThis]()
-    //    {
-    //        if (WeakThis.IsValid() == false)
-    //            return;
-
-    //        UMultiplayerSubsystem* MultiplayerSubsystem = WeakThis->GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
-    //        if (IsValid(MultiplayerSubsystem) == true)
-    //        {
-    //            // GameMode는 호스트만 가지므로, 별도의 필터링 X
-    //            MultiplayerSubsystem->ServerTravelToLevel("/Game/SpaceBase/Maps/MainLevel");
-    //        }
-    //    },
-    //    60.0f,
-    //    false);
 }
 
 void ALobbyGameMode::HandleSeamlessTravelPlayer(AController*& C)
@@ -96,21 +77,7 @@ void ALobbyGameMode::UpdateSessionParticipants()
     UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
     if (IsValid(MultiplayerSubsystem) == true)
     {
-        AGameStateBase* GS = GetWorld()->GetGameState();
-        if (IsValid(GS) == true)
-        {
-            const auto& PlayerArray = GS->PlayerArray;
-            TArray<FString> PlayerNames;
-            for (APlayerState* PS : PlayerArray)
-            {
-                if (IsValid(PS) == true)
-                {
-                    PlayerNames.Add(PS->GetPlayerName());
-                }
-            }
-
-            MultiplayerSubsystem->UpdateSessionParticipants(PlayerNames);
-        }
+        MultiplayerSubsystem->UpdateSessionParticipants();
     }
 }
 
@@ -120,16 +87,19 @@ void ALobbyGameMode::CreateRoom()
     if (IsValid(MultiplayerSubsystem) == true)
     {
         // GameMode는 호스트만 가지므로, 별도의 필터링 X
-        UpdateParticipantsHandle = MultiplayerSubsystem->BindOnCreateSession(FOnCreateSession::FDelegate::CreateLambda(
-            [MultiplayerSubsystem, WeakThis = TWeakObjectPtr(this)](FName, bool)
-            {
-                if (WeakThis.IsValid() == true)
-                {
-                    WeakThis->UpdateSessionParticipants();
-                    MultiplayerSubsystem->UnbindOnCreateSession(WeakThis->UpdateParticipantsHandle);
-                }
-            }));
+        CreateRoomHandle = MultiplayerSubsystem->BindOnCreateSession(FOnCreateSession::FDelegate::CreateUObject(
+            this, &ThisClass::OnCreateRoom));
 
         MultiplayerSubsystem->CreateSession();
     }
+}
+
+void ALobbyGameMode::OnCreateRoom(FName SessionName, bool bWasSuccessful)
+{
+    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    if (IsValid(MultiplayerSubsystem) == false)
+        return;
+
+    MultiplayerSubsystem->SyncNicknameToPlayerState();
+    MultiplayerSubsystem->UnbindOnCreateSession(CreateRoomHandle);
 }
