@@ -258,17 +258,7 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (GEngine)
-	{
-		FString BoolText = bIsJetPack ? TEXT("True") : TEXT("False");
-
-		GEngine->AddOnScreenDebugMessage(
-			1,
-			5.0f,         // 화면에 떠 있을 시간 (초)
-			FColor::Cyan, // 텍스트 색상 (원하는 색으로 변경 가능!)
-			FString::Printf(TEXT("체크 중인 불 값: %s"), *BoolText)
-		);
-	}
+	
 	if (bIsReturning == true)
 	{
 		if (HasAuthority() == true || IsLocallyControlled() == true)
