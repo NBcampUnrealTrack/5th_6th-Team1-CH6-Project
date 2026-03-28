@@ -66,6 +66,8 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
 public:
+	void Login();
+
 	void EpicLogin();
 	void SteamLogin();
 
@@ -76,8 +78,11 @@ public:
 	void JoinSession(int32 Index);
 	void JoinSession(const FOnlineSessionSearchResult& SearchResult);
 
+	void ShowInviteUI();
+
 	// 세션 비참여자가 방 정보에서 참가자 정보를 확인할 수 있게, SessionSettings에서 참여자 닉네임 업데이트
-	void UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames);
+	void SyncNicknameToPlayerState();
+	void UpdateSessionParticipants();
 
 	bool GetRoomList(TArray<FRoomInfo>& OutRoomList);
 	FString HashPassword(const FString& Password);
@@ -103,10 +108,17 @@ public:
 	void SetVolume(int32 LocalUserNum, float InVolume);
 	void SetMute(int32 LocalUserNum, bool bMute);
 
+
+	FORCEINLINE bool IsLogin() const { return bLogin; }
+
 private:
+	void OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error);
+
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void OnFindSessionsComplete(bool bWasSuccessful);
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+
+	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
 	void SetVoiceChatUser();
 
@@ -131,6 +143,7 @@ private:
 	FDelegateHandle TravelHandle;
 
 	FName CurrentSessionName;
+	FString PlayerNickname;
 
 	static const FName SETTING_ROOMNAME;
 	static const FName SETTING_MAXPLAYERS;
@@ -151,6 +164,8 @@ private:
 
 	HAuthTicket AuthTicketHandle;
 	CCallbackManual<UMultiplayerSubsystem, GetTicketForWebApiResponse_t> CallbackGetTicketForWebApi;
+
+	uint8 bLogin : 1 = false;
 
 #pragma endregion
 

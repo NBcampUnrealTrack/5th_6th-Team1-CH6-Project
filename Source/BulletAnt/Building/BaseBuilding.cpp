@@ -76,9 +76,9 @@ void ABaseBuilding::OnConstruction(const FTransform& Transform)
 	LocalCenter.Z = Min.Z;
 
 	StaticMeshComp->SetRelativeLocation(-LocalCenter);
-	EdgesRoot->SetRelativeLocation(-LocalCenter);
 	PlacementRoot->SetRelativeLocation(-LocalCenter);
 	SupportRoot->SetRelativeLocation(-LocalCenter);
+	EdgesRoot->SetRelativeLocation(-LocalCenter);
 
 	RebuildCachedLocalEdges();
 }
@@ -120,24 +120,6 @@ void ABaseBuilding::BeginPlay()
 
 void ABaseBuilding::Use_Implementation(AActor* User)
 {
-	//if (!IsValid(User))
-	//{
-	//	return;
-	//}
-
-	//ABACharacter* Character = Cast<ABACharacter>(User);
-	//if (!Character)
-	//{
-	//	return;
-	//}
-
-	//UBuildManagerComponent* BuildManager = Character->FindComponentByClass<UBuildManagerComponent>();
-	//if (!BuildManager)
-	//{
-	//	return;
-	//}
-
-	//BuildManager->RequestDemolish(this);
 }
 
 void ABaseBuilding::GetInteractionOptions_Implementation(AActor* User, TArray<FInteractionOption>& OutOptions) const
@@ -212,6 +194,19 @@ void ABaseBuilding::OnDeath()
 	Multicast_PlayDestruction(GetActorLocation());
 	bDead = true;
 	OnRep_Dead();
+
+	if (ASC)
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = GetActorLocation();
+		CueParams.Instigator = GetInstigator();
+		CueParams.EffectCauser = this;
+		CueParams.RawMagnitude = 1.f;
+		CueParams.EffectContext = ASC->MakeEffectContext();
+
+		ASC->ExecuteGameplayCue(TAG_GameplayCue_Building_Destroyed, CueParams);
+	}
+
 	SetLifeSpan(DebrisLifeSeconds);
 
 	Server_UnregisterFromSupports();
@@ -286,31 +281,30 @@ void ABaseBuilding::RebuildCachedLocalEdges()
 	TArray<USceneComponent*> EdgeComps;
 	EdgesRoot->GetChildrenComponents(true, EdgeComps);
 
-	const FTransform WorldToActor = GetActorTransform().Inverse();
-
 	for (USceneComponent* EdgeComp : EdgeComps)
 	{
-		if (USplineComponent* Edge = Cast<USplineComponent>(EdgeComp))
+		USplineComponent* Edge = Cast<USplineComponent>(EdgeComp);
+		if (!Edge)
 		{
-			if (!Edge) 
-			{
-				continue;
-			}
-
-			if (Edge->GetNumberOfSplinePoints() < 2)
-			{
-				continue;
-			}
-
-			FVector WA = Edge->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
-			FVector WB = Edge->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
-
-			FBuildingEdge E;
-			E.A = WorldToActor.TransformPosition(WA);
-			E.B = WorldToActor.TransformPosition(WB);
-
-			CachedLocalEdges.Add(E);
+			continue;
 		}
+
+		if (Edge->GetNumberOfSplinePoints() < 2)
+		{
+			continue;
+		}
+
+		const FVector WA = Edge->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
+		const FVector WB = Edge->GetLocationAtSplinePoint(1, ESplineCoordinateSpace::World);
+
+		const FVector A = GetActorTransform().InverseTransformPosition(WA);
+		const FVector B = GetActorTransform().InverseTransformPosition(WB);
+
+		FBuildingEdge NewEdge;
+		NewEdge.A = A;
+		NewEdge.B = B;
+
+		CachedLocalEdges.Add(NewEdge);
 	}
 }
 
@@ -341,6 +335,14 @@ void ABaseBuilding::GetPlacementPrimitives(TArray<UPrimitiveComponent*>& OutPrim
 void ABaseBuilding::SetPreviewMode(bool bInPreview)
 {
 	bPreviewMode = bInPreview;
+}
+
+void ABaseBuilding::ApplyPreviewMode()
+{
+	if (!IsPreviewMode())
+	{
+		return;
+	}
 
 	if (StaticMeshComp)
 	{
@@ -352,7 +354,7 @@ void ABaseBuilding::SetPreviewMode(bool bInPreview)
 
 	for (UPrimitiveComponent* Prim : Prims)
 	{
-		if (!Prim) 
+		if (!Prim)
 		{
 			continue;
 		}

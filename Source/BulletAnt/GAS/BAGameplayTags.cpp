@@ -42,6 +42,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Mining_Hit, "GameplayCue.Mining.Hit");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Communicate_Ping, "GameplayCue.Communicate.Ping");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Reward_LevelUp, "GameplayCue.Reward.LevelUp");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Combat_Reload, "GameplayCue.Combat.Reload");
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Building_Destroyed, "GameplayCue.Building.Destroyed");
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Building_Placed, "GameplayCue.Building.Placed");
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Building_Damaged, "GameplayCue.Building.Damaged");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Ammo_MaxAmmo, "Data.Ammo.MaxAmmo");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Fire_Cooldown, "Data.Fire.Cooldown");

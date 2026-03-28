@@ -37,6 +37,8 @@
 #include "Player/BAPlayerState.h"
 #include "Components/SplineComponent.h"
 #include "NiagaraComponent.h"
+#include "Components/WidgetComponent.h"
+#include "UI/UW_IngameUserInfo.h"
 
 TWeakObjectPtr<USceneCaptureComponent2D> ABACharacter::LocalSceneCapture = nullptr;
 const FName ABACharacter::NameReturnEffectColor("User.Color");
@@ -131,6 +133,15 @@ ABACharacter::ABACharacter()
 	ReturnPathEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("ReturnPathEffect"));
 	ReturnPathEffect->SetupAttachment(PathSpline);
 
+	IngameUserInfoUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("IngameUserInfoUI"));
+	IngameUserInfoUI->SetupAttachment(GetMesh(), TEXT("SocketNickname"));
+	IngameUserInfoUI->SetWidgetSpace(EWidgetSpace::Screen);
+	IngameUserInfoUI->SetUsingAbsoluteRotation(true);
+	IngameUserInfoUI->SetRelativeRotation(FRotator::ZeroRotator);
+	IngameUserInfoUI->SetDrawAtDesiredSize(true);
+	IngameUserInfoUI->SetPivot(FVector2D(0.5f, 1.0f));
+	IngameUserInfoUI->SetDrawSize(FVector2D(300.0f, 72.0f));
+
 	GetMesh()->SetCanEverAffectNavigation(false);
 }
 
@@ -148,6 +159,8 @@ void ABACharacter::BeginPlay()
 	{
 		GS->AddActiveCharacter(this);
 	}
+
+	OnLevelChanged.AddDynamic(this, &ThisClass::UpdateLevelUI);
 
 	if (IsLocallyControlled() == true)
 	{
@@ -247,7 +260,7 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 	if (bIsReturning == true)
 	{
 		if (HasAuthority() == true || IsLocallyControlled() == true)
@@ -311,11 +324,11 @@ void ABACharacter::Tick(float DeltaTime)
 				SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, 125, DeltaTime, TALengthChangeSpeed);
 				CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, AimingFieldOfView, DeltaTime, TALengthChangeSpeed);
 			}
-		}
-		else if (!bIsAiming && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
-		{
-			SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, CurrentArmLength, DeltaTime, TALengthChangeSpeed);
-			CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+			else
+			{
+				SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, CurrentArmLength, DeltaTime, TALengthChangeSpeed);
+				CameraComponent->FieldOfView = FMath::FInterpTo(CameraComponent->FieldOfView, 90.f, DeltaTime, TALengthChangeSpeed);
+			}
 		}
 	}
 	if (SpotlightComp && Controller)
@@ -329,6 +342,8 @@ void ABACharacter::Tick(float DeltaTime)
 		SpotlightComp->SetWorldRotation(SmoothRot);
 	}
 	IdleTurning(DeltaTime);
+
+	UpdateIngameInfoScale();
 }
 
 // 입력 바인딩
@@ -528,6 +543,7 @@ void ABACharacter::OnRep_PlayerState()
 	}
 
 	SetPlayerColor();
+	UpdateNicknameUI();
 }
 
 void ABACharacter::SpringArmRot(bool check)
@@ -632,13 +648,14 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!ASC) return;
 	if (!EquippedWeapon) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged) && ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
+	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+		bIsJetPack = true;
 
 	FGameplayTagContainer Tag;
 
 	UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
 	if (!WeaponData) return;
 	Tag.AddTag(WeaponData->WeaponTag);
-
 	ASC->TryActivateAbilitiesByTag(Tag);
 }
 
@@ -656,7 +673,8 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 {
 	if (!ASC) return;
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
-
+	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+		bIsJetPack = false;
 	FGameplayTagContainer CancelTags;
 	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
@@ -671,6 +689,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 
 	SetPlayerColor();
+	UpdateNicknameUI();
 
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (PS)
@@ -883,10 +902,7 @@ void ABACharacter::OnEXPChangedCallback(const FOnAttributeChangeData& Data) cons
 
 void ABACharacter::OnLevelChangedCallback(const FOnAttributeChangeData& Data)
 {
-	if (IsLocallyControlled())
-	{
-		OnLevelChanged.Broadcast(Data.NewValue, Data.OldValue);
-	}
+	OnLevelChanged.Broadcast(Data.NewValue, Data.OldValue);
 
 	if (HasAuthority())
 	{
@@ -1332,6 +1348,7 @@ void ABACharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(ABACharacter, OwnedEquipment);
 	DOREPLIFETIME_CONDITION_NOTIFY(ABACharacter, bIsReturning, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME(ABACharacter, ReplicatedAimTarget);
+	DOREPLIFETIME(ABACharacter, bIsJetPack);
 }
 
 void ABACharacter::Multicast_PlayTurnMontage_Implementation(UAnimMontage* MontageToPlay, FTransform TargetTransform)
@@ -1643,6 +1660,18 @@ void ABACharacter::SetPlayerColor()
 			ReturnPathEffect->SetVariableLinearColor(NameReturnPathEffectColor, PlayerColor * 3.0f);
 		}
 
+		if (IsValid(IngameUserInfoUI) == true)
+		{
+			// 호스트는 위젯 생성 시점의 문제로 가끔 위젯이 비어있는 경우가 있음. 강제로 생성.
+			IngameUserInfoUI->InitWidget();
+
+			UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
+			if (IsValid(UserInfoUI) == true)
+			{
+				UserInfoUI->SetColor(PlayerColor);
+			}
+		}
+
 		if (PlayerColorChangeHandle.IsValid() == true)
 			return;
 
@@ -1929,6 +1958,67 @@ void ABACharacter::OnRep_IsReturning()
 		//GetCharacterMovement()->bCheatFlying = false;
 		SetActorEnableCollision(true);
 	}
+}
+
+void ABACharacter::UpdateNicknameUI()
+{
+	if (IsValid(IngameUserInfoUI) == false)
+		return;
+
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == false)
+		return;
+
+	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
+	if (IsValid(UserInfoUI) == false)
+		return;
+
+	UserInfoUI->SetNickname(PS->GetPlayerName());
+}
+
+void ABACharacter::UpdateLevelUI(float CurrentLevel, float OldLevel)
+{
+	if (IsValid(IngameUserInfoUI) == false)
+		return;
+
+	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
+	if (IsValid(UserInfoUI) == false)
+		return;
+
+	UserInfoUI->SetLevel((int32)CurrentLevel);
+}
+
+void ABACharacter::UpdateIngameInfoScale()
+{
+	if (IsValid(IngameUserInfoUI) == false)
+		return;
+
+	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
+	if (IsValid(UserInfoUI) == false)
+		return;
+
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	if (IsValid(PlayerController) == false)
+		return;
+
+	APlayerCameraManager* CM = PlayerController->PlayerCameraManager;
+	if (IsValid(CM) == false)
+		return;
+
+	FVector CameraLoc = CM->GetCameraLocation();
+	float Dist = FVector::Dist(CameraLoc, GetActorLocation());
+
+	const float MinDist = 200.0f;
+	const float MaxDist = 6000.0f;
+	float NewScale = FMath::GetMappedRangeValueClamped(
+		FVector2D(MinDist, MaxDist),
+		FVector2D(1.0f, 0.0f),
+		Dist);
+
+	UserInfoUI->SetScale(NewScale);
+
+	bool bVisible = NewScale > 0.01f;
+	IngameUserInfoUI->SetVisibility(bVisible);
 }
 
 void ABACharacter::GetEXP(float InEXP)

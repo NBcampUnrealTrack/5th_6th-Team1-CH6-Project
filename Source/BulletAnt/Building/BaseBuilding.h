@@ -78,6 +78,7 @@ public:
 	void GetPlacementPrimitives(TArray<UPrimitiveComponent*>& OutPrims) const;
 
 	virtual void SetPreviewMode(bool bInPreview);
+	virtual void ApplyPreviewMode();
 	virtual void SetCanPlace(bool bInCanPlace);
 	bool IsPreviewMode() const { return bPreviewMode; }
 
@@ -98,9 +99,9 @@ public:
 	float GetCurrentHealth() const;
 	float GetMaxHealth() const;
 
-protected:
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
 
+protected:
 	UFUNCTION()
 	virtual void OnRep_Dead();
 

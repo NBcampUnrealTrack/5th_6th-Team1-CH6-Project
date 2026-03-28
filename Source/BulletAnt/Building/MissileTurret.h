@@ -19,6 +19,8 @@ protected:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void UpdateAim(float DeltaSeconds) override;
 
+	virtual void ApplyPreviewMode() override;
+
 protected:
 	virtual void ExecuteAttack() override;
 	virtual float GetAttackInterval() const override;
