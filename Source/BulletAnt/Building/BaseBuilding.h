@@ -78,6 +78,7 @@ public:
 	void GetPlacementPrimitives(TArray<UPrimitiveComponent*>& OutPrims) const;
 
 	virtual void SetPreviewMode(bool bInPreview);
+	virtual void ApplyPreviewMode();
 	virtual void SetCanPlace(bool bInCanPlace);
 	bool IsPreviewMode() const { return bPreviewMode; }
 

@@ -31,6 +31,11 @@ void ABaseTurret::BeginPlay()
 
 	ApplyTurretData();
 
+	if (IsPreviewMode())
+	{
+		return;
+	}
+
 	if (HasAuthority() && TurretData)
 	{
 		const float InitialDelay = FMath::FRandRange(0.f, TurretData->TargetSearchInterval);
@@ -65,9 +70,9 @@ void ABaseTurret::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(ABaseTurret, CurrentTarget);
 }
 
-void ABaseTurret::SetPreviewMode(bool bInPreview)
+void ABaseTurret::ApplyPreviewMode()
 {
-	Super::SetPreviewMode(bInPreview);
+	Super::ApplyPreviewMode();
 
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -88,7 +93,7 @@ void ABaseTurret::SetPreviewMode(bool bInPreview)
 	{
 		ASC->SetComponentTickEnabled(false);
 	}
-
+	
 	CurrentTarget = nullptr;
 }
 

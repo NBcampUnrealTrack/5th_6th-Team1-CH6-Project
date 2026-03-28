@@ -33,6 +33,30 @@ void AMissileTurret::UpdateAim(float DeltaSeconds)
 	UpdateMissileAim(DeltaSeconds);
 }
 
+void AMissileTurret::ApplyPreviewMode()
+{
+	Super::ApplyPreviewMode();
+
+	if (!bPreviewMode || !PreviewMID)
+	{
+		return;
+	}
+
+	for (UStaticMeshComponent* VisualComp : MissileVisuals)
+	{
+		if (!VisualComp)
+		{
+			continue;
+		}
+
+		const int32 NumMaterials = VisualComp->GetNumMaterials();
+		for (int32 MatIdx = 0; MatIdx < NumMaterials; ++MatIdx)
+		{
+			VisualComp->SetMaterial(MatIdx, PreviewMID);
+		}
+	}
+}
+
 float AMissileTurret::GetAttackInterval() const
 {
 	if (!RangedTurretData || !RangedTurretData->WeaponData || RangedTurretData->WeaponData->RoundPerMinute <= 0.f)

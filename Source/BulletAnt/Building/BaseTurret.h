@@ -22,7 +22,7 @@ protected:
 public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual void SetPreviewMode(bool bInPreview) override;
+	virtual void ApplyPreviewMode() override;
 
 protected:
 	// IOnDeathInterface
