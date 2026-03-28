@@ -48,6 +48,7 @@ void UUW_ShopWindow::OnClickEndButton()
 		{
 			UISubsystem->HideUI(EUIType::Shop);
 			UISubsystem->ApplyGameOnlyInputMode();
+			PC->SetIgnoreMoveInput(false);
 		}
 	}
 }

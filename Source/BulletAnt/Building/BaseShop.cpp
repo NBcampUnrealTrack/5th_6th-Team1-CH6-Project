@@ -11,6 +11,7 @@
 #include "UI/UISubsystem.h"
 #include "UI/UW_ShopWindow.h"
 #include "Weapon/BaseWeapon.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 ABaseShop::ABaseShop()
 {
@@ -105,8 +106,17 @@ void ABaseShop::ShowShop(ABAPlayerController* PC)
 	if (IsValid(UISubsystem))
 	{
 		ShopWindow = UISubsystem->ShowUI<UUW_ShopWindow>(EUIType::Shop);
-		UISubsystem->ApplyUIOnlyInputMode(ShopWindow);
-		ShopWindow->InitShopUI(this);
+		if (ShopWindow)
+		{
+			UISubsystem->ApplyUIOnlyInputMode(ShopWindow);
+			ShopWindow->InitShopUI(this);
+			ACharacter* Player = Cast<ACharacter>(PC->GetPawn());
+			if (Player)
+			{
+				Player->GetCharacterMovement()->StopMovementImmediately();
+				PC->SetIgnoreMoveInput(true);
+			}
+		}
 	}
 }
 

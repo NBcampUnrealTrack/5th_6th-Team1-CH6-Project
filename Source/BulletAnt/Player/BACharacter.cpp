@@ -1086,6 +1086,8 @@ void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 
 void ABACharacter::Interaction(const FInputActionValue& Value)
 {
+	if (ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) return;
+
 	FVector CamLoc;
 	FRotator CamRot;
 	GetController()->GetPlayerViewPoint(CamLoc, CamRot);;
