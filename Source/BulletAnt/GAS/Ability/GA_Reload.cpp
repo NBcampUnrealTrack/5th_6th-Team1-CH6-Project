@@ -56,6 +56,15 @@ void UGA_Reload::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 	Data = Cast<URangedWeaponDataAsset>(Interface->GetDataAsset());
 
+	UAbilitySystemComponent* SourceASC = ActorInfo->AbilitySystemComponent.Get();
+	if (SourceASC)
+	{
+		FGameplayCueParameters Params;
+		Params.SourceObject = Data;
+
+		SourceASC->ExecuteGameplayCue(TAG_GameplayCue_Combat_Reload, Params);
+	}
+
 	if (Data->ReloadMontage)
 	{
 		UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Data->ReloadMontage);

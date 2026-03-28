@@ -12,6 +12,9 @@ AWeaponSniper::AWeaponSniper()
 {
 	SceneCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture"));
 	SceneCapture->SetupAttachment(WeaponMesh, "ADS_Sight");	
+
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
 }
 
 void AWeaponSniper::StartNightVision()
@@ -31,6 +34,7 @@ void AWeaponSniper::StartNightVision()
 
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = true;
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = true;
+	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
 
 	SceneCapture->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
 
@@ -50,6 +54,7 @@ void AWeaponSniper::StopNightVision()
 
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
+	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_SceneColorHDR;
 
 	if (NightVisionOffSound)
 	{

@@ -61,4 +61,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, meta = (EditCondition = "bPlayer == true", EditConditionHides))
 	float RecoilYaw;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (EditCondition = "bPlayer == true", EditConditionHides))
+	USoundBase* ReloadSound;
 };
