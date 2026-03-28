@@ -194,7 +194,7 @@ void ABaseEnemyCharacter::SenseNearbyActors()
 		{
 			for (AActor* NearbyActor : Value->Actors)
 			{
-				if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle))
+				if (IsValid(NearbyActor) && IsInFieldOfView(NearbyActor, SenseAngle) && !IsIgnoredTarget(NearbyActor))
 				{
 					double DistSquared = FVector::DistSquared2D(GetActorLocation(), NearbyActor->GetActorLocation());
 					if (MinDistSquared > DistSquared)
@@ -254,6 +254,25 @@ void ABaseEnemyCharacter::InitTarget()
 	TargetActorPriority = ETargetPriorityType::Max;
 }
 
+void ABaseEnemyCharacter::OnTargetNavAborted()
+{
+	if (!IsValid(TargetActor))
+	{
+		return;
+	}
+	for (const FIgnoredTarget& IgnoredTarget : AbortedTargets)
+	{
+		if (IgnoredTarget.Target == TargetActor)
+		{
+			return;
+		}
+	}
+
+	AbortedTargets.Emplace(TargetActor, 0.f);
+	InitTarget();
+	TransitionToRotate();
+}
+
 //void ABaseEnemyCharacter::OnTargetBuildingDestroy()
 //{
 //	if (!HasAuthority())
@@ -309,6 +328,31 @@ void ABaseEnemyCharacter::TransitionToRotate()
 {
 	FStateTreeEvent ToRotate(FGameplayTag::RequestGameplayTag(TEXT("State.Movement.Rotating")));
 	StateTreeComponent->SendStateTreeEvent(ToRotate);
+}
+
+bool ABaseEnemyCharacter::IsIgnoredTarget(AActor* InTarget)
+{
+	for (const FIgnoredTarget& IgnoredTarget : AbortedTargets)
+	{
+		if (IgnoredTarget.Target == InTarget)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ABaseEnemyCharacter::ClearAbortedTarget()
+{
+	for (int32 i = AbortedTargets.Num() - 1; i >= 0; --i)
+	{
+		AbortedTargets[i].ExpireTime++;
+		if (AbortedTargets[i].ExpireTime >= 3.f)
+		{
+			AbortedTargets.RemoveAtSwap(i, 1, false);
+		}
+	}
 }
 
 UAbilitySystemComponent* ABaseEnemyCharacter::GetAbilitySystemComponent() const
@@ -530,6 +574,7 @@ void ABaseEnemyCharacter::BeginPlay()
 		if (IsValid(World))
 		{
 			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
+			GetWorldTimerManager().SetTimer(AbortedTargetTimerHandle, this, &ABaseEnemyCharacter::ClearAbortedTarget, 1.f, true);
 		}
 	}
 

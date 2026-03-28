@@ -85,7 +85,8 @@ EStateTreeRunStatus UMoveToTargetActorTask::EnterState(FStateTreeExecutionContex
 	else // 요청이 거절당한 경우
 	{
 		CachedAIController->ReceiveMoveCompleted.RemoveDynamic(this, &UMoveToTargetActorTask::OnMoveCompleted);
-		return EStateTreeRunStatus::Failed;
+		ContextActor->OnTargetNavAborted();
+		return EStateTreeRunStatus::Running;
 	}
 }
 
@@ -197,21 +198,8 @@ void UMoveToTargetActorTask::OnMoveCompleted(FAIRequestID RequestID, EPathFollow
 			ContextActor->GetStateTreeComponent()->SendStateTreeEvent(ToAttack);
 		}
 	}
-	// 경로 문제일 경우 (1초 뒤 재시도)
-	else if (Result == EPathFollowingResult::Blocked || Result == EPathFollowingResult::OffPath)
+	else
 	{
-		if (IsValid(TargetActor) && CachedAIController.IsValid())
-		{
-			TWeakObjectPtr<UMoveToTargetActorTask> WeakSelf(this);
-			GetWorld()->GetTimerManager().SetTimer(RetryTimer, [WeakSelf]()
-			{
-				if (WeakSelf.IsValid() && (WeakSelf->CachedAIController).IsValid())
-				{
-					WeakSelf->StartMoveToTarget();
-				}
-			}, 1.f, false);
-		}
+		ContextActor->OnTargetNavAborted();
 	}
 }
-
-
