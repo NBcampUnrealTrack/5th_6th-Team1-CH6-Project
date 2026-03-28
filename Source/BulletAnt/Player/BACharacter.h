@@ -163,6 +163,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* ADSAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* NightVisionAction;
+
     //UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Interaction")
     //UInputAction* InteractionAction;
 
@@ -236,6 +239,7 @@ protected:
     void StopRunning(const FInputActionValue& Value);
     void CrouchInput(const FInputActionValue& Value); 
     void ADSStart(const FInputActionValue& Value);
+    void ToggleNightVision(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void Interaction_F(const FInputActionValue& Value);
     void Interaction_Q(const FInputActionValue& Value);
@@ -499,6 +503,9 @@ public:
     
     UPROPERTY(ReplicatedUsing = OnRep_bIsFiring)
     bool bIsFiring = false;
+
+    UPROPERTY()
+    bool bIsNightVision = false;
 
 #pragma endregion
 

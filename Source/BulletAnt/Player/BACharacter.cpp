@@ -18,10 +18,12 @@
 #include "UI/UW_Interaction.h"
 #include "Weapon/Data/RangedWeaponDataAsset.h"
 #include "UI/UISubsystem.h"
+#include "UI/UW_Scope.h"
 #include "GAS/AttributeSet/HealthAttributeSet.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
 #include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
+#include "Weapon/Sniper/WeaponSniper.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "Weapon/BaseRangedWeapon.h"
@@ -385,6 +387,11 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (ADSAction)
 		{
 			EnhancedInputComponent->BindAction(ADSAction, ETriggerEvent::Completed, this, &ABACharacter::ADSStart);
+		}
+
+		if (NightVisionAction)
+		{
+			EnhancedInputComponent->BindAction(NightVisionAction, ETriggerEvent::Started, this, &ABACharacter::ToggleNightVision);
 		}
 
 		//상호작용
@@ -1049,6 +1056,24 @@ void ABACharacter::ADSStart(const FInputActionValue& Value)
 	{
 		ASC->HandleGameplayEvent(TAG_Event_Combat_EndADS, &Payload);
 	}
+}
+
+void ABACharacter::ToggleNightVision(const FInputActionValue& Value)
+{
+	if (!EquippedWeapon->GetWeaponData() || !(EquippedWeapon->GetWeaponData()->WeaponType == EWeaponType::Sniper)) return;
+	if (!ASC || !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS)) return;
+
+	AWeaponSniper* Sniper = Cast<AWeaponSniper>(EquippedWeapon);
+	if (bIsNightVision)
+	{
+		Sniper->StopNightVision();
+	}
+	else
+	{
+		Sniper->StartNightVision();
+	}
+
+	bIsNightVision = !bIsNightVision;
 }
 
 

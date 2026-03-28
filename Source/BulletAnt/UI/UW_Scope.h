@@ -16,7 +16,7 @@ public:
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Scope")
-	UMaterialInterface* ScopeMaterial;	
+	UMaterialInterface* ScopeMaterial;
 
 	UPROPERTY()
 	UMaterialInstanceDynamic* CachedMID;

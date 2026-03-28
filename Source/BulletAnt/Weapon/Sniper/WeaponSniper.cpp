@@ -6,12 +6,55 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "UI/UISubsystem.h"
 #include "UI/UW_Scope.h"
-#include "Player/BACharacter.h"
+#include "Kismet/GameplayStatics.h"
 
 AWeaponSniper::AWeaponSniper()
 {
 	SceneCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture"));
-	SceneCapture->SetupAttachment(WeaponMesh, "ADS_Sight");
+	SceneCapture->SetupAttachment(WeaponMesh, "ADS_Sight");	
+}
+
+void AWeaponSniper::StartNightVision()
+{
+	if (!SceneCapture || !NightVisionMaterial) return;
+
+	if (!NightVisionMID)
+	{
+		NightVisionMID = UMaterialInstanceDynamic::Create(NightVisionMaterial, this);
+	}
+
+	SceneCapture->PostProcessSettings.WeightedBlendables.Array.Empty();
+
+	SceneCapture->PostProcessSettings.WeightedBlendables.Array.Add(
+		FWeightedBlendable(1.0f, NightVisionMID)
+	);
+
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = true;
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = true;
+
+	SceneCapture->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
+
+	SceneCapture->PostProcessSettings.AutoExposureBias = 8.0f;
+
+	if (NightVisionOnSound)
+	{
+		UGameplayStatics::PlaySound2D(GetOwner(), NightVisionOnSound);
+	}
+}
+
+void AWeaponSniper::StopNightVision()
+{
+	if (!SceneCapture) return;
+
+	SceneCapture->PostProcessSettings.WeightedBlendables.Array.Empty();
+
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
+
+	if (NightVisionOffSound)
+	{
+		UGameplayStatics::PlaySound2D(GetOwner(), NightVisionOffSound);
+	}
 }
 
 void AWeaponSniper::SceneCaptureHideArrowMesh(ABACharacter* Player)
