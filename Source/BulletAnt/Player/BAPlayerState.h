@@ -24,6 +24,8 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 	virtual void CopyProperties(APlayerState* NewPlayerState) override;
 	virtual void BeginPlay() override;
+	virtual void PostNetInit() override;
+	virtual void OnRep_PlayerName() override;
 
 public:
 	void SetPlayerColorIdx(int32 NewIdx);
@@ -33,6 +35,10 @@ public:
 	FDelegateHandle BindOnChangedPlayerColor(const FOnChangedPlayerColor::FDelegate& Delegate);
 	void UnbindOnChangedPlayerColor(const UObject* Object);
 	void UnbindOnChangedPlayerColor(FDelegateHandle Handle);
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdatePlayerName(const FString& NewName);
+	FORCEINLINE bool IsSetNickname() const { return bSetNickname; }
 
 protected:
 	UFUNCTION()
@@ -46,6 +52,9 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	TArray<FLinearColor> PlayerColorTable;
+
+	UPROPERTY()
+	uint8 bSetNickname : 1 = false;
 
 #pragma region GAS 
 

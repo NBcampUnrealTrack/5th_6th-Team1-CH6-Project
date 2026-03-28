@@ -17,6 +17,9 @@
 #include "steam/steam_api.h"
 #include "Framework/BAGameInstance.h"
 #include "Misc/SecureHash.h"
+#include "Interfaces/OnlineUserInterface.h"
+#include "Player/BAPlayerState.h"
+#include "Framework/BAGameState.h"
 
 const FName UMultiplayerSubsystem::SETTING_ROOMNAME(TEXT("ROOMNAME"));
 const FName UMultiplayerSubsystem::SETTING_MAXPLAYERS(TEXT("MAXPLAYERS"));
@@ -29,6 +32,23 @@ const FName UMultiplayerSubsystem::NAME_GAMESESSION(TEXT("GameSession"));
 void UMultiplayerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+}
+
+void UMultiplayerSubsystem::Login()
+{
+	if (bLogin == true)
+		return;
+
+	//IOnlineSubsystem* SteamSub = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
+	//if (SteamSub && SteamAPI_Init() == true)
+	//{
+	//	SteamLogin();
+	//}
+	//else
+	//{
+	//	EpicLogin();
+	//}
+	EpicLogin();
 }
 
 void UMultiplayerSubsystem::EpicLogin()
@@ -121,20 +141,8 @@ void UMultiplayerSubsystem::ProcessEOSLogin(FString CredentialType, FString Cred
 				Identity->ClearOnLoginCompleteDelegate_Handle(0, LoginHandle);
 			}
 
-			LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateLambda(
-				[WeakThis = TWeakObjectPtr(this), Identity](int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
-				{
-					if (WeakThis.IsValid() == true)
-					{
-						FString StrSuccess = bWasSuccessful == true ? TEXT("Login Success") : TEXT("Login Failed");
-						UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
-						if (bWasSuccessful == true)
-						{
-							WeakThis->OnSuccessLogin.Broadcast();
-							WeakThis->OnSuccessLogin.Clear();
-						}
-					}
-				}));
+			LoginHandle = Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateUObject(
+				this, &ThisClass::OnLoginComplete));
 
 			UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("Start Login %s"), *AuthToken));
 			FOnlineAccountCredentials Credentials;
@@ -221,8 +229,53 @@ void UMultiplayerSubsystem::JoinSession(const FOnlineSessionSearchResult& Search
 	SessionInterface->JoinSession(0, NAME_GAMESESSION, SearchResult);		// SessionName은 내가 붙인 방의 별명
 }
 
-void UMultiplayerSubsystem::UpdateSessionParticipants(const TArray<FString>& ParticipantNicknames)
+void UMultiplayerSubsystem::ShowInviteUI()
 {
+	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
+	if (Subsystem == nullptr)
+		return;
+
+	IOnlineExternalUIPtr ExternalUI = Subsystem->GetExternalUIInterface(); Online::GetExternalUIInterface(GetWorld());
+	if (ExternalUI.IsValid() == false)
+		return;
+
+	ExternalUI->ShowInviteUI(0, NAME_GAMESESSION);
+}
+
+void UMultiplayerSubsystem::SyncNicknameToPlayerState()
+{
+	APlayerController* PC = GetGameInstance()->GetFirstLocalPlayerController();
+	if (IsValid(PC) == false)
+		return;
+
+	ABAPlayerState* PS = Cast<ABAPlayerState>(PC->PlayerState);
+	if (IsValid(PS) == false)
+		return;
+
+	PS->Server_UpdatePlayerName(PlayerNickname);
+}
+
+void UMultiplayerSubsystem::UpdateSessionParticipants()
+{
+	UWorld* World = GetWorld();
+	if (IsValid(World) == false)
+		return;
+
+	AGameStateBase* GS = World->GetGameState();
+	TArray<FString> PlayerNames;
+	if (IsValid(GS) == true)
+	{
+		const auto& PlayerArray = GS->PlayerArray;
+		for (APlayerState* PS : PlayerArray)
+		{
+			ABAPlayerState* BAPS = Cast<ABAPlayerState>(PS);
+			if (IsValid(BAPS) == true)
+			{
+				PlayerNames.Add(BAPS->IsSetNickname() == true ? PS->GetPlayerName() : TEXT("Loading..."));
+			}
+		}
+	}
+
 	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
 	if (SessionInterface.IsValid() == false)
 		return;
@@ -231,9 +284,11 @@ void UMultiplayerSubsystem::UpdateSessionParticipants(const TArray<FString>& Par
 	if (CurrentSettings == nullptr)
 		return;
 
-	FString CombinedNames = FString::Join(ParticipantNicknames, TEXT(","));
+	FString CombinedNames = FString::Join(PlayerNames, TEXT(","));
 	CurrentSettings->Set(SETTING_PARTICIPANTNICKNAMES, CombinedNames, EOnlineDataAdvertisementType::ViaOnlineService);
 	SessionInterface->UpdateSession(NAME_GAMESESSION, *CurrentSettings);
+
+	UKismetSystemLibrary::PrintString(GetWorld(), CombinedNames);
 }
 
 bool UMultiplayerSubsystem::GetRoomList(TArray<FRoomInfo>& OutRoomList)
@@ -387,6 +442,35 @@ EVoiceChatTransmitMode UMultiplayerSubsystem::GetTransmitMode()
 	return VoiceChatUser->GetTransmitMode();
 }
 
+void UMultiplayerSubsystem::OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, const FUniqueNetId& UserId, const FString& Error)
+{
+	FString StrSuccess = bWasSuccessful == true ? TEXT("Login Success") : TEXT("Login Failed");
+	UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s, %s"), *StrSuccess, *Error));
+
+	if (bWasSuccessful == false)
+		return;
+
+	bLogin = true;
+
+	if (SteamAPI_Init() == true)
+	{
+		PlayerNickname = FString(UTF8_TO_TCHAR(SteamFriends()->GetPersonaName()));
+	}
+	else
+	{
+		IOnlineIdentityPtr IdentityInterface = Online::GetIdentityInterface(GetWorld());
+		if (IdentityInterface.IsValid() == true)
+		{
+			PlayerNickname = IdentityInterface->GetPlayerNickname(LocalUserNum);
+		}
+	}
+
+	UKismetSystemLibrary::PrintString(GetWorld(), PlayerNickname.IsEmpty() == false ? FString::Printf(TEXT("%s"), *PlayerNickname) : TEXT("PlayerNickname not valid"));
+
+	OnSuccessLogin.Broadcast();
+	OnSuccessLogin.Clear();
+}
+
 void UMultiplayerSubsystem::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	OnCreateSession.Broadcast(SessionName, bWasSuccessful);
@@ -395,6 +479,15 @@ void UMultiplayerSubsystem::OnCreateSessionComplete(FName SessionName, bool bWas
 		return;
 
 	CurrentSessionName = SessionName;
+
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	if (SessionInterface.IsValid() == true)
+	{
+		SessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(
+			FOnSessionUserInviteAcceptedDelegate::CreateUObject(
+				this, &ThisClass::OnSessionUserInviteAccepted));
+	}
+
 	//SetupNotifications();
 	/*TravelHandle = OnJoinVoiceChannel.AddLambda([this, SessionName](const FString& ChannelName, const FVoiceChatResult& Result)
 		{
@@ -440,6 +533,30 @@ void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSess
 		2.0f);
 }
 
+void UMultiplayerSubsystem::OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
+{
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Session Result =>"));
+	if (bWasSuccessful == false)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Invite not accepted"));
+		return;
+	}
+
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	if (SessionInterface.IsValid() == false)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Session not valid"));
+		return;
+	}
+
+	if (SessionInterface->GetNamedSession(NAME_GAMESESSION) != nullptr)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Already in session"));
+
+		// 기존 세션 나오기
+	}
+}
+
 void UMultiplayerSubsystem::SetVoiceChatUser()
 {
 	IOnlineSubsystemEOS* EOS = static_cast<IOnlineSubsystemEOS*>(IOnlineSubsystem::Get("EOS"));
@@ -480,29 +597,31 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 
 void UMultiplayerSubsystem::OnGetAuthTicketForWebApiCompleted(GetTicketForWebApiResponse_t* Response)
 {
-	if (Response->m_hAuthTicket != AuthTicketHandle)
-	{
-		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("WebAPI failed 0"));
-		return;
-	}
+	GetTicketForWebApiResponse_t LocalResponse = *Response;
 
-	AuthTicketHandle = 0;
+	AsyncTask(ENamedThreads::GameThread, [this, LocalResponse]()
+		{
+			if (LocalResponse.m_hAuthTicket != AuthTicketHandle)
+				return;
 
-	if (Response->m_eResult != k_EResultOK)
-	{
-		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("WebAPI failed 1"));
-		return;
-	}
+			AuthTicketHandle = 0;
 
-	GetWorld()->GetTimerManager().ClearTimer(SteamAuthTimer);
+			GetWorld()->GetTimerManager().ClearTimer(SteamAuthTimer);
 
-	FString TokenString = FString::FromHexBlob(Response->m_rgubTicket, Response->m_cubTicket);
+			if (LocalResponse.m_eResult != k_EResultOK)
+			{
+				UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Steam WebAPI Ticket not valid"));
+				return;
+			}
 
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Start Login"));
-	ProcessEOSLogin(
-		TEXT("externalauth:SteamSessionTicket"),
-		TEXT(""),
-		TokenString);
+			FString TokenString = FString::FromHexBlob(LocalResponse.m_rgubTicket, LocalResponse.m_cubTicket);
+
+			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Start Login"));
+			ProcessEOSLogin(
+				TEXT("externalauth:SteamSessionTicket"),
+				TEXT(""),
+				TokenString);
+		});
 }
 
 void UMultiplayerSubsystem::SetVolume(int32 LocalUserNum, float InVolume)
