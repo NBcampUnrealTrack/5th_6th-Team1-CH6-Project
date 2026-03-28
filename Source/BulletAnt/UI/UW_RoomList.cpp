@@ -4,12 +4,14 @@
 #include "Components/Button.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
 #include "OnlineSessionSettings.h"
+#include "UI/UISubsystem.h"
 
 void UUW_RoomList::NativeConstruct()
 {
 	Super::NativeConstruct();
 
 	BtnRefresh->OnClicked.AddDynamic(this, &ThisClass::RefreshList);
+	BtnCancel->OnClicked.AddDynamic(this, &ThisClass::CloseUI);
 }
 
 void UUW_RoomList::NativeDestruct()
@@ -57,6 +59,8 @@ void UUW_RoomList::UpdateList()
 	if (IsValid(ItemClass) == false || IsValid(ItemParent) == false)
 		return;
 
+	ItemParent->ClearChildren();
+
 	TArray<FRoomInfo> RoomList;
 	bool bSuccess = MultiplayerSubsystem->GetRoomList(RoomList);
 	if (bSuccess == false)
@@ -74,4 +78,17 @@ void UUW_RoomList::UpdateList()
 		int32 Col = RoomIdx % 3;
 		ItemParent->AddChildToUniformGrid(NewItem, Row, Col);
 	}
+}
+
+void UUW_RoomList::CloseUI()
+{
+	ULocalPlayer* LP = GetOwningLocalPlayer();
+	if (IsValid(LP) == false)
+		return;
+
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem) == false)
+		return;
+
+	UISubsystem->CloseUI(EUIType::RoomList);
 }
