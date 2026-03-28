@@ -1,14 +1,15 @@
-[Steam 버전]
-( DefaultEngine.ini )
-- OnlineSubsystemSteam > bEnabled = true
-- bUseEAS = false (여러 곳임)
-( MultiplayerSubsystem )
-- SteamLogin() 함수 호출
+###  스팀 로그인 시 에픽 계정과 연동하고 플레이  ###
+DefaultEngine.ini > bUseEAS = true (여러 곳임)
 
 
-[EAS(Epic Account Services 버전]
-( DefaultEngine.ini )
-- OnlineSubsystemSteam > bEnabled = false
-- bUseEAS = true (여러 곳임)
-( MultiplayerSubsystem )
-- Epiclogin() 함수 호출
+###  스팀 로그인 시 별도의 연동 과정 없이 플레이 (임시 계정 생성)  ###
+[ Steam 버전 ]
+DefaultEngine.ini > bUseEAS = false (여러 곳임)
+
+[ EAS(Epic Account Services 버전 ]
+DefaultEngine.ini > bUseEAS = true (여러 곳임)
+
+========================================================================================
+
+- 두 경우 모두 스팀이 켜져 있으면 스팀 로그인 시도
+- 그러나 bUseEAS = false 인 경우에는 에픽 오버레이가 열리지 않으므로 에픽 로그인은 불가능해짐

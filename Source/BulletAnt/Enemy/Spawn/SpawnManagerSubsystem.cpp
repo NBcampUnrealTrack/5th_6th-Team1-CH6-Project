@@ -6,6 +6,7 @@
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Building/BaseCore.h"
 #include "Framework/BAGameState.h"
+#include "Enemy/Spawn/SpawnLocationManager.h"
 
 void USpawnManagerSubsystem::OnEnemyDie()
 {
@@ -15,6 +16,11 @@ void USpawnManagerSubsystem::OnEnemyDie()
 	//	WaveIndex++;
 	//	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
 	//}
+}
+
+void USpawnManagerSubsystem::SetCachedSpawnLocationManager(ASpawnLocationManager* InSpawnLocationManager)
+{
+	CachedSpawnLocationManager = InSpawnLocationManager;
 }
 
 void USpawnManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
@@ -175,13 +181,6 @@ void USpawnManagerSubsystem::UpdatePreparationTime()
 
 void USpawnManagerSubsystem::StartWave()
 {
-	//UWorld* World = GetWorld();
-	//if (!IsValid(World))
-	//{
-	//	return;
-	//}
-	// World->GetTimerManager().ClearTimer(WaveTimer);
-
 	if (IsValid(CachedGameState))
 	{
 		TargetCore = CachedGameState->GetTargetCore();
@@ -195,8 +194,6 @@ void USpawnManagerSubsystem::StartWave()
 	const FName RowName = FName(*FString::Printf(TEXT("Wave%d"), WaveIndex + 1));
 	EnemySpawnHandle.RowName = RowName;
 
-	// GetWorld()->GetTimerManager().SetTimer(NextWaveTimer, this, &USpawnManagerSubsystem::ChangeWave, 100.f, false);
-
 	SpawnEnemies();
 }
 
@@ -206,7 +203,10 @@ void USpawnManagerSubsystem::SpawnEnemies()
 	{
 		return;
 	}
-
+	if (!IsValid(CachedSpawnLocationManager))
+	{
+		return;
+	}
 	if (IsValid(EnemySpawnHandle.DataTable) == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SpawnManagerSubsystem : DataTable Error"));
@@ -240,30 +240,22 @@ void USpawnManagerSubsystem::SpawnEnemies()
 
 	for (int32 j = 0; j < Count; j++)
 	{
-		FVector RandomDirection = FMath::VRand();
-		RandomDirection.Z = 0.0f;
-		RandomDirection.Normalize();
-		float RandomDistance = FMath::FRandRange(static_cast<float>(MinDistance), static_cast<float>(MaxDistance));
-		FVector SpawnLocation = TargetCore->GetActorLocation() + (RandomDirection * RandomDistance);
-
-		if (CanSpawnEnemy(SpawnLocation))
+		FVector SpawnLocation = CachedSpawnLocationManager->GetRandomSpawnLocation();
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
+			EnemyClass,
+			SpawnLocation,
+			FRotator::ZeroRotator,
+			SpawnParams
+		);
+		if (IsValid(Enemy))
 		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-			ABaseEnemyCharacter* Enemy = GetWorld()->SpawnActor<ABaseEnemyCharacter>(
-				EnemyClass,
-				SpawnLocation,
-				FRotator::ZeroRotator,
-				SpawnParams
-			);
-			if (IsValid(Enemy))
+			AliveEnemyCount++;
+			if (IsValid(TribeDataAsset))
 			{
-				AliveEnemyCount++;
-				if (IsValid(TribeDataAsset))
-				{
-					Enemy->SetTribeType(TribeDataAsset);
-					Enemy->OnRep_TribeType();
-				}
+				Enemy->SetTribeType(TribeDataAsset);
+				Enemy->OnRep_TribeType();
 			}
 		}
 		else
@@ -288,56 +280,6 @@ void USpawnManagerSubsystem::SpawnEnemies()
 			false
 		);
 	}
-}
-
-bool USpawnManagerSubsystem::CanSpawnEnemy(FVector& InSpawnLocation)
-{
-	UWorld* World = GetWorld();
-	if (!IsValid(World))
-	{
-		return false;
-	}
-
-	FVector TraceStart = InSpawnLocation + FVector(0, 0, 500.f);
-	FVector TraceEnd = InSpawnLocation - FVector(0, 0, 500.f);
-
-	FHitResult HitResult;
-	FCollisionQueryParams QueryParams;
-	bool bHit = World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_WorldStatic, QueryParams);
-
-	if (bHit)
-	{
-		FVector FinalSpawnLocation = HitResult.ImpactPoint;
-		if (FinalSpawnLocation.Z > 100)
-		{
-			return false;
-		}
-
-		float CapsuleRadius = 40.f;
-		float CapsuleHalfHeight = 1000.f;
-		FCollisionShape Capsule = FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight);
-		FHitResult SweepHit;
-		bool bIsBlocked = World->SweepSingleByChannel(
-			SweepHit,
-			FinalSpawnLocation + FVector(0, 0, CapsuleHalfHeight + 50), 
-			FinalSpawnLocation + FVector(0, 0, CapsuleHalfHeight + 50),
-			FQuat::Identity,
-			ECC_Pawn, 
-			Capsule
-		);
-
-		if (!bIsBlocked)
-		{
-			InSpawnLocation = FinalSpawnLocation + FVector(0, 0, CapsuleHalfHeight);
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	return false;
 }
 
 void USpawnManagerSubsystem::ChangeWave()

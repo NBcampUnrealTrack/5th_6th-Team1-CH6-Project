@@ -8,10 +8,7 @@ ATitleGameMode::ATitleGameMode()
 
 void ATitleGameMode::BeginPlay()
 {
-	if (bAlreadyLogin == false)
-	{
-		StartLogin();
-	}
+	StartLogin();
 }
 
 void ATitleGameMode::StartLogin()
@@ -19,15 +16,19 @@ void ATitleGameMode::StartLogin()
 	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
 	if (IsValid(MultiplayerSubsystem) == true)
 	{
+		if (MultiplayerSubsystem->IsLogin() == true)
+		{
+			OnSuccessLogin();
+			return;
+		}
+
 		MultiplayerSubsystem->BindOnSuccessLogin(FOnSuccessLogin::FDelegate::CreateUObject(this, &ThisClass::OnSuccessLogin));
-		MultiplayerSubsystem->SteamLogin();
+		MultiplayerSubsystem->Login();
 	}
 }
 
 void ATitleGameMode::OnSuccessLogin()
 {
-	bAlreadyLogin = true;
-
 	ATitlePlayerController* PC = GetWorld()->GetFirstPlayerController<ATitlePlayerController>();
 	if (IsValid(PC) == true)
 	{

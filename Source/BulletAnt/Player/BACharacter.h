@@ -36,6 +36,7 @@ class UGameplayEffect;
 class USplineComponent;
 class UNiagaraComponent;
 class USpotLightComponent;
+class UWidgetComponent;
 
 UENUM(BlueprintType)
 enum class ETurnType : uint8
@@ -664,6 +665,21 @@ protected:
     static const FName NameReturnEffectColor;
     static const FName NameReturnPathEffectColor;
     static const FName NameReturnPathEffectSpawnRate;
+
+#pragma endregion
+
+#pragma region IngameInfoUI
+
+public:
+    UFUNCTION()
+    void UpdateNicknameUI();
+    UFUNCTION()
+    void UpdateLevelUI(float CurrentLevel, float OldLevel);
+    void UpdateIngameInfoScale();
+
+protected:
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TObjectPtr<UWidgetComponent> IngameUserInfoUI;
 
 #pragma endregion
 

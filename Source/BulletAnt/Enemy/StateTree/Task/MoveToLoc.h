@@ -33,7 +33,6 @@ private:
 	FVector GetClosestLocation();
 
 	void ToAttackState();
-	void ToMoveToLocState();
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")

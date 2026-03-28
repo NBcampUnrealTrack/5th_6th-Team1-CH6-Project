@@ -22,12 +22,21 @@ class UMoveAttributeSet;
 struct FOnAttributeChangeData;
 
 USTRUCT()
-struct FActorArrayWrapper
+struct BULLETANT_API FActorArrayWrapper
 {
 	GENERATED_BODY()
 
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> Actors;
+};
+
+USTRUCT()
+struct BULLETANT_API FIgnoredTarget
+{
+	GENERATED_BODY()
+
+	TWeakObjectPtr<AActor> Target;
+	float ExpireTime;
 };
 
 UCLASS()
@@ -86,6 +95,8 @@ public:
 
 	void InitTarget();
 
+	void OnTargetNavAborted();
+
 protected:
 	UFUNCTION()
 	virtual void OnDetectionSphereBeginOverlap(
@@ -114,6 +125,10 @@ protected:
 
 	void TransitionToRotate();
 
+	bool IsIgnoredTarget(AActor* InTarget);
+
+	void ClearAbortedTarget();
+
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TObjectPtr<USphereComponent> DetectionSphere;
@@ -123,8 +138,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Perception")
 	TMap<ETargetPriorityType, FActorArrayWrapper> NearbyActors;
 
+	UPROPERTY(VisibleAnywhere, Category = "Perception")
+	TArray<FIgnoredTarget> AbortedTargets;
 
 	FTimerHandle SensingTimerHandle;
+	FTimerHandle AbortedTargetTimerHandle;
 
 #pragma endregion
 

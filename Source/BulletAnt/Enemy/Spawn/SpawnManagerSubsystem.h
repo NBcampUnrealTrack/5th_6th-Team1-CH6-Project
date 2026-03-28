@@ -10,6 +10,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnInitWaveTimeChanged, int32);
 
 class ABaseCore;
 class ABAGameState;
+class ASpawnLocationManager;
 
 UCLASS()
 class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
@@ -18,6 +19,8 @@ class BULLETANT_API USpawnManagerSubsystem : public UWorldSubsystem
 
 public:
 	void OnEnemyDie();
+
+	void SetCachedSpawnLocationManager(ASpawnLocationManager* InSpawnLocationManager);
 
 protected:
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
@@ -30,7 +33,6 @@ protected:
 	void UpdatePreparationTime();
 	void StartWave();
 	void SpawnEnemies();
-	bool CanSpawnEnemy(FVector& InSpawnLocation);
 	void ChangeWave();
 
 protected:
@@ -58,6 +60,9 @@ protected:
 	TObjectPtr<ABAGameState> CachedGameState;
 
 	bool bIsWaveStarted = false;
+
+	UPROPERTY()
+	TObjectPtr<ASpawnLocationManager> CachedSpawnLocationManager;
 
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
