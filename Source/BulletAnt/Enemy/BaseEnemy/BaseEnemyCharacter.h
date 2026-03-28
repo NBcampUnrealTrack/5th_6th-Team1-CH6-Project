@@ -97,6 +97,8 @@ public:
 
 	void OnTargetNavAborted();
 
+	void SetTarget(AActor* InTarget, ETargetPriorityType InTargetPriority);
+
 protected:
 	UFUNCTION()
 	virtual void OnDetectionSphereBeginOverlap(
