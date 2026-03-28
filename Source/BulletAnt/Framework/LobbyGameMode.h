@@ -26,6 +26,8 @@ public:
 protected:
 	void CreateRoom();
 
+	void OnCreateRoom(FName SessionName, bool bWasSuccessful);
+
 protected:
-	FDelegateHandle UpdateParticipantsHandle;
+	FDelegateHandle CreateRoomHandle;
 };
