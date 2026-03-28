@@ -138,6 +138,11 @@ void ABAPlayerController::Server_RequestAddWeapon_Implementation(ABAItemBox* InI
 	ABAGameState* GS = Cast<ABAGameState>(GetWorld()->GetGameState());
 	if (!GS) return;
 
+	if (!InItemBox->GetItem())
+	{
+		InItemBox->AddWeaponToItemBox();
+	}
+
 	if (InItemBox->GetItem())
 	{
 		GS->AddHaveWeapon(InItemBox->GetItem());

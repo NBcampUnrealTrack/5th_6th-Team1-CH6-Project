@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "Shop/GachaWeightData.h"
 
 ABAItemBox::ABAItemBox()
 {
@@ -93,6 +94,43 @@ void ABAItemBox::BeginPlay()
 		ProjectileMovement->Activate();
 	}
 	ProjectileMovement->OnProjectileStop.AddDynamic(this, &ABAItemBox::Multi_PlayDropSound);
+}
+
+void ABAItemBox::AddWeaponToItemBox()
+{
+	if (!GachaWeight) return;
+
+	TArray<FGachaWeightData*> WeightRow;
+	GachaWeight->GetAllRows(TEXT("GachaWeight"), WeightRow);
+	
+	float TotalWeight = 0;
+
+	for (FGachaWeightData* Row : WeightRow)
+	{
+		if (!Row) continue;
+		if (Row->GachaID == 0)
+		{
+			TotalWeight += Row->Weight;
+		}
+	}
+
+	float Rand = FMath::RandRange(0.f, TotalWeight);
+
+	for (FGachaWeightData* Row : WeightRow)
+	{
+		if (!Row) continue;
+		if (Row->GachaID == 0)
+		{
+			Rand -= Row->Weight;
+			if (Rand <= 0)
+			{
+				SetItem(Row->ActorClass);
+				return;
+			}
+		}
+	}
+
+	return;
 }
 
 void ABAItemBox::Multi_PlayDropSound_Implementation(const FHitResult& ImpactPoint)

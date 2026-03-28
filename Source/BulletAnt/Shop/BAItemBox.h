@@ -47,9 +47,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DestroyItemBox();
 
+	void AddWeaponToItemBox();
+
 protected:
 	virtual void BeginPlay() override;
-
+	
 	UFUNCTION(NetMulticast, Reliable)
 	void Multi_PlayDropSound(const FHitResult& ImpactPoint);
 
@@ -61,5 +63,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	USoundBase* DropSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Data|Weight")
+	TObjectPtr<UDataTable> GachaWeight;
 
 };
