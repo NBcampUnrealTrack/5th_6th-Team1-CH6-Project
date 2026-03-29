@@ -34,8 +34,9 @@ public:
 
 
 protected:
-	FRotator CameraTargetOffset();
+	FRotator CameraTargetOffset(FVector TargetLocation);
 	void IsGrabLeftHand(float DeltaSeconds);
+	FVector ViewTrace();
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
@@ -113,7 +114,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Parkour")
 	float HandIKAlpha;
-
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
+	FRotator HandCorrectionRot;
 	TObjectPtr<ABaseWeapon> EquippedWeapon;
 	UPROPERTY(BlueprintReadOnly, Category = "Anim|Weapon")
 	FTransform LeftHandIK_Transform;

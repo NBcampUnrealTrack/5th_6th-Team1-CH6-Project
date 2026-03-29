@@ -27,6 +27,9 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void OnDeath() override;
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multi_ShowResult();
+
 	void FindAnchors();
 	void InitializeCoreMaterial();
 	void UpdateCoreMaterialHealthRatio();

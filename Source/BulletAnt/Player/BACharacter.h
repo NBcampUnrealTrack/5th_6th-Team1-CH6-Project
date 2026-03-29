@@ -248,7 +248,7 @@ protected:
     void Interaction_E(const FInputActionValue& Value);
     void TryInteractionByKey(const FKey& PressedKey);
     void EnterBuildMode(const FInputActionValue& Value);
-    void ExitBuildMode(const FInputActionValue& Value);
+    void ExitBuildMode();
     void PlaceBuilding(const FInputActionValue& Value);
     void RotateBuilding(const FInputActionValue& Value);
     void ToggleSnapMode(const FInputActionValue& Value);
@@ -296,7 +296,8 @@ protected:
     void ServerRPC_StopTurnMontage();
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StopTurnMontage();
-
+    UFUNCTION(Server, Reliable)
+    void Server_SetJetPack(bool bNewJetPackState);
 
     UFUNCTION(Server, Reliable)
     void Server_SetAiming(bool bNewIsAiming);
@@ -613,9 +614,6 @@ public:
     UFUNCTION(Server, Reliable)
     void Server_StopRecordingPath();
 
-    UFUNCTION(Server, Reliable)
-    void Server_SetIsInZone(bool bInZone);
-
     FORCEINLINE bool GetIsReturning() const { return bIsReturning; }
 
 protected:
@@ -677,8 +675,6 @@ protected:
     FVector ReturnSocketOffset = FVector::ZeroVector;
     
     float ReturnDistance = 0.0f;
-
-    uint8 bIsInReturnZone : 1 = false;
 
     UPROPERTY(ReplicatedUsing = OnRep_IsReturning)
     uint8 bIsReturning : 1 = false;

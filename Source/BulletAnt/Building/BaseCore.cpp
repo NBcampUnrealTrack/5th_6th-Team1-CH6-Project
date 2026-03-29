@@ -61,6 +61,14 @@ void ABaseCore::BeginPlay()
 
 void ABaseCore::OnDeath()
 {
+	if (HasAuthority())
+	{
+		Multi_ShowResult();
+	}
+}
+
+void ABaseCore::Multi_ShowResult_Implementation()
+{
 	APlayerController* PC = GetWorld()->GetFirstPlayerController();
 	if (!PC) return;
 
