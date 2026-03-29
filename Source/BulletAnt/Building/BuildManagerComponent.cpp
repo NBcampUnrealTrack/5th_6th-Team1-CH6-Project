@@ -11,6 +11,7 @@
 #include <Kismet/GameplayStatics.h>
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "Player/BAPlayerState.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
@@ -719,6 +720,12 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
         CueParams.EffectContext = BuildingASC->MakeEffectContext();
 
         BuildingASC->ExecuteGameplayCue(TAG_GameplayCue_Building_Placed, CueParams);
+    }
+
+    ABAPlayerState* PS = GetOwner<APawn>() ? GetOwner<APawn>()->GetPlayerState<ABAPlayerState>() : nullptr;
+    if (PS)
+    {
+        PS->AddBuildCount();
     }
 }
 

@@ -40,5 +40,9 @@ void UUW_GameOver::InitText()
 				}
 			}
 		}
+		if (BuildingText)
+		{
+			BuildingText->SetText(FText::AsNumber(PS->GetBuildCount()));
+		}
 	}
 }
