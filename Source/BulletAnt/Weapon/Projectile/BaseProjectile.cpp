@@ -71,7 +71,7 @@ void ABaseProjectile::ActivateProjectile()
 	ProjectileMovement->Activate();
 	bIsActive = true;
 
-	Tracer->DeactivateImmediate();
+	Tracer->ReinitializeSystem();
 	Tracer->Activate();
 }
 
@@ -85,6 +85,7 @@ void ABaseProjectile::DeactivateProjectile()
 
 	bIsActive = false;
 	Tracer->DeactivateImmediate();
+	Tracer->ReinitializeSystem();
 }
 
 void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
