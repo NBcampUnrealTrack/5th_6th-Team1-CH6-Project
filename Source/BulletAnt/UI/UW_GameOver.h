@@ -21,7 +21,7 @@ private:
 	UFUNCTION()
 	void GoToLobby();
 	UFUNCTION()
-	void GoToMain();
+	void GoToTitle();
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
