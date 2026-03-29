@@ -140,6 +140,8 @@ void UUW_ShopWindow::RequestEquipWeapon()
 			else
 				HUD->SetAutoImage(false);
 
+			HUD->UpdateWeaponName(WeaponClass);
+
 			PC->ShowAmmo();
 		}
 	}

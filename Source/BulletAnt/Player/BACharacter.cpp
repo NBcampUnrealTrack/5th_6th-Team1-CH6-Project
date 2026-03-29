@@ -178,7 +178,7 @@ void ABACharacter::BeginPlay()
 		LocalSceneCapture = SceneCapture2D;
 
 		USkeletalMeshComponent* CharacterMesh = GetMesh();
-		CharacterMesh->SetCustomDepthStencilValue(0);	
+		CharacterMesh->SetCustomDepthStencilValue(0);
 	}
 	else
 	{
@@ -260,7 +260,7 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	if (bIsReturning == true)
 	{
 		if (HasAuthority() == true || IsLocallyControlled() == true)
@@ -310,11 +310,11 @@ void ABACharacter::Tick(float DeltaTime)
 		Params.AddIgnoredActor(this);
 		if (EquippedWeapon)
 			Params.AddIgnoredActor(EquippedWeapon);
-		
+
 		FVector ExactTarget = LineTraceTarget(Params, ECC_GameTraceChannel11);
 		Server_UpdateAimTarget(ExactTarget);
 	}
-	if(ASC && !bIsReturning)
+	if (ASC && !bIsReturning)
 	{
 		if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 		{
@@ -505,6 +505,19 @@ void ABACharacter::OnRep_Controller()
 	Super::OnRep_Controller();
 
 	StartInteractionTraceTimer();
+
+	if (!GetWorld()) return;
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->UpdateWeaponName(OwnedEquipment[0]);
+		}
+	}
 }
 
 void ABACharacter::OnRep_PlayerState()
@@ -703,6 +716,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 	SetPlayerColor();
 	UpdateNicknameUI();
 
+
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (PS)
 	{
@@ -715,7 +729,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 		EXPAttributeSet = PS->GetEXPAttributeSet();
 		HealthAttributeSet->InitValue(100.f, 30.f);
 
-		
+
 		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
 			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
 
@@ -729,7 +743,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
 				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
-			
+
 
 			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,
@@ -742,6 +756,23 @@ void ABACharacter::PossessedBy(AController* NewController)
 	{
 		UpdateAmmo(OwnedEquipment[0]);
 		Server_EquipWeapon(DefaultWeaponClass);
+	}
+
+	if (IsLocallyControlled())
+	{
+		if (!GetWorld()) return;
+		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());	
+		ULocalPlayer* LP = FPC->GetLocalPlayer();
+		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+		if (IsValid(UISubsystem))
+		{
+			UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+			if (HUD)
+			{
+				HUD->UpdateWeaponName(OwnedEquipment[0]);
+			}
+		}
+
 	}
 
 #pragma region InteractionUI
@@ -762,7 +793,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	if (!HasAuthority()) return;
 	if (!WeaponClass) return;
 	if (EquippedWeapon && EquippedWeapon->GetClass() == WeaponClass) return;
-	
+
 
 	if (EquippedWeapon)
 	{
@@ -2070,7 +2101,7 @@ void ABACharacter::GetEXP(float InEXP)
 {
 	if (!HasAuthority()) return;
 	if (!ASC || !EXPEffectClass) return;
-	
+
 
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 

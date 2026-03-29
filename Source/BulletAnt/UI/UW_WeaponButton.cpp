@@ -36,6 +36,8 @@ void UUW_WeaponButton::SetWeaponName(const FText& InName)
 			default:
 				break;
 			}
+
+			WeaponName->SetColorAndOpacity(FSlateColor(Color));
 		}
 	}
 }

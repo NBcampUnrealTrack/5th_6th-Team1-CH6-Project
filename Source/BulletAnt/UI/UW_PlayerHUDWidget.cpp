@@ -7,6 +7,8 @@
 #include "UI/UW_OreCount.h"
 #include "Framework/BAGameState.h"
 #include "Components/Image.h"
+#include "Weapon/Data/WeaponDataAsset.h"
+#include "Weapon/BaseWeapon.h"
 
 void UUW_PlayerHUDWidget::NativeConstruct()
 {
@@ -139,6 +141,39 @@ void UUW_PlayerHUDWidget::SetCrossHairImage(bool bIsADS)
 		CurrentCrossHair->SetBrushFromTexture(NormalCrossHair);
 		CurrentCrossHair->SetOpacity(1.f);
 	}
+}
+
+void UUW_PlayerHUDWidget::UpdateWeaponName(TSubclassOf<ABaseWeapon> InWeaponClass)
+{
+	ABaseWeapon* BaseWeapon = Cast<ABaseWeapon>(InWeaponClass->GetDefaultObject());
+	if (!BaseWeapon) return;
+	UWeaponDataAsset* Data = BaseWeapon->GetWeaponData();
+	if (!Data) return;
+
+	WeaponName->SetText(Data->WeaponName);
+	FLinearColor Color = FLinearColor::White;
+	switch (Data->Rarity)
+	{
+	case ERarity::Common:
+		Color = FLinearColor::White;
+		break;
+	case ERarity::Rare:
+		Color = FLinearColor::Blue;
+		break;
+	case ERarity::SuperRare:
+		Color = FLinearColor::Green;
+		break;
+	case ERarity::UltraRare:
+		Color = FLinearColor::Red;
+		break;
+	case ERarity::Legend:
+		Color = FLinearColor::Yellow;
+		break;
+	default:
+		break;
+	}
+
+	WeaponName->SetColorAndOpacity(FSlateColor(Color));
 }
 
 void UUW_PlayerHUDWidget::UpdateHealth(float Current, float Max)
