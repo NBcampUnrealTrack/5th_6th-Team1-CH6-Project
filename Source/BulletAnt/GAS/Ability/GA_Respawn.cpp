@@ -113,6 +113,8 @@ void UGA_Respawn::HandleRespawn()
 				TEXT("SeatSocket")
 			);
 
+			Source->Server_ResetPath();
+
 			Source->SetActorHiddenInGame(true);
 			Source->EquippedWeapon->SetActorHiddenInGame(true);
 			Source->OnDropCallback();
