@@ -33,7 +33,7 @@ void ALevelSpawner::BeginPlay()
 	}
 	else
 	{
-		SpawnBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		DetectionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
 
@@ -92,7 +92,7 @@ void ALevelSpawner::SpawnEnemy()
 	if (EnemyCount == 0)
 	{
 		GetWorldTimerManager().ClearAllTimersForObject(this);
-		DetectionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Destroy();
 		return;
 	}
 
