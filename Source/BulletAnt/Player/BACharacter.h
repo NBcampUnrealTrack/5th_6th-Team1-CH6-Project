@@ -613,6 +613,9 @@ public:
     UFUNCTION(Server, Reliable)
     void Server_StopRecordingPath();
 
+    UFUNCTION(Server, Reliable)
+    void Server_SetIsInZone(bool bInZone);
+
     FORCEINLINE bool GetIsReturning() const { return bIsReturning; }
 
 protected:
@@ -663,6 +666,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
     float ReturnSpeed = 1500.0f;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ExitAirHeight = 600.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
+    float ExitLandingOffset = 500.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
     FVector ReturnArmLoaction = FVector(0.0f, 0.0f, 30.0f);
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GroundReturner")
     float ReturnArmLength = 150.0f;
@@ -670,6 +677,8 @@ protected:
     FVector ReturnSocketOffset = FVector::ZeroVector;
     
     float ReturnDistance = 0.0f;
+
+    uint8 bIsInReturnZone : 1 = false;
 
     UPROPERTY(ReplicatedUsing = OnRep_IsReturning)
     uint8 bIsReturning : 1 = false;
