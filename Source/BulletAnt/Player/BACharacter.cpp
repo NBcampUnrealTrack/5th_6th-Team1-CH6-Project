@@ -701,7 +701,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 		HealthAttributeSet = PS->GetHealthAttributeSet();
 		AmmoAttributeSet = PS->GetAmmoAttributeSet();
 		EXPAttributeSet = PS->GetEXPAttributeSet();
-		HealthAttributeSet->InitValue(100.f, 150.f);
+		HealthAttributeSet->InitValue(100.f, 30.f);
 
 		
 		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
@@ -1311,6 +1311,12 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 
 	if (!bParkourStarted)
 	{
+		if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_Reload))
+		{
+			FGameplayTagContainer CancelTag;
+			CancelTag.AddTag(TAG_Ability_Active_Reload);
+			ASC->CancelAbilities(&CancelTag);
+		}
 		Jump();
 	}
 }
