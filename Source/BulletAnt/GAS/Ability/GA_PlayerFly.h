@@ -4,6 +4,8 @@
 #include "Abilities/GameplayAbility.h"
 #include "GA_PlayerFly.generated.h"
 
+class ABACharacter;
+
 UCLASS()
 class BULLETANT_API UGA_PlayerFly : public UGameplayAbility
 {
@@ -33,7 +35,7 @@ protected:
 	void InputUpMovementOnce();
 
 	UPROPERTY()
-	ACharacter* PlayerCharacter;
+	ABACharacter* PlayerCharacter;
 
 	UPROPERTY()
 	float CachedZSpeed;

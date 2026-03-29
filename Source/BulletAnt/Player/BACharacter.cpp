@@ -1311,12 +1311,6 @@ void ABACharacter::JumpHandler(const FInputActionValue& Value)
 
 	if (!bParkourStarted)
 	{
-		if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_Reload))
-		{
-			FGameplayTagContainer CancelTag;
-			CancelTag.AddTag(TAG_Ability_Active_Reload);
-			ASC->CancelAbilities(&CancelTag);
-		}
 		Jump();
 	}
 }

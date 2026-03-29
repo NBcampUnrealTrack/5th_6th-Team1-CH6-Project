@@ -10,8 +10,10 @@
 
 void UUW_GameOver::InitText()
 {
+
 	if (ABAPlayerState* PS = Cast<ABAPlayerState>(GetOwningPlayerState()))
 	{
+		UWorld* World = GetWorld();
 		if (KillCountText)
 		{
 			KillCountText->SetText(FText::AsNumber(PS->GetKillCount()));
@@ -29,8 +31,7 @@ void UUW_GameOver::InitText()
 			}
 		}
 		if (DaysText)
-		{
-			UWorld* World = GetWorld();
+		{			
 			if (IsValid(World))
 			{
 				ABAGameState* GameState = World->GetGameState<ABAGameState>();
@@ -43,6 +44,17 @@ void UUW_GameOver::InitText()
 		if (BuildingText)
 		{
 			BuildingText->SetText(FText::AsNumber(PS->GetBuildCount()));
+		}
+		if (WeaponText)
+		{
+			if (IsValid(World))
+			{
+				ABAGameState* GS = World->GetGameState<ABAGameState>();
+				if (IsValid(GS))
+				{
+					WeaponText->SetText(FText::AsNumber(GS->GetHaveWeaponArray().Num()));
+				}
+			}
 		}
 	}
 }

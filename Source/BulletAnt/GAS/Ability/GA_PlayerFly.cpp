@@ -6,6 +6,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "Weapon/BaseJetpackWeapon.h"
+#include "Player/BACharacter.h"
 
 UGA_PlayerFly::UGA_PlayerFly()
 {
@@ -35,7 +37,7 @@ void UGA_PlayerFly::ActivateAbility(const FGameplayAbilitySpecHandle Handle, con
 		return;
 	}
 
-	PlayerCharacter = Cast<ACharacter>(SourceActor);
+	PlayerCharacter = Cast<ABACharacter>(SourceActor);
 	if (!PlayerCharacter)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
@@ -58,6 +60,16 @@ void UGA_PlayerFly::ActivateAbility(const FGameplayAbilitySpecHandle Handle, con
 
 	PlayerCharacter->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 
+	if (ActorInfo->IsNetAuthority())
+	{
+		ABaseJetpackWeapon* Jetpack = Cast<ABaseJetpackWeapon>(PlayerCharacter->EquippedWeapon);
+		if (Jetpack)
+		{
+			Jetpack->SetbJetpackActive(true);
+			Jetpack->OnRep_bJetpackActive();			
+		}
+	}
+
 	if (Data->bAutoActive)
 	{
 		LoopInputUpMovement();
@@ -73,6 +85,16 @@ void UGA_PlayerFly::EndAbility(const FGameplayAbilitySpecHandle Handle, const FG
 	GetWorld()->GetTimerManager().ClearTimer(FlyTimerHandler);
 	
 	PlayerCharacter->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+	if (ActorInfo->IsNetAuthority())
+	{
+		ABaseJetpackWeapon* Jetpack = Cast<ABaseJetpackWeapon>(PlayerCharacter->EquippedWeapon);
+		if (Jetpack)
+		{
+			Jetpack->SetbJetpackActive(false);
+			Jetpack->OnRep_bJetpackActive();			
+		}
+	}
+
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -93,5 +115,5 @@ void UGA_PlayerFly::InputUpMovementOnce()
 {
 	if (!PlayerCharacter) return;
 
-	PlayerCharacter->AddMovementInput(FVector::UpVector, 1.0f);
+	PlayerCharacter->AddMovementInput(FVector::UpVector, 1.f);
 }
