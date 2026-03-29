@@ -31,8 +31,8 @@ protected:
 	void SceneCaptureHideArrowMesh(ABACharacter* Player);
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly)
-	UTextureRenderTarget2D* RT;
+	UPROPERTY()
+	UTextureRenderTarget2D* RuntimeRT;
 
 	UPROPERTY(EditDefaultsOnly)
 	UMaterialInstance* NightVisionMaterial;
