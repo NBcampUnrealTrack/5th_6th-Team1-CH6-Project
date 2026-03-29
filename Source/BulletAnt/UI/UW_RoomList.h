@@ -25,6 +25,9 @@ protected:
 	void OnUpdateRooms(bool bSuccessful);
 	void UpdateList();
 
+	UFUNCTION()
+	void CloseUI();
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UUW_RoomListItem> ItemClass;
@@ -33,6 +36,8 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> BtnRefresh;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> BtnCancel;
 
 	FDelegateHandle UpdateHandle;
 };

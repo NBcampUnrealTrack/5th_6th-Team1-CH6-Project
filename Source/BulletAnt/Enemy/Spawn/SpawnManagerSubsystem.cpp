@@ -233,8 +233,6 @@ void USpawnManagerSubsystem::SpawnEnemies()
 	}
 
 	const int32 Count = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].Count;
-	const int32 MinDistance = Row->SpawnMinDistance;
-	const int32 MaxDistance = Row->SpawnMaxDistance;
 	UTribeDataAsset* TribeDataAsset = Row->SpawnEnemyDataArray[SpawnEnemyDataIdx].TribeType;
 	ensureMsgf(TribeDataAsset, TEXT("SpawnTable Tribe Missing"));
 

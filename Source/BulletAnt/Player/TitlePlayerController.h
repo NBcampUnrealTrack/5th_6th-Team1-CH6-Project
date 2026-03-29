@@ -24,13 +24,6 @@ public:
 	void ShowLoginPanel(bool bInShow);
 
 private:
-	UFUNCTION()
-	void HandleJoinRequested(const FText& InIpPort);
-
-	UFUNCTION()
-	void HandleOptionRequested();
-
-private:
 	UPROPERTY()
 	TObjectPtr<UUISubsystem> UISubsystem;
 

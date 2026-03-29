@@ -95,5 +95,5 @@ void UUW_CreateRoom::Cancel()
     if (IsValid(UISubsystem) == false)
         return;
 
-    UISubsystem->HideUI(EUIType::CreateRoom);
+    UISubsystem->CloseUI(EUIType::CreateRoom);
 }
