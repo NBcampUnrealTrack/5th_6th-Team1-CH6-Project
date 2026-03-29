@@ -30,10 +30,6 @@ void ALevelSpawner::BeginPlay()
 		DetectionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);	// Player
 		DetectionBox->OnComponentBeginOverlap.AddDynamic(this, &ALevelSpawner::OnDetectionBoxBeginOverlap);
 		DetectionBox->OnComponentEndOverlap.AddDynamic(this, &ALevelSpawner::OnDetectionBoxEndOverlap);
-
-		FVector SpawnBoxExtent = SpawnBox->GetScaledBoxExtent();
-		float SpawnSize = SpawnBoxExtent.X * SpawnBoxExtent.Y;
-		EnemyCount = SpawnDataAsset->AreaForPerSpawn ? SpawnSize / SpawnDataAsset->AreaForPerSpawn : SpawnSize;
 	}
 	else
 	{
