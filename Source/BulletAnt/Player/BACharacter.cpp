@@ -769,10 +769,12 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 
 	if (!NewWeapon) return;
 
+	FName& Socket = NewWeapon->GetWeaponData()->WeaponSocket;
+
 	NewWeapon->AttachToComponent(
 		GetMesh(),
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-		TEXT("WeaponSocket")
+		Socket
 	);
 	NewWeapon->SetActorRelativeTransform(NewWeapon->GripOffset);
 	NewWeapon->EquipWeapon(ASC);
