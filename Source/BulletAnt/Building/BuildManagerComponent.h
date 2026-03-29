@@ -142,7 +142,7 @@ private:
 	float EdgeParallelCosThreshold = 0.7071f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Snap")
-	float KeyPointSnapMaxDistance = 200.f;
+	float KeyPointSnapMaxDistance = 100.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Build|Placement")
 	float MaxBuildDistance = 2000.f;
