@@ -1374,6 +1374,7 @@ void AVoxelGround::OnPlayerEnter(UPrimitiveComponent* OverlappedComponent, AActo
 	SkyComp->SetMieScatteringScale(0.0f);
 	SkyComp->SetRayleighScatteringScale(0.0f);
 
+	Character->Server_SetIsInZone(true);
 	Character->Server_StartRecordingPath();
 }
 
@@ -1394,11 +1395,7 @@ void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor
 	SkyComp->SetMieScatteringScale(OriginMieScatterScale);
 	SkyComp->SetRayleighScatteringScale(OriginReighScatterScale);
 
-	if (Character->GetIsReturning() == false)
-	{
-		Character->Server_StopRecordingPath();
-		Character->Server_ResetPath();
-	}
+	Character->Server_SetIsInZone(false);
 }
 
 ASkyAtmosphere* AVoxelGround::GetSkyAtmosphere() const
