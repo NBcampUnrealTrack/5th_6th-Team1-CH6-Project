@@ -78,9 +78,9 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	GetCharacterMovement()->SetCanEverAffectNavigation(false);
 	DetectionSphere->SetCanEverAffectNavigation(false);
 
-	SetNetCullDistanceSquared(FMath::Square(50000));
+	bAlwaysRelevant = true;
 	SetNetUpdateFrequency(60.f);
-	SetMinNetUpdateFrequency(2.f);
+	SetMinNetUpdateFrequency(30.f);
 }
 
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
