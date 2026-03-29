@@ -22,6 +22,9 @@ public:
     UPROPERTY(EditAnywhere, Category = "Audio")
     USoundBase* MetaSoundToPlay;
 
+    UPROPERTY()
+    class USoundAttenuation* FootstepAttenuation;
+
     UPROPERTY(EditAnywhere, Category = "Audio")
     float VolumeMultiplier = 1.0f;
 };

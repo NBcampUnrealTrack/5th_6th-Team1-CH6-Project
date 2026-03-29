@@ -103,26 +103,20 @@ void UGA_Mine::DigGround(FGameplayEventData Payload)
 
 				if (IsValid(Ground) == true)
 				{
+					TMap<EVoxelType, int32> HitMap;
 					TMap<EOreType, int32> MinedOreMap;
-					Ground->DigGround(MinedOreMap, HitResult.Location, MiningData->DigRadius);
-					int32 MostMinedOre = static_cast<int32>(EOreType::None);
+					Ground->DigGround(HitMap, MinedOreMap, HitResult.Location, MiningData->DigRadius);
+					int32 MostHitOre = -1;
 					int32 MostCount = 0;
-					if (MinedOreMap.IsEmpty() == true)
+					for (const auto& Pair : HitMap)
 					{
-						MostMinedOre = -1;
-					}
-					else
-					{
-						for (const auto& Pair : MinedOreMap)
-						{
-							if (Pair.Key == EOreType::None)
-								continue;
+						if (Pair.Key == EVoxelType::None)
+							continue;
 
-							if (Pair.Value > MostCount)
-							{
-								MostMinedOre = static_cast<int32>(Pair.Key);
-								MostCount = Pair.Value;
-							}
+						if (Pair.Value > MostCount)
+						{
+							MostHitOre = static_cast<int32>(Pair.Key);
+							MostCount = Pair.Value;
 						}
 					}
 
@@ -132,7 +126,7 @@ void UGA_Mine::DigGround(FGameplayEventData Payload)
 
 					FGameplayCueParameters Parameters;
 					Parameters.EffectContext = Context;
-					Parameters.GameplayEffectLevel = MostMinedOre;
+					Parameters.GameplayEffectLevel = MostHitOre;
 					Parameters.Location = HitResult.ImpactPoint;
 					ASC->ExecuteGameplayCue(TAG_GameplayCue_Mining_Hit, Parameters);
 
