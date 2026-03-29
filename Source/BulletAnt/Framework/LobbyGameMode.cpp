@@ -100,6 +100,15 @@ void ALobbyGameMode::OnCreateRoom(FName SessionName, bool bWasSuccessful)
     if (IsValid(MultiplayerSubsystem) == false)
         return;
 
-    MultiplayerSubsystem->SyncNicknameToPlayerState();
+    APlayerController* PC = GetGameInstance()->GetFirstLocalPlayerController();
+    if (IsValid(PC) == true)
+    {
+        ABAPlayerState* PS = PC->GetPlayerState<ABAPlayerState>();
+        if (IsValid(PS) == true)
+        {
+            MultiplayerSubsystem->SyncNicknameToPlayerState(PS);
+        }
+    }
+
     MultiplayerSubsystem->UnbindOnCreateSession(CreateRoomHandle);
 }

@@ -89,7 +89,7 @@ public:
 	void ReadFriendsList();
 
 	// 세션 비참여자가 방 정보에서 참가자 정보를 확인할 수 있게, SessionSettings에서 참여자 닉네임 업데이트
-	void SyncNicknameToPlayerState();
+	void SyncNicknameToPlayerState(class ABAPlayerState* PlayerState);
 	void UpdateSessionParticipants();
 
 	bool GetRoomList(TArray<FRoomInfo>& OutRoomList);

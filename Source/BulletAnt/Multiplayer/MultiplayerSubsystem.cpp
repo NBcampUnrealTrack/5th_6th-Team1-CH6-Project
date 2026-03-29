@@ -285,17 +285,14 @@ void UMultiplayerSubsystem::ReadFriendsList()
 	FriendsInterface->ReadFriendsList(0, TEXT("Default"), FOnReadFriendsListComplete::CreateUObject(this, &ThisClass::OnReadFriendsComplete));
 }
 
-void UMultiplayerSubsystem::SyncNicknameToPlayerState()
+void UMultiplayerSubsystem::SyncNicknameToPlayerState(ABAPlayerState* PlayerState)
 {
-	APlayerController* PC = GetGameInstance()->GetFirstLocalPlayerController();
-	if (IsValid(PC) == false)
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SyncNicknameToPlayerState 0"));
+	if (IsValid(PlayerState) == false)
 		return;
 
-	ABAPlayerState* PS = Cast<ABAPlayerState>(PC->PlayerState);
-	if (IsValid(PS) == false)
-		return;
-
-	PS->Server_UpdatePlayerName(PlayerNickname);
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SyncNicknameToPlayerState 1"));
+	PlayerState->Server_UpdatePlayerName(PlayerNickname);
 }
 
 void UMultiplayerSubsystem::UpdateSessionParticipants()
@@ -525,14 +522,20 @@ void UMultiplayerSubsystem::OnLoginComplete(int32 LocalUserNum, bool bWasSuccess
 	}
 
 	IOnlineSessionPtr SessionSteam = Online::GetSessionInterface(GetWorld(), STEAM_SUBSYSTEM);
-	SessionSteam->AddOnSessionUserInviteAcceptedDelegate_Handle(
-		FOnSessionUserInviteAcceptedDelegate::CreateUObject(
-			this, &ThisClass::OnSessionUserInviteAccepted));
+	if (SessionSteam.IsValid() == true)
+	{
+		SessionSteam->AddOnSessionUserInviteAcceptedDelegate_Handle(
+			FOnSessionUserInviteAcceptedDelegate::CreateUObject(
+				this, &ThisClass::OnSessionUserInviteAccepted));
+	}
 
-	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld(), EOS_SUBSYSTEM);
-	SessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(
-		FOnSessionUserInviteAcceptedDelegate::CreateUObject(
-			this, &ThisClass::OnSessionUserInviteAccepted));
+	IOnlineSessionPtr SessionEOS = Online::GetSessionInterface(GetWorld(), EOS_SUBSYSTEM);
+	if (SessionEOS.IsValid() == true)
+	{
+		SessionEOS->AddOnSessionUserInviteAcceptedDelegate_Handle(
+			FOnSessionUserInviteAcceptedDelegate::CreateUObject(
+				this, &ThisClass::OnSessionUserInviteAccepted));
+	}
 
 	OnSuccessLogin.Broadcast();
 	OnSuccessLogin.Clear();

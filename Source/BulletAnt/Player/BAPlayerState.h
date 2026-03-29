@@ -7,6 +7,7 @@
 #include "BAPlayerState.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerName, const FString&);
 
 class UHealthAttributeSet;
 class UAmmoAttributeSet;
@@ -36,6 +37,10 @@ public:
 	void UnbindOnChangedPlayerColor(const UObject* Object);
 	void UnbindOnChangedPlayerColor(FDelegateHandle Handle);
 
+	FDelegateHandle BindOnChangedPlayerName(const FOnChangedPlayerName::FDelegate& Delegate);
+	void UnbindOnChangedPlayerName(const UObject* Object);
+	void UnbindOnChangedPlayerName(FDelegateHandle Handle);
+
 	UFUNCTION(Server, Reliable)
 	void Server_UpdatePlayerName(const FString& NewName);
 	FORCEINLINE bool IsSetNickname() const { return bSetNickname; }
@@ -46,6 +51,7 @@ protected:
 
 protected:
 	FOnChangedPlayerColor OnChangedPlayerColor;
+	FOnChangedPlayerName OnChangedPlayerName;
 
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerColorIdx)
 	int32 PlayerColorIdx = -1;

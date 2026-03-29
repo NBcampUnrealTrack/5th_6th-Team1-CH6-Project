@@ -248,6 +248,16 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 	}
 
+	if (PlayerNicknameHandle.IsValid() == true)
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (IsValid(PS) == true)
+		{
+			PS->UnbindOnChangedPlayerName(PlayerNicknameHandle);
+			PlayerNicknameHandle.Reset();
+		}
+	}
+
 	if (HasAuthority() && EquippedWeapon)
 	{
 		EquippedWeapon->Destroy();
@@ -511,39 +521,49 @@ void ABACharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	if (IsLocallyControlled())
-	{
-		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
-		if (PS)
-		{
-			ASC = PS->GetAbilitySystemComponent();
-			ASC->InitAbilityActorInfo(PS, this);
-
-			HealthAttributeSet = PS->GetHealthAttributeSet();
-			AmmoAttributeSet = PS->GetAmmoAttributeSet();
-			EXPAttributeSet = PS->GetEXPAttributeSet();
-
-			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetMaxAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
-				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
-				.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
-
-			ASC->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
-
-		}
-	}
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == false)
+		return;
 
 	SetPlayerColor();
 	UpdateNicknameUI();
+
+	UAbilitySystemComponent* ASCFromPS = PS->GetAbilitySystemComponent();
+	if (IsValid(ASCFromPS) == false)
+		return;
+
+	const UEXPAttributeSet* EXPSet = PS->GetEXPAttributeSet();
+	if (IsValid(EXPSet) == true)
+	{
+		ASCFromPS->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+	}
+
+	if (IsLocallyControlled())
+	{
+		ASC = ASCFromPS;
+		ASC->InitAbilityActorInfo(PS, this);
+
+		HealthAttributeSet = PS->GetHealthAttributeSet();
+		AmmoAttributeSet = PS->GetAmmoAttributeSet();
+		EXPAttributeSet = EXPSet;
+
+		ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetMaxAmmoAttribute())
+			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
+			.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+
+		ASC->RegisterGameplayTagEvent(
+			TAG_State_Combat_Dead,
+			EGameplayTagEventType::NewOrRemoved
+		).AddUObject(this, &ABACharacter::HandleRespawnUI);
+	}
 }
 
 void ABACharacter::SpringArmRot(bool check)
@@ -2020,17 +2040,33 @@ void ABACharacter::UpdateNicknameUI()
 	if (IsValid(PS) == false)
 		return;
 
+	IngameUserInfoUI->InitWidget();
+
 	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
 	if (IsValid(UserInfoUI) == false)
 		return;
 
 	UserInfoUI->SetNickname(PS->GetPlayerName());
+
+	if (PlayerNicknameHandle.IsValid() == true)
+		return;
+
+	PlayerNicknameHandle = PS->BindOnChangedPlayerName(FOnChangedPlayerName::FDelegate::CreateLambda(
+		[WeakThis = TWeakObjectPtr(this)](const FString& NewNickname)
+		{
+			if (WeakThis.IsValid() == true)
+			{
+				WeakThis->UpdateNicknameUI();
+			}
+		}));
 }
 
 void ABACharacter::UpdateLevelUI(float CurrentLevel, float OldLevel)
 {
 	if (IsValid(IngameUserInfoUI) == false)
 		return;
+
+	IngameUserInfoUI->InitWidget();
 
 	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
 	if (IsValid(UserInfoUI) == false)
