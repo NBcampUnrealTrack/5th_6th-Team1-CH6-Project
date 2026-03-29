@@ -81,6 +81,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 
 	FVector TargetLocation = ViewTrace();
+
 	/*FVector AimDir = FRotator(FinalPitch, FinalYaw, 0.f).Vector();
 	FVector LocalAimDir = Rotation.Quaternion().Inverse().RotateVector(AimDir);
 	FRotator DeltaRot = LocalAimDir.Rotation();*/
@@ -88,13 +89,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		if(ASC && !ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 		{
-			if (bIsAiming || bIsFiring)
 				DeltaRot = CameraTargetOffset(TargetLocation);
-			else
-			{
-				FRotator ControlRot = Character->GetControlRotation();
-				DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(ControlRot, Rotation);
-			}
 		}
 		else
 		{
@@ -115,12 +110,6 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	AOPitch = FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, Speed);
 	AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, Speed);
 	//if(ParkourComp&&!ParkourComp->bisParkour
-	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("LeftHandSocket"))
-	{
-		FTransform GunLeftHandSocket = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("LeftHandSocket");
-		FTransform Righthand = Character->GetMesh()->GetSocketTransform("hand_r");
-		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
-	}
 	FVector RightDir = OwningActor->GetActorRightVector();
 	LeftTargetLocation = ParkourComp->WarpTargetLocation - (RightDir * ShoulderWidth);
 	RightTargetLocation = ParkourComp->WarpTargetLocation + (RightDir * ShoulderWidth);
@@ -128,35 +117,54 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	VerticalVelocity = Velocity.Z;
 
 	IsGrabLeftHand(DeltaSeconds);
-	//Test
-	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("FX_BSingle_Socket"))
+
+	if (ASC 
+		&& Character->EquippedWeapon 
+		&& Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("FX_BSingle_Socket"))
 	{
-		FTransform MuzzleTransform = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("FX_BSingle_Socket");
-		FVector MuzzleLoc = MuzzleTransform.GetLocation();
+		if(!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
+		{
+			FVector CamLoc;
+			FRotator CamRot;
+			if (Character->GetController())
+			{
+				Character->GetController()->GetPlayerViewPoint(CamLoc, CamRot);
+			}
+			else
+			{
+				CamLoc = Character->GetActorLocation() + FVector(0.f, 0.f, Character->BaseEyeHeight);
+				CamRot = Character->GetControlRotation();
+			}
 
-		FVector MuzzleForward = MuzzleTransform.Rotator().Vector();
+			float DistanceFromCamera = FVector::Dist(CamLoc, TargetLocation);
+			float Length = bIsAiming ? 230.f : 320.f;
+			if (DistanceFromCamera < Length)
+			{
+				TargetLocation = CamLoc + (CamRot.Vector() * Length);
+			}
+			FTransform MuzzleTransform = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("FX_BSingle_Socket");
+			FVector MuzzleLoc = MuzzleTransform.GetLocation();
+			FRotator TargetLookRot = UKismetMathLibrary::FindLookAtRotation(MuzzleLoc, TargetLocation);
+			FRotator DeltaError = UKismetMathLibrary::NormalizedDeltaRotator(TargetLookRot, MuzzleTransform.Rotator());
 
-		FVector ActualMuzzleEnd = MuzzleLoc + (MuzzleForward * 5000.0f);
-		DrawDebugLine(GetWorld(), MuzzleLoc, ActualMuzzleEnd, FColor::Red, false, -1.0f, 0, 2.0f);
-
-		DrawDebugLine(GetWorld(), MuzzleLoc, TargetLocation, FColor::Green, false, -1.0f, 0, 2.0f);
-
+			FRotator AimDelta = FRotator(0.f, DeltaError.Yaw + 0.3f, -DeltaError.Pitch);
+			//float DynamicSpeed = DistanceFromCamera < Length ? 2.f : 15.f;
+			HandCorrectionRot = FMath::RInterpTo(HandCorrectionRot, HandCorrectionRot + AimDelta, DeltaSeconds, 15.f);
+			HandCorrectionRot.Pitch = FMath::Clamp(HandCorrectionRot.Pitch, -45.f, 45.f);
+			HandCorrectionRot.Yaw = FMath::Clamp(HandCorrectionRot.Yaw, -45.f, 45.f);
+			HandCorrectionRot.Roll = FMath::Clamp(HandCorrectionRot.Roll, -45.f, 45.f);
+		}
+		else
+		{
+			HandCorrectionRot = FMath::RInterpTo(HandCorrectionRot, FRotator::ZeroRotator, DeltaSeconds, 15.0f);
+		}
 	}
-	bool bShouldCorrectHand = bIsAiming || bIsFiring || (ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS));
-
-	if (bShouldCorrectHand && Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("FX_BSingle_Socket"))
+	
+	if (Character->EquippedWeapon && Character->EquippedWeapon->GetWeaponMesh()->DoesSocketExist("LeftHandSocket"))
 	{
-		FTransform MuzzleTransform = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("FX_BSingle_Socket");
-		//각도 계산
-		FRotator TargetLookRot = UKismetMathLibrary::FindLookAtRotation(MuzzleTransform.GetLocation(), TargetLocation);
-		//현재 총구와 목표 각도의 차이
-		FRotator DeltaError = UKismetMathLibrary::NormalizedDeltaRotator(TargetLookRot, MuzzleTransform.Rotator());
-		FRotator AimDelta = FRotator(0.f, DeltaError.Yaw, -DeltaError.Pitch);
-		HandCorrectionRot = FMath::RInterpTo(HandCorrectionRot, HandCorrectionRot + AimDelta, DeltaSeconds, 15.0f);;
-	}
-	else
-	{
-		HandCorrectionRot = FMath::RInterpTo(HandCorrectionRot, FRotator::ZeroRotator, DeltaSeconds, 15.0f);
+		FTransform GunLeftHandSocket = Character->EquippedWeapon->GetWeaponMesh()->GetSocketTransform("LeftHandSocket");
+		FTransform Righthand = Character->GetMesh()->GetSocketTransform("hand_r");
+		LeftHandIK_Transform = GunLeftHandSocket.GetRelativeTransform(Righthand);
 	}
 }
 
@@ -204,7 +212,6 @@ FVector UBAAnimInstance::ViewTrace()
 			Params.AddIgnoredActor(Character->EquippedWeapon);
 
 		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TraceEnd, ECC_GameTraceChannel11, Params);
-
 		return bHit ? Hit.ImpactPoint : TraceEnd;
 	}
 	else
