@@ -1409,6 +1409,10 @@ void AVoxelGround::OnPlayerExit(UPrimitiveComponent* OverlappedComponent, AActor
 	SkyComp->SetRayleighScatteringScale(OriginReighScatterScale);
 
 	Character->Server_StopRecordingPath();
+	if (Character->GetIsReturning() == false)
+	{
+		Character->Server_ResetPath();
+	}
 }
 
 ASkyAtmosphere* AVoxelGround::GetSkyAtmosphere() const
