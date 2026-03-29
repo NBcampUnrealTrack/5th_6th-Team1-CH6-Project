@@ -37,12 +37,26 @@ void UGA_PlayerFire::FireOnce()
 			}
 		}
 	}
-
+	
 	if (IsLocallyControlled())
 	{
+		IDataAssetInterface* DataAssetInterface = Cast<IDataAssetInterface>(PlayerCharacter);
+
+		if (!RangedData && DataAssetInterface)
+		{
+			RangedData = Cast<URangedWeaponDataAsset>(DataAssetInterface->GetDataAsset());
+		}
+
+		if (RangedData && RangedData->bPlayer)
+		{
+			RecoilPitch = RangedData->RecoilPitch;
+			RecoilYaw = RangedData->RecoilYaw;
+		}
+
 		float InRecoilPitch = RecoilPitch;
 		float InRecoilYaw = FMath::RandRange(-RecoilYaw, RecoilYaw);
 
+		PlayerCharacter = Cast<ABACharacter>(CurrentActorInfo->AvatarActor.Get());
 		if (PlayerCharacter)
 		{
 			PlayerCharacter->SetRecoil(InRecoilPitch, InRecoilYaw);
@@ -56,7 +70,7 @@ void UGA_PlayerFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	PlayerCharacter = Cast<ABACharacter>(ActorInfo->AvatarActor);
+	PlayerCharacter = Cast<ABACharacter>(ActorInfo->AvatarActor.Get());
 	if (!PlayerCharacter)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
