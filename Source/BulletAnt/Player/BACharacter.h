@@ -695,6 +695,8 @@ public:
     void UpdateIngameInfoScale();
 
 protected:
+    FDelegateHandle PlayerNicknameHandle;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TObjectPtr<UWidgetComponent> IngameUserInfoUI;
 
