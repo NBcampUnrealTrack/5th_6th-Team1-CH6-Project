@@ -1187,6 +1187,9 @@ void ABACharacter::TryInteractionByKey(const FKey& PressedKey)
 
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 {
+	if (bIsReturning == true)
+		return;
+
 	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
 	if (!BuildManager->IsBuildMode())
 	{
@@ -1202,7 +1205,7 @@ void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 	}
 }
 
-void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
+void ABACharacter::ExitBuildMode()
 {
 	if (!BuildManager->IsBuildMode())
 	{
@@ -1263,6 +1266,9 @@ void ABACharacter::OnToggleBuildInfo(const FInputActionValue& Value)
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
+	if (bIsReturning == true)
+		return;
+
 	int32 Index = (int32)Value.Get<float>() - 1;
 	if (!OwnedEquipment.IsValidIndex(Index)) return;
 
@@ -1686,32 +1692,6 @@ void ABACharacter::SetPlayerColor()
 	}
 }
 
-void ABACharacter::Server_SetIsInZone_Implementation(bool bInZone)
-{
-	if (bIsInReturnZone == bInZone)
-		return;
-
-	bIsInReturnZone = bInZone;
-	
-	if (bIsInReturnZone == true)
-	{
-		Multicast_ResetPath();
-
-		FVector EnterLoc = GetActorLocation();
-		FVector AirPoint = EnterLoc + FVector(0.0f, 0.0f, ExitAirHeight);
-		FVector RandomDir = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f).Vector();
-		FVector LandingPoint = AirPoint + RandomDir * 600.0f - FVector(0.0f, 0.0f, 200.0f);
-
-		Multicast_AddPathPoint(LandingPoint);
-		Multicast_AddPathPoint(AirPoint);
-		Multicast_AddPathPoint(EnterLoc);
-	}
-	else
-	{
-		Server_StopRecordingPath();
-	}
-}
-
 void ABACharacter::ResetPath()
 {
 	PathSpline->ClearSplinePoints();
@@ -1733,17 +1713,11 @@ void ABACharacter::StopRecordingPath()
 
 void ABACharacter::UpdateSplinePath()
 {
-	if (bIsReturning == true || HasAuthority() == false || bIsInReturnZone == false)
+	if (bIsReturning == true || HasAuthority() == false)
 		return;
 
 	FVector CurrLocation = GetActorLocation();
 	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
-	if (TotalPoints == 0)
-	{
-		Multicast_AddPathPoint(CurrLocation);
-		return;
-	}
-	;
 	FVector LastPointLocation = PathSpline->GetLocationAtSplinePoint(TotalPoints - 1, ESplineCoordinateSpace::World);
 
 	float ThresholdSquared = PathDistThreshold * PathDistThreshold;
@@ -1765,17 +1739,26 @@ void ABACharacter::Multicast_ResetPath_Implementation()
 
 void ABACharacter::Server_StartRecordingPath_Implementation()
 {
-	if (bIsInReturnZone == false)
-		return;
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	if (TotalPoints == 0)
+	{
+		FVector EnterLoc = GetActorLocation();
+		FVector AirPoint = EnterLoc + FVector(0.0f, 0.0f, ExitAirHeight);
+		FVector RandomDir = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f).Vector();
+		FVector LandingPoint = AirPoint + RandomDir * 600.0f - FVector(0.0f, 0.0f, 200.0f);
 
-	Multicast_AddPathPoint(GetActorLocation());
+		Multicast_AddPathPoint(LandingPoint);
+		Multicast_AddPathPoint(AirPoint);
+		Multicast_AddPathPoint(EnterLoc);
+	}
 
 	GetWorldTimerManager().SetTimer(
 		PathUpdateTimer,
 		this,
 		&ThisClass::UpdateSplinePath,
 		0.2f,
-		true);
+		true,
+		0.0f);
 }
 
 void ABACharacter::Server_StopRecordingPath_Implementation()
@@ -1841,6 +1824,9 @@ void ABACharacter::Multicast_RemovePoints_Implementation(int32 LastIdx)
 
 void ABACharacter::SetIsReturning(bool bInReturning)
 {
+	if (bIsReturning == bInReturning)
+		return;
+
 	if (IsValid(ASC) == true)
 	{
 		if (bInReturning == true)
@@ -1851,15 +1837,20 @@ void ABACharacter::SetIsReturning(bool bInReturning)
 			if (ASC->HasAnyMatchingGameplayTags(Container) == true)
 				return;
 
-			Container.RemoveTag(TAG_State_Combat_Dead);
-			ASC->BlockAbilitiesWithTags(Container);
+			if (IsLocallyControlled() == true)
+			{
+				ExitBuildMode();
+			}
+			bool bIsAlreadyBlocked = false;
+			FGameplayTagContainer BlockContainer;
+			BlockContainer.AddTag(TAG_Ability_Active);
+			ASC->BlockAbilitiesWithTags(BlockContainer);
 		}
 		else
 		{
-			FGameplayTagContainer Container;
-			Container.AddTag(TAG_State);
-			Container.AddTag(TAG_Event_Weapon_Switch);
-			ASC->UnBlockAbilitiesWithTags(Container);
+			FGameplayTagContainer BlockContainer;
+			BlockContainer.AddTag(TAG_Ability_Active);
+			ASC->UnBlockAbilitiesWithTags(BlockContainer);
 		}
 	}
 
@@ -1888,6 +1879,10 @@ void ABACharacter::HandleReturnMovement(float DeltaTime)
 		{
 			Server_StopReturning();
 		}
+		else
+		{
+			SetIsReturning(false);
+		}
 	}
 
 	FVector TargetLoc = PathSpline->GetLocationAtDistanceAlongSpline(ReturnDistance, ESplineCoordinateSpace::World);
@@ -1906,7 +1901,11 @@ void ABACharacter::HandleReturnMovement(float DeltaTime)
 
 void ABACharacter::StopReturning()
 {
-	if (bIsReturning == false || bIsInReturnZone == false)
+	if (bIsReturning == false)
+		return;
+
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	if (TotalPoints < 4)
 		return;
 
 	SetIsReturning(false);

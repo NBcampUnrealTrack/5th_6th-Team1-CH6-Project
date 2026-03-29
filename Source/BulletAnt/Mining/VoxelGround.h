@@ -135,8 +135,8 @@ protected:
 public:
 	void InitializeGround(int32 InSeed, const UGroundSettingPreset* InSetting);
 
-	void DigGround(TMap<EOreType, int32>& MinedOreMap, const FVector& WorldLocation, float Radius);
-	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EOreType, int32>& MinedOreMap);
+	void DigGround(TMap<EVoxelType, int32>& HitMap, TMap<EOreType, int32>& MinedOreMap, const FVector& WorldLocation, float Radius);
+	bool DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& HitMap, TMap<EOreType, int32>& MinedOreMap);
 
 	bool MakeChunkSaveData(int32 ChunkIdx, FVoxelGroundChunkSaveData& OutData);
 	bool LoadChunkSaveData(const FVoxelGroundChunkSaveData& Data);

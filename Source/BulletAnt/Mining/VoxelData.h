@@ -5,7 +5,7 @@
 
 // 더 늘어나면 개념/담당 기준으로 분리
 
-UENUM()
+UENUM(BlueprintType)
 enum class EVoxelType : uint8
 {
 	BedRock,
