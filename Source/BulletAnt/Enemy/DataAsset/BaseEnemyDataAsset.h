@@ -131,5 +131,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spawn")
 	TObjectPtr<UNiagaraSystem> SpawnEffect;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spawn")
+	TObjectPtr<USoundBase> SpawnSound;
+
 #pragma endregion
 };
