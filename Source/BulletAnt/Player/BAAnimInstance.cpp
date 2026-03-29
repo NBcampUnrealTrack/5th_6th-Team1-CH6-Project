@@ -110,7 +110,7 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		FRotator AimRot = FRotator(FinalPitch, FinalYaw, 0.f);
 		DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(AimRot, Rotation);
 	}
-	if (bIsAiming||bIsFiring)
+	if (ASC&&ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 	{
 		DeltaRot.Pitch *= -1;
 		AOPitch = FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 0.f);
@@ -118,6 +118,8 @@ void UBAAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 	else
 	{
+		if(bIsAiming||bIsFiring)
+			DeltaRot.Pitch *= -1;
 		AOPitch = FMath::FInterpTo(AOPitch, DeltaRot.Pitch, DeltaSeconds, 15.f);
 		AOYaw = FMath::FInterpTo(AOYaw, DeltaRot.Yaw, DeltaSeconds, 15.f);
 	}
@@ -190,7 +192,9 @@ FRotator UBAAnimInstance::CameraTargetOffset()
 void UBAAnimInstance::IsGrabLeftHand(float DeltaSeconds)
 {
 	if (!ASC) return;
-	float TargetAlpha = (bIsParkour|| ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead)) ? 0.f : 1.f;
+	float TargetAlpha = (bIsParkour|| 
+		ASC->HasMatchingGameplayTag(TAG_State_Combat_Dead) || 
+		ASC->HasMatchingGameplayTag(TAG_State_Combat_Reload)) ? 0.f : 1.f;
 
 	GrabLeftHand = FMath::FInterpTo(GrabLeftHand, TargetAlpha, DeltaSeconds, 15.f);
 }

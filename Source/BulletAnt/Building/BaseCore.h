@@ -9,6 +9,7 @@
 
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class UGameplayEffect;
 
 UCLASS()
 class BULLETANT_API ABaseCore : public ABaseBuilding
@@ -31,6 +32,7 @@ protected:
 	void UpdateCoreMaterialHealthRatio();
 
 	void HandleHealthChanged(const FOnAttributeChangeData& ChangeData);
+	void HandleRegen();
 
 	UPROPERTY(EditDefaultsOnly)
 	int32 ScanCount = 72;
@@ -45,4 +47,12 @@ protected:
 	TObjectPtr<UMaterialInstanceDynamic> CoreMID;
 
 	FDelegateHandle HealthChangedDelegateHandle;
+
+	FTimerHandle RegenTimerHandle;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Regen")
+	float RegenPercentPerSecond = 0.0005f; // 0.05%
+
+	UPROPERTY(EditDefaultsOnly, Category = "Core|Regen")
+	TSubclassOf<UGameplayEffect> RegenHealEffect;
 };

@@ -93,11 +93,17 @@ public:
 	void AddTotalDamage(float Damage);
 	const uint64 GetTotalDamage();
 
+	void AddBuildCount();
+	const uint32 GetBuildCount();
+
 protected:
 	UPROPERTY(Replicated)
 	uint32 KillCount = 0;
 
 	UPROPERTY(Replicated)
 	uint64 TotalDamage = 0;
+
+	UPROPERTY(Replicated)
+	uint32 BuildCount = 0;
 #pragma endregion
 };
