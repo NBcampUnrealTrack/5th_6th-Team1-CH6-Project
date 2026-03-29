@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "UI/UISubsystem.h"
 #include "UI/UW_GameOver.h"
+#include "GAS/BAGameplayTags.h"
 
 void ABaseCore::Use_Implementation(AActor* User)
 {
@@ -44,6 +45,14 @@ void ABaseCore::BeginPlay()
         HealthSet->SetHealth(5000.f);
 
 		FindAnchors();
+
+		GetWorldTimerManager().SetTimer(
+			RegenTimerHandle,
+			this,
+			&ThisClass::HandleRegen,
+			1.0f,
+			true
+		);
 	}
 
 	HealthChangedDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UHealthAttributeSet::GetHealthAttribute()).AddUObject(this, &ABaseCore::HandleHealthChanged);
@@ -129,4 +138,37 @@ void ABaseCore::UpdateCoreMaterialHealthRatio()
 void ABaseCore::HandleHealthChanged(const FOnAttributeChangeData& ChangeData)
 {
 	UpdateCoreMaterialHealthRatio();
+}
+
+void ABaseCore::HandleRegen()
+{
+	if (bDead || !ASC || !HealthSet || !RegenHealEffect)
+	{
+		return;
+	}
+
+	const float MaxHealth = GetMaxHealth();
+	const float CurrentHealth = GetCurrentHealth();
+
+	if (CurrentHealth >= MaxHealth || MaxHealth <= 0.f)
+	{
+		return;
+	}
+
+	const float HealAmount = MaxHealth * RegenPercentPerSecond;
+
+	FGameplayEffectSpecHandle SpecHandle =
+		ASC->MakeOutgoingSpec(RegenHealEffect, 1.f, ASC->MakeEffectContext());
+
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		TAG_Data_Combat_Heal,
+		HealAmount
+	);
+
+	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 }

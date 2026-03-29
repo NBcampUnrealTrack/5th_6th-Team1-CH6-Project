@@ -1688,6 +1688,32 @@ void ABACharacter::SetPlayerColor()
 	}
 }
 
+void ABACharacter::Server_SetIsInZone_Implementation(bool bInZone)
+{
+	if (bIsInReturnZone == bInZone)
+		return;
+
+	bIsInReturnZone = bInZone;
+	
+	if (bIsInReturnZone == true)
+	{
+		Multicast_ResetPath();
+
+		FVector EnterLoc = GetActorLocation();
+		FVector AirPoint = EnterLoc + FVector(0.0f, 0.0f, ExitAirHeight);
+		FVector RandomDir = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f).Vector();
+		FVector LandingPoint = AirPoint + RandomDir * 600.0f - FVector(0.0f, 0.0f, 200.0f);
+
+		Multicast_AddPathPoint(LandingPoint);
+		Multicast_AddPathPoint(AirPoint);
+		Multicast_AddPathPoint(EnterLoc);
+	}
+	else
+	{
+		Server_StopRecordingPath();
+	}
+}
+
 void ABACharacter::ResetPath()
 {
 	PathSpline->ClearSplinePoints();
@@ -1709,7 +1735,7 @@ void ABACharacter::StopRecordingPath()
 
 void ABACharacter::UpdateSplinePath()
 {
-	if (bIsReturning == true || HasAuthority() == false)
+	if (bIsReturning == true || HasAuthority() == false || bIsInReturnZone == false)
 		return;
 
 	FVector CurrLocation = GetActorLocation();
@@ -1741,6 +1767,9 @@ void ABACharacter::Multicast_ResetPath_Implementation()
 
 void ABACharacter::Server_StartRecordingPath_Implementation()
 {
+	if (bIsInReturnZone == false)
+		return;
+
 	Multicast_AddPathPoint(GetActorLocation());
 
 	GetWorldTimerManager().SetTimer(
@@ -1879,7 +1908,7 @@ void ABACharacter::HandleReturnMovement(float DeltaTime)
 
 void ABACharacter::StopReturning()
 {
-	if (bIsReturning == false)
+	if (bIsReturning == false || bIsInReturnZone == false)
 		return;
 
 	SetIsReturning(false);

@@ -11,6 +11,7 @@
 #include <Kismet/GameplayStatics.h>
 #include "AbilitySystemComponent.h"
 #include "GAS/BAGameplayTags.h"
+#include "Player/BAPlayerState.h"
 
 UBuildManagerComponent::UBuildManagerComponent()
 {
@@ -431,7 +432,7 @@ bool UBuildManagerComponent::ComputePreviewPlacement(FVector& OutLocation, FRota
     return true;
 }
 
-bool UBuildManagerComponent::TrySnapPreview(FVector & InOutLocation, FRotator & InOutRotation)
+bool UBuildManagerComponent::TrySnapPreview(FVector& InOutLocation, FRotator& InOutRotation)
 {
     UWorld* World = GetWorld();
     if (!World || !PreviewActor)
@@ -517,6 +518,11 @@ bool UBuildManagerComponent::TrySnapPreview(FVector & InOutLocation, FRotator & 
                         FMath::FindDeltaAngleDegrees(InOutRotation.Yaw, TargetYaw)
                     );
 
+                    if (DeltaYaw > 75.f)
+                    {
+                        continue;
+                    }
+
                     FTransform VirtualT = PreviewActor->GetActorTransform();
                     VirtualT.SetLocation(InOutLocation);
                     VirtualT.SetRotation(FQuat(FRotator(0.f, TargetYaw, 0.f)));
@@ -550,14 +556,66 @@ bool UBuildManagerComponent::TrySnapPreview(FVector & InOutLocation, FRotator & 
                         const FVector2D Closest2d = ClosestPointOnExtendedLine2D(PrevMid2d, EO, OtherDir2d, SlideHalfRange);
                         const FVector2D DeltaOff2d = Closest2d - PrevMid2d;
 
+                        TArray<FVector> PrevKeys;
+                        SampleKeyPointsOnEdge(EPw, PrevKeys);
+                        for (FVector& P : PrevKeys)
+                        {
+                            P.X += DeltaOff2d.X;
+                            P.Y += DeltaOff2d.Y;
+                        }
+
+                        TArray<FVector> OtherKeys;
+                        SampleKeyPointsOnEdge(EO, OtherKeys);
+
+                        float BestAlong = 0.f;
+                        float BestKeyDistSq = KeyPointSnapMaxDistance * KeyPointSnapMaxDistance;
+                        bool bKeySnap = false;
+
+                        for (const FVector& PK : PrevKeys)
+                        {
+                            const FVector2D PK2d(PK.X, PK.Y);
+
+                            for (const FVector& OK : OtherKeys)
+                            {
+                                const FVector2D OK2d(OK.X, OK.Y);
+                                const FVector2D Diff = OK2d - PK2d;
+                                const float DistSq = Diff.SizeSquared();
+
+                                if (DistSq > KeyPointSnapMaxDistance * KeyPointSnapMaxDistance)
+                                {
+                                    continue;
+                                }
+
+                                const float Along = FVector2D::DotProduct(Diff, OtherDir2d);
+
+                                if (DistSq < BestKeyDistSq)
+                                {
+                                    BestKeyDistSq = DistSq;
+                                    BestAlong = Along;
+                                    bKeySnap = true;
+                                }
+                            }
+                        }
+
+                        FVector2D DeltaFinal2d = DeltaOff2d;
+
+                        if (bKeySnap)
+                        {
+                            const FVector2D NewMid2d = PrevMid2d + DeltaOff2d + OtherDir2d * BestAlong;
+                            const FVector2D ClampedMid2d = ClosestPointOnExtendedLine2D(NewMid2d, EO, OtherDir2d, SlideHalfRange);
+                            DeltaFinal2d = ClampedMid2d - PrevMid2d;
+                        }
+
                         const float DeltaZ = EO.Mid().Z - EPw.Mid().Z;
-                        const FVector DeltaWorld(DeltaOff2d.X, DeltaOff2d.Y, DeltaZ);
+                        const FVector DeltaWorld(DeltaFinal2d.X, DeltaFinal2d.Y, DeltaZ);
 
                         const float MoveCost = DeltaWorld.SizeSquared();
 
-                        // 회전 튐 방지: 회전 비용 가중치 올리기
-                        const float RotCost = DeltaYaw * DeltaYaw * 4.f;
-                        const float TotalScore = MoveCost + RotCost;
+                        const float RotCost = DeltaYaw * DeltaYaw * 2.0f;
+
+                        const float KeySnapBonus = bKeySnap ? 400.f : 0.f;
+
+                        const float TotalScore = MoveCost + RotCost - KeySnapBonus;
 
                         if (TotalScore < BestScore && MoveCost <= SnapMaxDistance * SnapMaxDistance)
                         {
@@ -662,6 +720,12 @@ void UBuildManagerComponent::Server_TryPlace_Implementation(FName BuildingRow, c
         CueParams.EffectContext = BuildingASC->MakeEffectContext();
 
         BuildingASC->ExecuteGameplayCue(TAG_GameplayCue_Building_Placed, CueParams);
+    }
+
+    ABAPlayerState* PS = GetOwner<APawn>() ? GetOwner<APawn>()->GetPlayerState<ABAPlayerState>() : nullptr;
+    if (PS)
+    {
+        PS->AddBuildCount();
     }
 }
 
@@ -814,11 +878,9 @@ void UBuildManagerComponent::SetCurrentBuildingRow(FName NewRow)
 
 void UBuildManagerComponent::SampleKeyPointsOnEdge(const FBuildingEdge& E, TArray<FVector>& OutPts) const
 {
-    OutPts.Reset(5);
+    OutPts.Reset(3);
     OutPts.Add(FMath::Lerp(E.A, E.B, 0.f));
-    OutPts.Add(FMath::Lerp(E.A, E.B, 0.25f));
     OutPts.Add(FMath::Lerp(E.A, E.B, 0.5f));
-    OutPts.Add(FMath::Lerp(E.A, E.B, 0.75f));
     OutPts.Add(FMath::Lerp(E.A, E.B, 1.f));
 }
 

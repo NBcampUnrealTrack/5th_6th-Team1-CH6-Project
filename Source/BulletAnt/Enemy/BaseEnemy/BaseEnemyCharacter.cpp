@@ -273,6 +273,21 @@ void ABaseEnemyCharacter::OnTargetNavAborted()
 	TransitionToRotate();
 }
 
+void ABaseEnemyCharacter::SetTarget(AActor* InTarget, ETargetPriorityType InTargetPriority)
+{
+	if (!IsValid(InTarget))
+	{
+		InitTarget();
+	}
+	else
+	{
+		TargetActor = InTarget;
+	}
+
+	TargetActorPriority = InTargetPriority;
+	TransitionToRotate();
+}
+
 //void ABaseEnemyCharacter::OnTargetBuildingDestroy()
 //{
 //	if (!HasAuthority())
@@ -350,7 +365,7 @@ void ABaseEnemyCharacter::ClearAbortedTarget()
 		AbortedTargets[i].ExpireTime++;
 		if (AbortedTargets[i].ExpireTime >= 3.f)
 		{
-			AbortedTargets.RemoveAtSwap(i, 1, false);
+			AbortedTargets.RemoveAtSwap(i, 1, EAllowShrinking::No);
 		}
 	}
 }

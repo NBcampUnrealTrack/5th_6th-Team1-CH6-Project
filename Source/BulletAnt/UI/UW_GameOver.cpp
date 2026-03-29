@@ -6,6 +6,7 @@
 #include "Player/BAPlayerState.h"
 #include "Components/TextBlock.h"
 #include "GAS/AttributeSet/EXPAttributeSet.h"
+#include "FrameWork/BAGameState.h"
 
 void UUW_GameOver::InitText()
 {
@@ -26,6 +27,22 @@ void UUW_GameOver::InitText()
 			{
 				LevelText->SetText(FText::AsNumber(EXPSet->GetCurrentLevel()));
 			}
+		}
+		if (DaysText)
+		{
+			UWorld* World = GetWorld();
+			if (IsValid(World))
+			{
+				ABAGameState* GameState = World->GetGameState<ABAGameState>();
+				if (IsValid(GameState))
+				{
+					DaysText->SetText(FText::AsNumber(GameState->GetDate()));
+				}
+			}
+		}
+		if (BuildingText)
+		{
+			BuildingText->SetText(FText::AsNumber(PS->GetBuildCount()));
 		}
 	}
 }
