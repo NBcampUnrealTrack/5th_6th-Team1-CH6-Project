@@ -64,8 +64,6 @@ void UGA_ADS::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 
 void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	Source->GetCharacterMovement()->bUseControllerDesiredRotation = true;
-	Source->bUseControllerRotationYaw = false;
 	if (IsLocallyControlled())
 	{
 		USpringArmComponent* SpringArm = Source->GetSpringArm();
@@ -114,8 +112,6 @@ void UGA_ADS::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepla
 
 void UGA_ADS::StartADS()
 {
-	Source->GetCharacterMovement()->bUseControllerDesiredRotation = false;
-	Source->bUseControllerRotationYaw = true;	
 	if (IsLocallyControlled())
 	{		
 		FVector SightLoc = CachedWeapon->GetWeaponMesh()->GetSocketLocation("ADS_Sight");
