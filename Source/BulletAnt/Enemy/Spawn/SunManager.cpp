@@ -107,7 +107,7 @@ void ASunManager::RotateSun()
     FQuat QResult = QDelta * QBase;
     Sun->SetActorRotation(QResult);
 
-    float MoonIntensity = FMath::Clamp(0.1f + SunRotator.Pitch * 0.01f, 0.f, 0.1f);
+    float MoonIntensity = FMath::Clamp(0.115f + SunRotator.Pitch * 0.01f, 0.f, 0.115f);
     Moon->GetLightComponent()->SetIntensity(MoonIntensity);
 
     if (SunRotator.Pitch > 5)
