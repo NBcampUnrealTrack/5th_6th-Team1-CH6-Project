@@ -649,7 +649,13 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!EquippedWeapon) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged) && ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+	{
 		bIsJetPack = true;
+		if (!HasAuthority())
+		{
+			Server_SetJetPack(true);
+		}
+	}
 
 	FGameplayTagContainer Tag;
 
@@ -674,7 +680,13 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!ASC) return;
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+	{
 		bIsJetPack = false;
+		if (!HasAuthority())
+		{
+			Server_SetJetPack(false);
+		}
+	}
 	FGameplayTagContainer CancelTags;
 	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
@@ -1093,7 +1105,10 @@ void ABACharacter::ToggleNightVision(const FInputActionValue& Value)
 
 	bIsNightVision = !bIsNightVision;
 }
-
+void ABACharacter::Server_SetJetPack_Implementation(bool bNewJetPackState)
+{
+	bIsJetPack = bNewJetPackState;
+}
 
 void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 {
