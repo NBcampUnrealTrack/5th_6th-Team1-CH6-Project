@@ -1,12 +1,21 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "UI/UW_GameOver.h"
+﻿#include "UI/UW_GameOver.h"
 
 #include "Player/BAPlayerState.h"
 #include "Components/TextBlock.h"
 #include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "FrameWork/BAGameState.h"
+#include "Multiplayer/MultiplayerSubsystem.h"
+#include "Framework/BAGameInstance.h"
+#include "Framework/MapConfig.h"
+#include "Components/Button.h"
+
+void UUW_GameOver::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	ToLobbyButton->OnClicked.AddDynamic(this, &ThisClass::GoToLobby);
+	ToTitleButton->OnClicked.AddDynamic(this, &ThisClass::GoToTitle);
+}
 
 void UUW_GameOver::InitText()
 {
@@ -45,4 +54,31 @@ void UUW_GameOver::InitText()
 			BuildingText->SetText(FText::AsNumber(PS->GetBuildCount()));
 		}
 	}
+}
+
+void UUW_GameOver::GoToLobby()
+{
+	APlayerController* PC = GetOwningPlayer();
+	if (IsValid(PC) == false || PC->IsLocalController() == false)
+		return;
+
+	UBAGameInstance* GameInstance = GetGameInstance<UBAGameInstance>();
+	UMultiplayerSubsystem* MultiplayerSubsystem = IsValid(GameInstance) == true ?  GameInstance->GetSubsystem<UMultiplayerSubsystem>() : nullptr;
+	if (IsValid(MultiplayerSubsystem) == false)
+		return;
+
+	UMapConfig* MapConfig = IsValid(GameInstance) == true ? GameInstance->GetMapConfig() : nullptr;
+	if (IsValid(MapConfig) == false)
+	{
+		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel Failed 1"));
+		return;
+	}
+
+	FString LobbyPath = MapConfig->LobbyLevel.ToSoftObjectPath().ToString();
+	FString MapName = FPackageName::ObjectPathToPackageName(LobbyPath);
+	MultiplayerSubsystem->ServerTravelToLevel(MapName);
+}
+
+void UUW_GameOver::GoToTitle()
+{
 }
