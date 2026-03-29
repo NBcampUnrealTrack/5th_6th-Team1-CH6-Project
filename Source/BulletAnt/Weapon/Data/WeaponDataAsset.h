@@ -12,7 +12,9 @@ enum class ERarity : uint8
 {
 	Common		UMETA(DisplayName = "Common"),
 	Rare		UMETA(DisplayName = "Rare"),
-	SuperRare	UMETA(DisplayName = "SuperRare")
+	SuperRare	UMETA(DisplayName = "SuperRare"),
+	UltraRare	UMETA(DisplayName = "UltraRare"),
+	Legend		UMETA(DisplayName = "Legend")
 };
 
 UENUM(BlueprintType)
