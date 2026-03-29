@@ -190,6 +190,7 @@ AActor* ABaseTurret::SelectBestTarget() const
 
 	FCollisionObjectQueryParams ObjectQuery;
 	ObjectQuery.AddObjectTypesToQuery(TurretData->EnemyTraceChannel);
+	ObjectQuery.AddObjectTypesToQuery(ECC_GameTraceChannel12); // Fly
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TurretTargetSearch), false);
 	QueryParams.AddIgnoredActor(this);
