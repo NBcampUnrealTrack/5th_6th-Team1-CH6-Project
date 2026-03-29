@@ -109,6 +109,7 @@ ABaseFlyEnemy::ABaseFlyEnemy()
 		Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel3, ECR_Ignore);	// Character
 		Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel9, ECR_Ignore);	// Core
 		Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel6, ECR_Ignore);	// Enemy
+		Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Ignore);	// Building
 	}
 }
 

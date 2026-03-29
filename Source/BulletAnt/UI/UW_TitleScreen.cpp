@@ -66,7 +66,19 @@ void UUW_TitleScreen::OnHostBtnClicked()
 
 void UUW_TitleScreen::OnOptionBtnClicked()
 {
+	ULocalPlayer* LP = GetOwningLocalPlayer();
+	if (!IsValid(LP))
+	{
+		return;
+	}
 
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (!IsValid(UISubsystem))
+	{
+		return;
+	}
+
+	UISubsystem->ShowUI<UUW_CreateRoom>(EUIType::Option);
 }
 
 void UUW_TitleScreen::OnExitBtnClicked()

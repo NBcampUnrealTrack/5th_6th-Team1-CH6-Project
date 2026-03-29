@@ -25,6 +25,7 @@
 #include "GameplayEffect.h"
 #include "GAS/AttributeSet/MoveAttributeSet.h"
 #include "GameplayEffectTypes.h"
+#include "Kismet/GameplayStatics.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -610,6 +611,12 @@ void ABaseEnemyCharacter::BeginPlay()
 			Rot
 		);
 	}
+
+	if (IsValid(BaseEnemyDataAsset->SpawnSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, BaseEnemyDataAsset->SpawnSound, GetActorLocation());
+	}
+
 	GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 }
 

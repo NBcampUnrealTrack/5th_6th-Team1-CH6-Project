@@ -58,13 +58,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Spawner")
 	TObjectPtr<UBoxComponent> SpawnBox;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Spawner")
+	UPROPERTY(EditAnywhere, Category = "Spawner")
 	TObjectPtr<ULevelSpanwerDataAsset> SpawnDataAsset;
 
 	UPROPERTY(VisibleAnywhere, Category = "Spawner")
 	TArray<TWeakObjectPtr<ABACharacter>> TargetActors;
 
-	int32 EnemyCount;
+	UPROPERTY(EditAnywhere, Category = "Spawner")
+	int32 EnemyCount = 10;
 
 	bool bAlreadyActivated = false;
 
