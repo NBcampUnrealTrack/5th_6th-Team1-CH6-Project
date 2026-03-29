@@ -11,8 +11,17 @@ UCLASS()
 class BULLETANT_API UUW_GameOver : public UUserWidget
 {
 	GENERATED_BODY()
+
 public:
+	virtual void NativeConstruct() override;
+
 	void InitText();
+
+private:
+	UFUNCTION()
+	void GoToLobby();
+	UFUNCTION()
+	void GoToTitle();
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
