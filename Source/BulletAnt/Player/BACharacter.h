@@ -296,7 +296,8 @@ protected:
     void ServerRPC_StopTurnMontage();
     UFUNCTION(NetMulticast, Reliable)
     void Multicast_StopTurnMontage();
-
+    UFUNCTION(Server, Reliable)
+    void Server_SetJetPack(bool bNewJetPackState);
 
     UFUNCTION(Server, Reliable)
     void Server_SetAiming(bool bNewIsAiming);
