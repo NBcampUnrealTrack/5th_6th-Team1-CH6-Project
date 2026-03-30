@@ -7,6 +7,8 @@
 #include "Components/UniformGridPanel.h"
 #include "UI/UW_RoomParticipantNickname.h"
 #include "UI/UW_PasswordRoom.h"
+#include "Components/Overlay.h"
+#include "Interfaces/OnlineSessionInterface.h"
 
 void UUW_RoomInfo::NativeConstruct()
 {
@@ -68,6 +70,19 @@ void UUW_RoomInfo::JoinRoom()
 		return;
 	}
 
+	JoinHandle = MultiplayerSubsystem->BindOnJoinSession(FOnJoinSession::FDelegate::CreateLambda(
+		[WeakThis = TWeakObjectPtr(this)](FName SessionName, EOnJoinSessionCompleteResult::Type Result)
+		{
+			if (WeakThis.IsValid() == false)
+				return;
+
+			if (Result != EOnJoinSessionCompleteResult::Success)
+			{
+				WeakThis->ShowLoadingPanel(false);
+			}
+		}));
+
+	ShowLoadingPanel(true);
 	MultiplayerSubsystem->JoinSession(*RoomInfo.SearchResult);
 }
 
@@ -82,4 +97,13 @@ void UUW_RoomInfo::CloseUI()
 		return;
 
 	UISubsystem->CloseUI(EUIType::RoomInfo);
+}
+
+void UUW_RoomInfo::ShowLoadingPanel(bool bShow)
+{
+	if (IsValid(LoadingPanel) == true)
+	{
+		ESlateVisibility NewVisibility = bShow == true ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+		LoadingPanel->SetVisibility(NewVisibility);
+	}
 }

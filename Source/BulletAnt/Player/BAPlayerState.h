@@ -8,6 +8,7 @@
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerName, const FString&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerLevel, float);
 
 class UHealthAttributeSet;
 class UAmmoAttributeSet;
@@ -41,17 +42,28 @@ public:
 	void UnbindOnChangedPlayerName(const UObject* Object);
 	void UnbindOnChangedPlayerName(FDelegateHandle Handle);
 
+	FDelegateHandle BindOnChangedPlayerLevel(const FOnChangedPlayerLevel::FDelegate& Delegate);
+	void UnbindOnChangedPlayerLevel(const UObject* Object);
+	void UnbindOnChangedPlayerLevel(FDelegateHandle Handle);
+
 	UFUNCTION(Server, Reliable)
 	void Server_UpdatePlayerName(const FString& NewName);
 	FORCEINLINE bool IsSetNickname() const { return bSetNickname; }
+
+	void SetPlayerLevel(float InLevel);
+	FORCEINLINE float GetPlayerLevel() const { return PlayerLevel; }
 
 protected:
 	UFUNCTION()
 	void OnRep_PlayerColorIdx();
 
+	UFUNCTION()
+	void OnRep_PlayerLevel();
+
 protected:
 	FOnChangedPlayerColor OnChangedPlayerColor;
 	FOnChangedPlayerName OnChangedPlayerName;
+	FOnChangedPlayerLevel OnChangedPlayerLevel;
 
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerColorIdx)
 	int32 PlayerColorIdx = -1;
@@ -61,6 +73,9 @@ protected:
 
 	UPROPERTY()
 	uint8 bSetNickname : 1 = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerLevel)
+	float PlayerLevel = 1;
 
 #pragma region GAS 
 

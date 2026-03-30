@@ -181,6 +181,21 @@ void ABAPlayerState::UnbindOnChangedPlayerName(FDelegateHandle Handle)
 	OnChangedPlayerName.Remove(Handle);
 }
 
+FDelegateHandle ABAPlayerState::BindOnChangedPlayerLevel(const FOnChangedPlayerLevel::FDelegate& Delegate)
+{
+	return OnChangedPlayerLevel.Add(Delegate);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerLevel(const UObject* Object)
+{
+	OnChangedPlayerLevel.RemoveAll(Object);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerLevel(FDelegateHandle Handle)
+{
+	OnChangedPlayerLevel.Remove(Handle);
+}
+
 void ABAPlayerState::Server_UpdatePlayerName_Implementation(const FString& NewName)
 {
 	bSetNickname = true;
@@ -195,8 +210,19 @@ void ABAPlayerState::Server_UpdatePlayerName_Implementation(const FString& NewNa
 	MultiplayerSubsystem->UpdateSessionParticipants();
 }
 
+void ABAPlayerState::SetPlayerLevel(float InLevel)
+{
+	PlayerLevel = InLevel;
+	OnRep_PlayerLevel();
+}
+
 void ABAPlayerState::OnRep_PlayerColorIdx()
 {
 	OnChangedPlayerColor.Broadcast(GetPlayerColor());
+}
+
+void ABAPlayerState::OnRep_PlayerLevel()
+{
+	OnChangedPlayerLevel.Broadcast(PlayerLevel);
 }
 
