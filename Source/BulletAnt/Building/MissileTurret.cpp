@@ -169,7 +169,7 @@ void AMissileTurret::FireSequenceStep()
 		FireTags.AddTag(RangedTurretData->WeaponData->WeaponTag);
 		ASC->TryActivateAbilitiesByTag(FireTags);
 
-		SetMissileVisualLoaded(SequenceIndex, false);
+		Multicast_SetMissileVisualLoaded(SequenceIndex, false);
 	}
 
 	++SequenceIndex;
@@ -212,7 +212,7 @@ void AMissileTurret::ReloadSequenceStep()
 		return;
 	}
 
-	SetMissileVisualLoaded(SequenceIndex, true);
+	Multicast_SetMissileVisualLoaded(SequenceIndex, true);
 
 	++SequenceIndex;
 
@@ -492,4 +492,9 @@ void AMissileTurret::StopAllMissileTurretTimers()
 
 	SequenceTimerHandle.Invalidate();
 	LaunchSolutionTimerHandle.Invalidate();
+}
+
+void AMissileTurret::Multicast_SetMissileVisualLoaded_Implementation(int32 Index, bool bLoaded)
+{
+	SetMissileVisualLoaded(Index, bLoaded);
 }

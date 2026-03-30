@@ -172,16 +172,40 @@ void USettingsSubsystem::ApplySoundMix()
 
 	if (MasterSoundClass)
 	{
-		UGameplayStatics::SetSoundMixClassOverride(World, MasterSoundMix, MasterSoundClass, MasterVolume, 1.0f, 0.0f, true);
+		UGameplayStatics::SetSoundMixClassOverride(
+			World,
+			MasterSoundMix,
+			MasterSoundClass,
+			MasterVolume,
+			1.0f,
+			0.0f,
+			true
+		);
 	}
 
 	if (MusicSoundClass)
 	{
-		UGameplayStatics::SetSoundMixClassOverride(World, MasterSoundMix, MusicSoundClass, MusicVolume, 1.0f, 0.0f, true);
+		UGameplayStatics::SetSoundMixClassOverride(
+			World,
+			MasterSoundMix,
+			MusicSoundClass,
+			MasterVolume * MusicVolume,
+			1.0f,
+			0.0f,
+			true
+		);
 	}
 
 	if (SfxSoundClass)
 	{
-		UGameplayStatics::SetSoundMixClassOverride(World, MasterSoundMix, SfxSoundClass, SfxVolume, 1.0f, 0.0f, true);
+		UGameplayStatics::SetSoundMixClassOverride(
+			World,
+			MasterSoundMix,
+			SfxSoundClass,
+			MasterVolume * SfxVolume,
+			1.0f,
+			0.0f,
+			true
+		);
 	}
 }

@@ -698,6 +698,7 @@ public:
     void UpdateNicknameUI();
     UFUNCTION()
     void UpdateLevelUI(float CurrentLevel, float OldLevel);
+    void UpdateLevelUI();
     void UpdateIngameInfoScale();
 
 protected:

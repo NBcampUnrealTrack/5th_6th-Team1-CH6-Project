@@ -131,10 +131,11 @@ private:
 	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
 	void SetVoiceChatUser();
-
+	bool IsVoiceChatReadyForClientTravel() const;
 
 private:
 	FDelegateHandle LoginHandle;
+	FDelegateHandle FindSessionsHandle;
 
 	FOnSuccessLogin OnSuccessLogin;
 
@@ -149,8 +150,9 @@ private:
 	class IVoiceChat* VoiceChat = nullptr;
 	IVoiceChatUser* VoiceChatUser = nullptr;
 	FOnSetVoiceChatUser OnSetVoiceChatUser;
-	// Travel 이후에 TravelHandle 이용해서 바인딩되었던 Travel 람다식 제거
-	FDelegateHandle TravelHandle;
+	uint8 bVoiceDelegatesBound : 1 = false;
+	uint8 bVoiceChatInitialized : 1 = false;
+	FTimerHandle ClientTravelHandle;
 
 	FName CurrentSessionName;
 	FString PlayerNickname;

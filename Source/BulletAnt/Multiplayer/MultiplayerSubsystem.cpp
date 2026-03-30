@@ -204,13 +204,20 @@ void UMultiplayerSubsystem::SearchSessions(int32 MaxSearchCount)
 	if (SessionInterface.IsValid() == false)
 		return;
 
+	if (FindSessionsHandle.IsValid() == true)
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsHandle);
+		FindSessionsHandle.Reset();
+	}
+
 	SessionSearch = MakeShareable(new FOnlineSessionSearch());
 	SessionSearch->bIsLanQuery = false;
 	SessionSearch->MaxSearchResults = MaxSearchCount;
 
 	SessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
 	SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
-	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UMultiplayerSubsystem::OnFindSessionsComplete);
+	
+	FindSessionsHandle = SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FOnFindSessionsCompleteDelegate::CreateUObject(this, &UMultiplayerSubsystem::OnFindSessionsComplete));
 	SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 }
 
@@ -238,24 +245,33 @@ void UMultiplayerSubsystem::JoinSessionById(FString TargetId)
 
 	PendingSessionTargetId = TargetId;
 
-	JoinSessionByIdHandle = OnFindSessions.AddLambda(
-		[this](bool bWasSuccessful)
-		{
-			OnFindSessions.Remove(JoinSessionByIdHandle);
-			JoinSessionByIdHandle.Reset();
+	if (JoinSessionByIdHandle.IsValid() == true)
+	{
+		OnFindSessions.Remove(JoinSessionByIdHandle);
+		JoinSessionByIdHandle.Reset();
+	}
 
-			if (bWasSuccessful == false || SessionSearch.IsValid() == false)
+	JoinSessionByIdHandle = OnFindSessions.AddLambda(
+		[WeakThis = TWeakObjectPtr(this)](bool bWasSuccessful)
+		{
+			if (WeakThis.IsValid() == false)
 				return;
 
-			for (const auto& Result : SessionSearch->SearchResults)
+			WeakThis->OnFindSessions.Remove(WeakThis->JoinSessionByIdHandle);
+			WeakThis->JoinSessionByIdHandle.Reset();
+
+			if (bWasSuccessful == false || WeakThis->SessionSearch.IsValid() == false)
+				return;
+
+			for (const auto& Result : WeakThis->SessionSearch->SearchResults)
 			{
 				FString FoundId = Result.Session.GetSessionIdStr();
 				//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s / %s"), *FoundId, *PendingSessionTargetId));
 				
-				if (Result.Session.GetSessionIdStr() == PendingSessionTargetId)
+				if (Result.Session.GetSessionIdStr() == WeakThis->PendingSessionTargetId)
 				{
 					//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Target Session Found! Joining..."));
-					JoinSession(Result);
+					WeakThis->JoinSession(Result);
 					return;
 				}
 			}
@@ -587,6 +603,12 @@ void UMultiplayerSubsystem::OnCreateSessionComplete(FName SessionName, bool bWas
 
 void UMultiplayerSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 {
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	if (SessionInterface.IsValid() == true && FindSessionsHandle.IsValid() == true)
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsHandle);
+		FindSessionsHandle.Reset();
+	}
 	OnFindSessions.Broadcast(bWasSuccessful);
 }
 
@@ -598,17 +620,16 @@ void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSess
 		return;
 
 	CurrentSessionName = SessionName;
-	TravelHandle = OnSetVoiceChatUser.AddLambda([this, SessionName]()
-		{
-			ClientTravel(SessionName);
-		});
+
+	bVoiceChatInitialized = false;
+	bVoiceDelegatesBound = false;
 
 	FTimerHandle Timer;
 	GetWorld()->GetTimerManager().SetTimer(
 		Timer,
 		this,
 		&ThisClass::SetVoiceChatUser,
-		2.0f);
+		3.0f);
 }
 
 void UMultiplayerSubsystem::OnReadFriendsComplete(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
@@ -695,40 +716,99 @@ void UMultiplayerSubsystem::OnSessionUserInviteAccepted(const bool bWasSuccessfu
 
 void UMultiplayerSubsystem::SetVoiceChatUser()
 {
-	IOnlineSubsystemEOS* EOS = static_cast<IOnlineSubsystemEOS*>(IOnlineSubsystem::Get("EOS"));
+	if (bVoiceChatInitialized == true)
+		return;
+
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SetVoiceChatUser"));
+	IOnlineSubsystemEOS* EOS = static_cast<IOnlineSubsystemEOS*>(Online::GetSubsystem(GetWorld(), EOS_SUBSYSTEM));
 	IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
 	if (Identity.IsValid() == true && Identity->GetLoginStatus(0) == ELoginStatus::LoggedIn)
 	{
 		FUniqueNetIdPtr UserId = Identity->GetUniquePlayerId(0);
-		VoiceChatUser = EOS->GetVoiceChatUserInterface(*UserId);
+		VoiceChatUser = EOS != nullptr ? EOS->GetVoiceChatUserInterface(*UserId) : nullptr;
 	}
 
-	if (VoiceChatUser)
+	if (VoiceChatUser == nullptr)
 	{
-		VoiceChatUser->SetAudioInputVolume(1.0f);
-		VoiceChatUser->SetSetting(TEXT("Input.VADThreshold"), TEXT("0.0"));
-		VoiceChatUser->SetAudioInputDeviceMuted(false);
-		VoiceChatUser->SetAudioOutputDeviceMuted(false);
-		VoiceChatUser->OnVoiceChatPlayerAdded().AddLambda([this](const FString& ChannelName, const FString& PlayerName)
-			{
-				VoiceChatUser->SetPlayerMuted(PlayerName, true);
-				VoiceChatUser->SetPlayerMuted(PlayerName, false);
-			});
-
-		VoiceChatUser->OnVoiceChatPlayerTalkingUpdated().AddLambda([this](const FString& ChannelName, const FString& PlayerName, bool bIsTalking)
-			{
-				/*UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("Voice Log -> [Channel: %s] Player: %s is %s"),
-					*ChannelName, *PlayerName, bIsTalking ? TEXT("TALKING") : TEXT("SILENT")));*/
-			});
-
-		OnSetVoiceChatUser.Broadcast();
-
-		if (TravelHandle.IsValid() == true)
-		{
-			OnSetVoiceChatUser.Remove(TravelHandle);
-			TravelHandle.Reset();
-		}
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("VoiceChatUser none"));
+		return;
 	}
+
+	VoiceChatUser->SetAudioInputVolume(1.0f);
+	VoiceChatUser->SetSetting(TEXT("Input.VADThreshold"), TEXT("0.0"));
+	VoiceChatUser->SetAudioInputDeviceMuted(false);
+	VoiceChatUser->SetAudioOutputDeviceMuted(false);
+
+	if (bVoiceDelegatesBound == false)
+	{
+		bVoiceDelegatesBound = true;
+
+		VoiceChatUser->OnVoiceChatPlayerAdded().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName, const FString& PlayerName)
+			{
+				if (WeakThis.IsValid() == false)
+					return;
+
+				UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(TEXT("VC Added %s / %s"), *ChannelName, *PlayerName));
+
+				WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, true);
+				WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, false);
+
+				const bool bMuted = WeakThis->VoiceChatUser->IsPlayerMuted(PlayerName);
+				const bool bTalking = WeakThis->VoiceChatUser->IsPlayerTalking(PlayerName);
+				WeakThis->VoiceChatUser->UnblockPlayers({ PlayerName });
+
+				//VoiceChatUser->UnblockPlayers();
+				UKismetSystemLibrary::PrintString(
+					WeakThis->GetWorld(),
+					FString::Printf(TEXT("VC State player=%s muted=%s talking=%s"),
+						*PlayerName,
+						bMuted ? TEXT("true") : TEXT("false"),
+						bTalking ? TEXT("true") : TEXT("false")));
+			});
+
+		VoiceChatUser->OnVoiceChatPlayerTalkingUpdated().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName, const FString& PlayerName, bool bIsTalking)
+			{
+				if (WeakThis.IsValid() == false)
+					return;
+
+				UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(
+					TEXT("VC Talking Channel=%s Player=%s Talking=%s"),
+					*ChannelName, *PlayerName, bIsTalking ? TEXT("true") : TEXT("false")));
+			});
+	}
+
+	//bVoiceChatInitialized = true;
+
+	if (GetWorld()->GetNetMode() != NM_ListenServer)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			ClientTravelHandle,
+			[this]()
+			{
+				if (IsVoiceChatReadyForClientTravel() == true)
+				{
+					GetWorld()->GetTimerManager().ClearTimer(ClientTravelHandle);
+					ClientTravel(CurrentSessionName);
+				}
+			},
+			3.0f,
+			true);
+	}
+}
+
+bool UMultiplayerSubsystem::IsVoiceChatReadyForClientTravel() const
+{
+	if (VoiceChatUser == nullptr)
+		return false;
+
+	for (const FString& ChannelName : VoiceChatUser->GetChannels())
+	{
+		const TArray<FString> Players = VoiceChatUser->GetPlayersInChannel(ChannelName);
+		if (Players.Num() >= 2)
+			return true;
+	}
+
+	return false;
 }
 
 void UMultiplayerSubsystem::OnGetAuthTicketForWebApiCompleted(GetTicketForWebApiResponse_t* Response)

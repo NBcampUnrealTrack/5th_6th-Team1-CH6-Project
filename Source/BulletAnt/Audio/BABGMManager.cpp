@@ -88,7 +88,7 @@ void ABABGMManager::StopNightMusicEarly()
 
 void ABABGMManager::UpdateEnvironmentVolume(float PlayerZ)
 {
-	float TargetVolume = (PlayerZ < 0.0f) ? 0.0f : 1.0f;
+	float TargetVolume = (PlayerZ < 0.0f) ? 0.0f : 0.2f;
 
 	float CurrentVolume = WindAudioComp->VolumeMultiplier;
 	float NewVolume = FMath::FInterpTo(CurrentVolume, TargetVolume, 0.1f, 2.0f);

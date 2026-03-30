@@ -33,14 +33,13 @@ ABaseProjectile::ABaseProjectile()
 	ProjectileMovement->bShouldBounce = false;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bRotationRemainsVertical = true;
-	ProjectileMovement->bInterpMovement = true;
 	ProjectileMovement->bAutoActivate = false;
 
 	Tracer = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Tracer"));
 	Tracer->SetupAttachment(RootComponent);
 
-	SetReplicateMovement(true);
-	bReplicates = true;
+	SetReplicateMovement(false);
+	bReplicates = false;
 
 	BulletMesh->SetCanEverAffectNavigation(false);
 	CollisionComponent->SetCanEverAffectNavigation(false);
