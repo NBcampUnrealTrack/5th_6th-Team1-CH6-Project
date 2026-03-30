@@ -31,5 +31,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Spitter")
 	TObjectPtr<UNiagaraComponent> NiagaraComp;
 
+	FVector LastCapsuleLocation;
+	FQuat LastCapsuleRotation;
+	bool bIsFirstCheck = true;
+
 	FTimerHandle DamageChecker;
 };

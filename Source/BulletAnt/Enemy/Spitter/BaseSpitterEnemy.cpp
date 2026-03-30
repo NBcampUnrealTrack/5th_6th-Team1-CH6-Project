@@ -87,6 +87,14 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 	FVector CapsuleCenter = MouthLocation + (Forward * (SpitterDataAsset->PoisonCapsuleHalfHeight));
 
 	FQuat CapsuleRotation = FRotationMatrix::MakeFromZ(Forward).ToQuat();
+
+	if (bIsFirstCheck)
+	{
+		LastCapsuleLocation = CapsuleCenter;
+		LastCapsuleRotation = CapsuleRotation;
+		bIsFirstCheck = false;
+	}
+
 	FCollisionShape PoisonCapsule = FCollisionShape::MakeCapsule(SpitterDataAsset->PoisonCapsuleRadius, SpitterDataAsset->PoisonCapsuleHalfHeight);
 
 	TArray<FHitResult> OutHits;
@@ -95,14 +103,12 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 
 	bool bHit = GetWorld()->SweepMultiByChannel(
 		OutHits,
-		CapsuleCenter, CapsuleCenter,
-		CapsuleRotation,
+		LastCapsuleLocation, CapsuleCenter,
+		LastCapsuleRotation,
 		ECC_GameTraceChannel2,
 		PoisonCapsule,
 		Params
 	);
-
-	DrawDebugCapsule(GetWorld(), CapsuleCenter, SpitterDataAsset->PoisonCapsuleHalfHeight, SpitterDataAsset->PoisonCapsuleRadius, CapsuleRotation, bHit ? FColor::Red : FColor::Green, false, 0.1f);
 
 	if (bHit)
 	{
@@ -144,6 +150,9 @@ void ABaseSpitterEnemy::CheckContinousSpit()
 			}
 		}
 	}
+
+	LastCapsuleLocation = CapsuleCenter;
+	LastCapsuleRotation = CapsuleRotation;
 }
 
 void ABaseSpitterEnemy::StopSpit()
