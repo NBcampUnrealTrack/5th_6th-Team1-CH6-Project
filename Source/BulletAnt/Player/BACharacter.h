@@ -697,9 +697,16 @@ public:
     UFUNCTION()
     void UpdateNicknameUI();
     UFUNCTION()
-    void UpdateLevelUI(float CurrentLevel, float OldLevel);
+    void UpdateLevelUI(float InLevel);
     void UpdateLevelUI();
     void UpdateIngameInfoScale();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_SetPlayerColor();
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_UpdateNicknameUI();
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_UpdateLevelUI();
 
 protected:
     FDelegateHandle PlayerNicknameHandle;
