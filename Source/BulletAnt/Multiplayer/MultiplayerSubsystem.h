@@ -103,6 +103,9 @@ public:
 	void UnbindOnCreateSession(FDelegateHandle Handle);
 	FDelegateHandle BindOnFindSessions(const FOnFindSessions::FDelegate& Delegate);
 	void UnbindOnFindSessions(const UObject* Object);
+	FDelegateHandle BindOnJoinSession(const FOnJoinSession::FDelegate& Delegate);
+	void UnbindOnJoinSession(const UObject* Object);
+	void UnbindOnJoinSession(FDelegateHandle Handle);
 
 	// 호스트는 non-seamless travel로 로비레벨 이동 후 세션 생성
 	void ServerTravelToLobby(const FRoomSetting& InSetting);
@@ -136,6 +139,7 @@ private:
 private:
 	FDelegateHandle LoginHandle;
 	FDelegateHandle FindSessionsHandle;
+	FDelegateHandle JoinSessionHandle;
 
 	FOnSuccessLogin OnSuccessLogin;
 
@@ -194,6 +198,7 @@ private:
 	FDelegateHandle JoinSessionByIdHandle;
 
 	FString PendingSessionTargetId;
+	uint8 bPendingJoinById : 1 = false;
 
 	uint8 bIsJoiningSteamInvitation : 1 = false;
 

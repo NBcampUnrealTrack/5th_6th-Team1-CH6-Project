@@ -235,48 +235,21 @@ void UMultiplayerSubsystem::JoinSession(const FOnlineSessionSearchResult& Search
 	if (SessionInterface.IsValid() == false || SearchResult.IsValid() == false)
 		return;
 
-	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UMultiplayerSubsystem::OnJoinSessionComplete);
+	if (JoinSessionHandle.IsValid() == true)
+	{
+		SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionHandle);
+		JoinSessionHandle.Reset();
+	}
+
+	JoinSessionHandle = SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(FOnJoinSessionCompleteDelegate::CreateUObject(this, &UMultiplayerSubsystem::OnJoinSessionComplete));
 	SessionInterface->JoinSession(0, NAME_GAMESESSION, SearchResult);		// SessionName은 내가 붙인 방의 별명
 }
 
 void UMultiplayerSubsystem::JoinSessionById(FString TargetId)
 {
-	//UKismetSystemLibrary::PrintString(GetWorld(), TargetId);
 
 	PendingSessionTargetId = TargetId;
-
-	if (JoinSessionByIdHandle.IsValid() == true)
-	{
-		OnFindSessions.Remove(JoinSessionByIdHandle);
-		JoinSessionByIdHandle.Reset();
-	}
-
-	JoinSessionByIdHandle = OnFindSessions.AddLambda(
-		[WeakThis = TWeakObjectPtr(this)](bool bWasSuccessful)
-		{
-			if (WeakThis.IsValid() == false)
-				return;
-
-			WeakThis->OnFindSessions.Remove(WeakThis->JoinSessionByIdHandle);
-			WeakThis->JoinSessionByIdHandle.Reset();
-
-			if (bWasSuccessful == false || WeakThis->SessionSearch.IsValid() == false)
-				return;
-
-			for (const auto& Result : WeakThis->SessionSearch->SearchResults)
-			{
-				FString FoundId = Result.Session.GetSessionIdStr();
-				//UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("%s / %s"), *FoundId, *PendingSessionTargetId));
-				
-				if (Result.Session.GetSessionIdStr() == WeakThis->PendingSessionTargetId)
-				{
-					//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Target Session Found! Joining..."));
-					WeakThis->JoinSession(Result);
-					return;
-				}
-			}
-			//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Failed to find the specific session by ID."));
-		});
+	bPendingJoinById = true;
 
 	SearchSessions(100);
 	bIsJoiningSteamInvitation = false;
@@ -426,6 +399,21 @@ FDelegateHandle UMultiplayerSubsystem::BindOnFindSessions(const FOnFindSessions:
 void UMultiplayerSubsystem::UnbindOnFindSessions(const UObject* Object)
 {
 	OnFindSessions.RemoveAll(Object);
+}
+
+FDelegateHandle UMultiplayerSubsystem::BindOnJoinSession(const FOnJoinSession::FDelegate& Delegate)
+{
+	return OnJoinSession.Add(Delegate);
+}
+
+void UMultiplayerSubsystem::UnbindOnJoinSession(const UObject* Object)
+{
+	OnJoinSession.RemoveAll(Object);
+}
+
+void UMultiplayerSubsystem::UnbindOnJoinSession(FDelegateHandle Handle)
+{
+	OnJoinSession.Remove(Handle);
 }
 
 void UMultiplayerSubsystem::ServerTravelToLobby(const FRoomSetting& InSetting)
@@ -609,11 +597,47 @@ void UMultiplayerSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsHandle);
 		FindSessionsHandle.Reset();
 	}
+
+	if (bPendingJoinById == true)
+	{
+		bPendingJoinById = false;
+
+		if (bWasSuccessful == false || SessionSearch.IsValid() == false)
+		{
+			OnFindSessions.Broadcast(bWasSuccessful);
+			return;
+		}
+
+		for (const FOnlineSessionSearchResult& Result : SessionSearch->SearchResults)
+		{
+			if (Result.IsValid() == false)
+				continue;
+
+			if (Result.Session.SessionInfo.IsValid() == false)
+				continue;
+
+			const FString FoundId = Result.Session.GetSessionIdStr();
+			if (FoundId == PendingSessionTargetId)
+			{
+				JoinSession(Result);
+				OnFindSessions.Broadcast(bWasSuccessful);
+				return;
+			}
+		}
+	}
+
 	OnFindSessions.Broadcast(bWasSuccessful);
 }
 
 void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {
+	IOnlineSessionPtr SessionInterface = Online::GetSessionInterface(GetWorld());
+	if (SessionInterface.IsValid() == true && JoinSessionHandle.IsValid() == true)
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(JoinSessionHandle);
+		JoinSessionHandle.Reset();
+	}
+
 	OnJoinSession.Broadcast(SessionName, Result);
 
 	if (Result != EOnJoinSessionCompleteResult::Success)
