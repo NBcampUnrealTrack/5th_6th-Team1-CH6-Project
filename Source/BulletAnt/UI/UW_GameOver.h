@@ -6,6 +6,7 @@
 
 class UButton;
 class UTextBlock;
+class UImage;
 
 UCLASS()
 class BULLETANT_API UUW_GameOver : public UUserWidget
@@ -15,7 +16,7 @@ class BULLETANT_API UUW_GameOver : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
-	void InitText();
+	void InitText(bool bIsComplete);
 
 private:
 	UFUNCTION()
@@ -24,6 +25,17 @@ private:
 	void GoToTitle();
 	
 protected:
+	void SetCompleteImage(bool bIsComplete);
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* FailedImage;
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* CompleteImage;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* EndImage;
+	
 	UPROPERTY(meta = (BindWidget))
 	UButton* ToTitleButton;
 
