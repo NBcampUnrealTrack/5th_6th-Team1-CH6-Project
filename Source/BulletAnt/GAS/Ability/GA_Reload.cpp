@@ -19,6 +19,7 @@ UGA_Reload::UGA_Reload()
 
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Reload);
 	BlockAbilitiesWithTag.AddTag(TAG_Ability_Active_Fire);
+	BlockAbilitiesWithTag.AddTag(TAG_Event_Combat_Damaged);
 }
 
 void UGA_Reload::PreActivate(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, FOnGameplayAbilityEnded::FDelegate* OnGameplayAbilityEndedDelegate, const FGameplayEventData* TriggerEventData)

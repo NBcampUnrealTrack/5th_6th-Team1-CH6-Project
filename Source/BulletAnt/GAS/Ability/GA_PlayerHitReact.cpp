@@ -8,6 +8,11 @@ UGA_PlayerHitReact::UGA_PlayerHitReact()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
 
+	FGameplayTagContainer DefaultTag;
+	DefaultTag.AddTag(TAG_Event_Combat_Damaged);
+
+	SetAssetTags(DefaultTag);
+
 	FGameplayTagContainer Tags;
 	FAbilityTriggerData Trigger;
 	Trigger.TriggerTag = TAG_Event_Combat_Damaged;

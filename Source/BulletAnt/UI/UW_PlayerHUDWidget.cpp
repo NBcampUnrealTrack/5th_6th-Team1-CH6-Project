@@ -158,10 +158,10 @@ void UUW_PlayerHUDWidget::UpdateWeaponName(TSubclassOf<ABaseWeapon> InWeaponClas
 		Color = FLinearColor::White;
 		break;
 	case ERarity::Rare:
-		Color = FLinearColor::Blue;
+		Color = FLinearColor::Green;
 		break;
 	case ERarity::SuperRare:
-		Color = FLinearColor::Green;
+		Color = FLinearColor::Blue;
 		break;
 	case ERarity::UltraRare:
 		Color = FLinearColor::Red;
