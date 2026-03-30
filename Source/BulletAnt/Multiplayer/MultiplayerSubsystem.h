@@ -103,6 +103,9 @@ public:
 	void UnbindOnCreateSession(FDelegateHandle Handle);
 	FDelegateHandle BindOnFindSessions(const FOnFindSessions::FDelegate& Delegate);
 	void UnbindOnFindSessions(const UObject* Object);
+	FDelegateHandle BindOnJoinSession(const FOnJoinSession::FDelegate& Delegate);
+	void UnbindOnJoinSession(const UObject* Object);
+	void UnbindOnJoinSession(FDelegateHandle Handle);
 
 	// 호스트는 non-seamless travel로 로비레벨 이동 후 세션 생성
 	void ServerTravelToLobby(const FRoomSetting& InSetting);
@@ -115,6 +118,12 @@ public:
 
 	void SetVolume(int32 LocalUserNum, float InVolume);
 	void SetMute(int32 LocalUserNum, bool bMute);
+
+	// 로비에서만 호출해서 갱신
+	void StartSessionHeartBeat();
+	UFUNCTION()
+	void UpdateSessionHearBeat();
+	void StopSessionHeartBeat();
 
 
 	FORCEINLINE bool IsLogin() const { return bLogin; }
@@ -136,6 +145,7 @@ private:
 private:
 	FDelegateHandle LoginHandle;
 	FDelegateHandle FindSessionsHandle;
+	FDelegateHandle JoinSessionHandle;
 
 	FOnSuccessLogin OnSuccessLogin;
 
@@ -146,6 +156,8 @@ private:
 	FRoomSetting HostRoomSetting;
 
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
+
+	FTimerHandle SessionHeartbeatTimer;
 
 	class IVoiceChat* VoiceChat = nullptr;
 	IVoiceChatUser* VoiceChatUser = nullptr;
@@ -167,6 +179,7 @@ private:
 	static const FName SETTING_PASSWORD;
 	static const FName SETTING_PRIVATE;
 	static const FName SETTING_PARTICIPANTNICKNAMES;
+	static const FName SETTING_LASTHEARTBEAT;		// 유효한 세션인지 확인하기 위해, 주기적으로 호스트가 갱신 <= 오래됐으면 호스트는 나갔으나 살아있는 좀비 세션
 	static const FName SEARCH_PRESENCE;
 	
 	static const FName NAME_GAMESESSION;
@@ -194,6 +207,7 @@ private:
 	FDelegateHandle JoinSessionByIdHandle;
 
 	FString PendingSessionTargetId;
+	uint8 bPendingJoinById : 1 = false;
 
 	uint8 bIsJoiningSteamInvitation : 1 = false;
 

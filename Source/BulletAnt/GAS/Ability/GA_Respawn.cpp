@@ -148,9 +148,9 @@ void UGA_Respawn::DropPlayer()
 		Source->SetActorHiddenInGame(false);
 		Source->EquippedWeapon->SetActorHiddenInGame(false);
 
-		Source->SetPlayerColor();
-		Source->UpdateNicknameUI();
-		Source->UpdateLevelUI();
+		Source->Multicast_SetPlayerColor();
+		Source->Multicast_UpdateNicknameUI();
+		Source->Multicast_UpdateLevelUI();
 	}
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);

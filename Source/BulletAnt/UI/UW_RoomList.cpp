@@ -5,6 +5,7 @@
 #include "Multiplayer/MultiplayerSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "UI/UISubsystem.h"
+#include "Components/Overlay.h"
 
 void UUW_RoomList::NativeConstruct()
 {
@@ -39,11 +40,14 @@ void UUW_RoomList::RefreshList()
 		UpdateHandle = MultiplayerSubsystem->BindOnFindSessions(FOnFindSessions::FDelegate::CreateUObject(this, &ThisClass::OnUpdateRooms));
 	}
 
+	ShowRefreshPanel(true);
 	MultiplayerSubsystem->SearchSessions(24);
 }
 
 void UUW_RoomList::OnUpdateRooms(bool bSuccessful)
 {
+	ShowRefreshPanel(false);
+
 	if (bSuccessful == false)
 		return;
 
@@ -77,6 +81,15 @@ void UUW_RoomList::UpdateList()
 		int32 Row = RoomIdx / 3;
 		int32 Col = RoomIdx % 3;
 		ItemParent->AddChildToUniformGrid(NewItem, Row, Col);
+	}
+}
+
+void UUW_RoomList::ShowRefreshPanel(bool bInShow)
+{
+	if (IsValid(RefreshPanel) == true)
+	{
+		ESlateVisibility NewVisibility = bInShow == true ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+		RefreshPanel->SetVisibility(NewVisibility);
 	}
 }
 
