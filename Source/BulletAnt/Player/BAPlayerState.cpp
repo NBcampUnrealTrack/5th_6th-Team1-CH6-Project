@@ -7,6 +7,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
+#include "Mining/VoxelData.h"
 
 ABAPlayerState::ABAPlayerState()
 {
@@ -226,3 +227,14 @@ void ABAPlayerState::OnRep_PlayerLevel()
 	OnChangedPlayerLevel.Broadcast(PlayerLevel);
 }
 
+void ABAPlayerState::Client_AcquireOre_Implementation(EOreType OreType, int32 Count)
+{
+	OreAcquired.FindOrAdd(OreType) += Count;
+	FString StrOre = OreType == EOreType::Gold ? TEXT("Gold") : TEXT("Mineral");
+}
+
+int32 ABAPlayerState::GetOreCount(EOreType OreType)
+{
+	const int32* OreCountPtr = OreAcquired.Find(OreType);
+	return OreCountPtr != nullptr ? *OreCountPtr : 0;
+}

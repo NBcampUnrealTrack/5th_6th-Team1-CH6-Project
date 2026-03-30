@@ -20,9 +20,7 @@ public:
 
 private:
 	UFUNCTION()
-	void GoToLobby();
-	UFUNCTION()
-	void GoToTitle();
+	void OnClickedExit();
 	
 protected:
 	void SetCompleteImage(bool bIsComplete);
@@ -35,12 +33,6 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* EndImage;
-	
-	UPROPERTY(meta = (BindWidget))
-	UButton* ToTitleButton;
-
-	UPROPERTY(meta = (BindWidget))
-	UButton* ToLobbyButton;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* LevelText;
@@ -52,7 +44,10 @@ protected:
 	UTextBlock* DamageText;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* CollectedResourceText;
+	UTextBlock* CollectedGoldText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* CollectedMineralText;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* DaysText;
@@ -63,4 +58,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* WeaponText;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* ExitButton;
 };

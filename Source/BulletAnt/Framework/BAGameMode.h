@@ -5,6 +5,7 @@
 #include "BAGameMode.generated.h"
 
 enum class EOreType : uint8;
+class ABAPlayerState;
 
 UCLASS()
 class BULLETANT_API ABAGameMode : public AGameMode
@@ -20,7 +21,7 @@ public:
 	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
 public:
-	void MineOre(EOreType OreType, int32 PointCount);
+	void MineOre(ABAPlayerState* MinedPlayerState, EOreType OreType, int32 PointCount);
 	bool TrySpendOre(const TMap<EOreType, int32>& Cost);
 
 protected:
