@@ -50,17 +50,8 @@ EStateTreeRunStatus UMoveToLoc::EnterState(FStateTreeExecutionContext& Context,
 	Target = Cast<ABaseBuilding>(Target);
 	if (!IsValid(Target))
 	{
-		UWorld* World = GetWorld();
-		if (!IsValid(World))
-		{
-			return EStateTreeRunStatus::Failed;
-		}
-		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-		if (!IsValid(BAGameState))
-		{
-			return EStateTreeRunStatus::Failed;
-		}
-		Target = BAGameState->GetTargetCore();
+		ContextEnemy->InitTarget();
+		Target = ContextEnemy->GetTargetActor();
 	}
 	if (!IsValid(Target))
 	{
@@ -132,19 +123,8 @@ void UMoveToLoc::StartMoveToTarget()
 	}
 	if (!IsValid(Target))
 	{
-		UWorld* World = GetWorld();
-		if (!IsValid(World))
-		{
-			MoveRequestResult = EMoveRequestResult::Failed;
-			return;
-		}
-		ABAGameState* BAGameState = World->GetGameState<ABAGameState>();
-		if (!IsValid(BAGameState))
-		{
-			MoveRequestResult = EMoveRequestResult::Failed;
-			return;
-		}
-		Target = BAGameState->GetTargetCore();
+		ContextEnemy->InitTarget();
+		Target = ContextEnemy->GetTargetActor();
 	}
 	if (!IsValid(Target))
 	{
@@ -254,11 +234,9 @@ const std::optional<FVector> UMoveToLoc::GetAnchor() const
 FVector UMoveToLoc::GetClosestLocation()
 {
 	FVector StartLocation = ContextEnemy->GetActorLocation();
-	FVector ForwardVector = ContextEnemy->GetActorForwardVector();
+	FVector ForwardVector = Target->GetActorLocation() - StartLocation;
 	float Radius = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleRadius();
 	float HalfHeight = ContextEnemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	float TraceDistance = FVector::DistSquared2D(StartLocation, Target->GetActorLocation());
-	FVector EndLocation = StartLocation + (ForwardVector * TraceDistance);
 
 	FCollisionShape CollisionShape = FCollisionShape::MakeCapsule(Radius, HalfHeight);
 	FCollisionObjectQueryParams ObjectQueryParams;
@@ -272,14 +250,14 @@ FVector UMoveToLoc::GetClosestLocation()
 	bool bHit = GetWorld()->SweepSingleByObjectType(
 		HitResult,
 		StartLocation,
-		EndLocation,
+		Target->GetActorLocation(),
 		FQuat::Identity,
 		ObjectQueryParams,
 		CollisionShape,
 		QueryParams
 	);
 
-	return bHit ? HitResult.Location : StartLocation + (ForwardVector * TraceDistance);
+	return bHit ? HitResult.ImpactPoint : Target->GetActorLocation();
 }
 
 void UMoveToLoc::ToAttackState()
