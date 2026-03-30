@@ -708,4 +708,14 @@ protected:
 
 #pragma endregion
 
+#pragma region Audio
+protected:
+    UFUNCTION()
+    void CheckEnvironmentTimer();
+
+    FTimerHandle EnvTimerHandle;
+
+    UPROPERTY()
+    class ABABGMManager* CachedBGMManager;
+#pragma endregion
 };
