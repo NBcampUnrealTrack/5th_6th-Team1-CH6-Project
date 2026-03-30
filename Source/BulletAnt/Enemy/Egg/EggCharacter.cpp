@@ -6,6 +6,30 @@
 #include "AbilitySystemComponent.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
+bool AEggCharacter::ShouldCallPreAttack()
+{
+	return true;
+}
+
+void AEggCharacter::PreAttack()
+{
+	if (bDead)
+	{
+		return;
+	}
+
+	bDead = true;
+	UWorld* World = GetWorld();
+	if (IsValid(World))
+	{
+		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+		if (IsValid(SpawnManagerSubsystem))
+		{
+			SpawnManagerSubsystem->OnEnemyDie();
+		}
+	}
+}
+
 bool AEggCharacter::ShouldCallAfterAttack()
 {
 	return true;
@@ -19,14 +43,4 @@ void AEggCharacter::AfterAttack()
 	}
 
 	Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
-	}
 }

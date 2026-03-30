@@ -15,6 +15,10 @@ class BULLETANT_API AEggCharacter : public ABaseEnemyCharacter
 	GENERATED_BODY()
 
 public:
+	virtual bool ShouldCallPreAttack();
+
+	virtual void PreAttack();
+
 	virtual bool ShouldCallAfterAttack() override;
 	
 	virtual void AfterAttack() override;

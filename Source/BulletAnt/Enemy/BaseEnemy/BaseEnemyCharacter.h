@@ -60,6 +60,10 @@ public:
 
 	virtual UDataAsset* GetDataAsset() const override;
 
+	virtual bool ShouldCallPreAttack();
+
+	virtual void PreAttack();
+
 	virtual bool ShouldCallAfterAttack();
 
 	virtual void AfterAttack();
@@ -179,12 +183,18 @@ protected:
 public:
 	UStateTreeComponent* GetStateTreeComponent() const;
 
+	bool IsDead() const;
+
+	void SetDead(bool flag);
+
 protected:
 	void OnDeadEventReceived(const FGameplayEventData* Payload);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UStateTreeComponent> StateTreeComponent;
+
+	bool bDead = false;
 
 #pragma endregion
 
