@@ -16,17 +16,14 @@ AWeaponSniper::AWeaponSniper()
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
 	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
-	SceneCapture->bAlwaysPersistRenderingState = true;
-	// 1. 내가 이 설정을 덮어쓰겠다고 선언 (true)
+
 	SceneCapture->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = true;
 
-	// 2. 방식을 지정 (Lumen, RayTracing, Plugin, None 중 선택)
 	SceneCapture->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
 
 	SceneCapture->PostProcessSettings.bOverride_LumenSceneLightingQuality = true;
 	SceneCapture->PostProcessSettings.LumenSceneLightingQuality = 2.0f;
 
-	// 스코프 화면의 빛 반사(Reflection) 방식을 루멘으로 고정하여 일관성을 줍니다.
 	SceneCapture->PostProcessSettings.bOverride_ReflectionMethod = true;
 	SceneCapture->PostProcessSettings.ReflectionMethod = EReflectionMethod::Lumen;
 
@@ -114,7 +111,11 @@ void AWeaponSniper::BeginPlay()
 	{
 		if (Character->IsLocallyControlled())
 		{
-			SceneCapture->TextureTarget = RT;
+			RuntimeRT = NewObject<UTextureRenderTarget2D>(this);
+			RuntimeRT->InitAutoFormat(1024, 1024);
+			RuntimeRT->UpdateResourceImmediate(true);
+
+			SceneCapture->TextureTarget = RuntimeRT;
 			SceneCapture->SetActive(false);
 			SceneCapture->bCaptureEveryFrame = true;
 			SceneCapture->SetComponentTickEnabled(true);
@@ -128,7 +129,7 @@ void AWeaponSniper::BeginPlay()
 			if (IsValid(UISubsystem))
 			{
 				UUW_Scope* Scope = UISubsystem->ShowUI<UUW_Scope>(EUIType::Scope);
-				Scope->InitScope(RT);
+				Scope->InitScope(RuntimeRT);
 				UISubsystem->HideUI(EUIType::Scope);
 			}		
 		}

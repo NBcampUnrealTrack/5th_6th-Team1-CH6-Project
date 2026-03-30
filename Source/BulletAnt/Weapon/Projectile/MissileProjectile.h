@@ -29,7 +29,7 @@ protected:
 	float ExplosionRadius = 300.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Missile|Explosion", meta = (ClampMin = "0.0"))
-	float ExplosionDamage = 30.f;
+	float ExplosionDamage = 50.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Missile|Explosion")
 	TObjectPtr<UNiagaraSystem> ExplosionEffect = nullptr;

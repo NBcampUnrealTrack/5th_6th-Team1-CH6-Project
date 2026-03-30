@@ -73,6 +73,7 @@ void ABaseProjectile::ActivateProjectile()
 
 	Tracer->DeactivateImmediate();
 	Tracer->Activate();
+	Tracer->ReinitializeSystem();
 }
 
 

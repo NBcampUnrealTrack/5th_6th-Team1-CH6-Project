@@ -8,6 +8,7 @@
 #include "Framework/BAGameInstance.h"
 #include "Framework/MapConfig.h"
 #include "Components/Button.h"
+#include "Components/Image.h"
 
 void UUW_GameOver::NativeConstruct()
 {
@@ -17,7 +18,7 @@ void UUW_GameOver::NativeConstruct()
 	ToTitleButton->OnClicked.AddDynamic(this, &ThisClass::GoToTitle);
 }
 
-void UUW_GameOver::InitText()
+void UUW_GameOver::InitText(bool bIsComplete)
 {
 
 	if (ABAPlayerState* PS = Cast<ABAPlayerState>(GetOwningPlayerState()))
@@ -65,6 +66,24 @@ void UUW_GameOver::InitText()
 				}
 			}
 		}
+	}
+
+	SetCompleteImage(bIsComplete);
+}
+
+void UUW_GameOver::SetCompleteImage(bool bIsComplete)
+{
+	if (!FailedImage || !CompleteImage) return;
+
+	if (bIsComplete)
+	{
+		EndImage->SetBrushFromTexture(CompleteImage);
+		EndImage->SetOpacity(1.f);
+	}
+	else
+	{
+		EndImage->SetBrushFromTexture(FailedImage);
+		EndImage->SetOpacity(1.f);
 	}
 }
 
