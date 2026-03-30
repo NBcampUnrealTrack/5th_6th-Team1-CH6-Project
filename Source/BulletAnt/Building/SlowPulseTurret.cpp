@@ -29,20 +29,7 @@ void ASlowPulseTurret::BeginPlay()
 
 bool ASlowPulseTurret::CanStartAttack() const
 {
-	if (!HasAuthority() || bDead)
-	{
-		return false;
-	}
-
-	for (const TWeakObjectPtr<AActor>& Candidate : TargetCandidates)
-	{
-		if (IsValid(Candidate.Get()))
-		{
-			return true;
-		}
-	}
-
-	return false;
+	return HasAuthority() && !bDead && IsValid(CurrentTarget);
 }
 
 float ASlowPulseTurret::GetAttackInterval() const
@@ -102,6 +89,7 @@ void ASlowPulseTurret::GatherPulseTargets(TArray<ABaseEnemyCharacter*>& OutEnemi
 
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(PulseTurretData->EnemyTraceChannel);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_GameTraceChannel12);
 
 	const bool bHit = World->OverlapMultiByObjectType(
 		Overlaps,
