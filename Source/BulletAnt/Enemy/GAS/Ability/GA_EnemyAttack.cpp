@@ -4,11 +4,30 @@
 #include "Enemy/GAS/Ability/GA_EnemyAttack.h"
 #include "Enemy/BaseEnemy/BaseEnemyCharacter.h"
 #include "Components/StateTreeComponent.h"
+#include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
 UGA_EnemyAttack::UGA_EnemyAttack()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
+}
+
+void UGA_EnemyAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	AActor* Avatar = CurrentActorInfo->AvatarActor.Get();
+	if (IsValid(Avatar))
+	{
+		ABaseEnemyCharacter* Enemy = Cast<ABaseEnemyCharacter>(Avatar);
+		if (IsValid(Enemy))
+		{
+			if (Enemy->ShouldCallPreAttack())
+			{
+				Enemy->PreAttack();
+			}
+		}
+	}
 }
 
 void UGA_EnemyAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)

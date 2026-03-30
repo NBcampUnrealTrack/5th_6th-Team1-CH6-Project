@@ -51,9 +51,6 @@ protected:
 	int32 MaxWaveIndex;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
-	int32 AliveEnemyCount = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	int32 SpawnEnemyDataIdx = 0;
 
 	UPROPERTY()

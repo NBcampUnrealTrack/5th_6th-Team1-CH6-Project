@@ -21,9 +21,11 @@ protected:
 
 	virtual void ApplyPreviewMode() override;
 
-protected:
 	virtual void ExecuteAttack() override;
 	virtual float GetAttackInterval() const override;
+
+	virtual void OnDeath() override;
+	virtual void OnRep_Dead() override;
 
 private:
 	void StartFireSequence();
@@ -48,6 +50,9 @@ private:
 
 	void BuildMissileVisuals();
 	void SetMissileVisualLoaded(int32 Index, bool bLoaded);
+
+	void ClearMissileVisualsImmediate();
+	void StopAllMissileTurretTimers();
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Missile|Timing", meta = (ClampMin = "0.1", ClampMax = "0.9"))

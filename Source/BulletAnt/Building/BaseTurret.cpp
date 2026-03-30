@@ -97,6 +97,30 @@ void ABaseTurret::ApplyPreviewMode()
 	CurrentTarget = nullptr;
 }
 
+void ABaseTurret::GetBuildPreviewInfo(FBuildingPreviewInfo& OutInfo) const
+{
+	Super::GetBuildPreviewInfo(OutInfo);
+
+	const float Damage = GetPreviewDamage();
+	const float AttackRate = GetPreviewAttackRate();
+	const float Range = GetPreviewRange();
+
+	if (Damage > 0.f)
+	{
+		OutInfo.ExtraStats.Add({ FText::FromString(TEXT("Attack")), FText::AsNumber(Damage) });
+	}
+
+	if (AttackRate > 0.f)
+	{
+		OutInfo.ExtraStats.Add({ FText::FromString(TEXT("Attack Speed")), FText::AsNumber(AttackRate) });
+	}
+
+	if (Range > 0.f)
+	{
+		OutInfo.ExtraStats.Add({ FText::FromString(TEXT("Range")), FText::AsNumber(Range) });
+	}
+}
+
 void ABaseTurret::OnDeath()
 {
 	Super::OnDeath();
@@ -281,6 +305,20 @@ void ABaseTurret::HandleAttackTick()
 	ExecuteAttack();
 }
 
+float ABaseTurret::GetPreviewRange() const
+{
+	return 0.f;
+}
+
+float ABaseTurret::GetPreviewDamage() const
+{
+	return 0.f;
+}
+
+float ABaseTurret::GetPreviewAttackRate() const
+{
+	return 0.f;
+}
 void ABaseTurret::UpdateCurrentTarget()
 {
 	if (!HasAuthority() || bDead || !TurretData)

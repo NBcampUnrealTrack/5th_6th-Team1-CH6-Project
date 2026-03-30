@@ -68,6 +68,22 @@ float AMissileTurret::GetAttackInterval() const
 	return 60.f / RangedTurretData->WeaponData->RoundPerMinute;
 }
 
+void AMissileTurret::OnDeath()
+{
+	StopAllMissileTurretTimers();
+	ClearMissileVisualsImmediate();
+
+	Super::OnDeath();
+}
+
+void AMissileTurret::OnRep_Dead()
+{
+	StopAllMissileTurretTimers();
+	ClearMissileVisualsImmediate();
+
+	Super::OnRep_Dead();
+}
+
 float AMissileTurret::GetCycleDuration() const
 {
 	return GetAttackInterval();
@@ -132,7 +148,7 @@ void AMissileTurret::StartFireSequence()
 
 void AMissileTurret::FireSequenceStep()
 {
-	if (!HasAuthority() || !ASC || !CurrentTarget)
+	if (!HasAuthority() || bDead || !ASC || !CurrentTarget)
 	{
 		bCycleInProgress = false;
 		return;
@@ -182,6 +198,12 @@ void AMissileTurret::StartReloadSequence()
 
 void AMissileTurret::ReloadSequenceStep()
 {
+	if (bDead)
+	{
+		bCycleInProgress = false;
+		return;
+	}
+
 	const int32 MuzzleCount = MuzzleSocketNames.Num();
 
 	if (!MuzzleSocketNames.IsValidIndex(SequenceIndex))
@@ -217,12 +239,7 @@ bool AMissileTurret::PrepareLaunchSolution()
 
 void AMissileTurret::UpdateMissileAim(float DeltaSeconds)
 {
-	if (!CurrentTarget || !BodyMesh || !BarrelMesh)
-	{
-		return;
-	}
-
-	if (!bHasValidLaunchSolution)
+	if (!IsValid(CurrentTarget) || !BodyMesh || !BarrelMesh || !TurretData || !RangedTurretData || !RangedTurretData->WeaponData)
 	{
 		return;
 	}
@@ -239,21 +256,41 @@ void AMissileTurret::UpdateMissileAim(float DeltaSeconds)
 	const float NewYaw = FMath::FixedTurn(
 		CurrentYaw,
 		TargetRot.Yaw,
-		TurretData ? TurretData->TurnSpeedDegPerSec * DeltaSeconds : 360.f * DeltaSeconds
+		TurretData->TurnSpeedDegPerSec * DeltaSeconds
 	);
 
 	BodyMesh->SetWorldRotation(FRotator(0.f, NewYaw, 0.f));
 
-	const FRotator LaunchWorldRot = CachedLaunchDirection.Rotation();
+	FVector LaunchVelocity;
+	const bool bSuccess = UGameplayStatics::SuggestProjectileVelocity(
+		this,
+		LaunchVelocity,
+		GetFireStartLocation_Implementation(),
+		CurrentTarget->GetActorLocation(),
+		RangedTurretData->WeaponData->ProjectileSpeed,
+		true,
+		0.f,
+		0.f,
+		ESuggestProjVelocityTraceOption::DoNotTrace
+	);
+
+	if (!bSuccess || LaunchVelocity.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator LaunchWorldRot = LaunchVelocity.GetSafeNormal().Rotation();
 	const FRotator CurrentBodyRot = BodyMesh->GetComponentRotation();
 	const FRotator RelativeRot = (LaunchWorldRot - CurrentBodyRot).GetNormalized();
 
+	float TargetPitch = RelativeRot.Pitch;
+	TargetPitch = FMath::ClampAngle(TargetPitch, TurretData->PitchMin, TurretData->PitchMax);
+
 	const float CurrentPitch = BarrelMesh->GetRelativeRotation().Pitch;
-	const float TargetPitch = RelativeRot.Pitch;
 	const float NewPitch = FMath::FixedTurn(
 		CurrentPitch,
 		TargetPitch,
-		TurretData ? TurretData->TurnSpeedDegPerSec * DeltaSeconds : 360.f * DeltaSeconds
+		TurretData->TurnSpeedDegPerSec * DeltaSeconds
 	);
 
 	BarrelMesh->SetRelativeRotation(FRotator(NewPitch, 0.f, 0.f));
@@ -426,4 +463,33 @@ void AMissileTurret::SetMissileVisualLoaded(int32 Index, bool bLoaded)
 		MissileVisuals[Index]->SetHiddenInGame(!bLoaded);
 		MissileVisuals[Index]->SetVisibility(bLoaded);
 	}
+}
+
+void AMissileTurret::ClearMissileVisualsImmediate()
+{
+	for (UStaticMeshComponent* VisualComp : MissileVisuals)
+	{
+		if (!IsValid(VisualComp))
+		{
+			continue;
+		}
+
+		VisualComp->SetHiddenInGame(true);
+		VisualComp->SetVisibility(false, true);
+		VisualComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	for (bool& bLoaded : bMissileLoaded)
+	{
+		bLoaded = false;
+	}
+}
+
+void AMissileTurret::StopAllMissileTurretTimers()
+{
+	GetWorldTimerManager().ClearTimer(SequenceTimerHandle);
+	GetWorldTimerManager().ClearTimer(LaunchSolutionTimerHandle);
+
+	SequenceTimerHandle.Invalidate();
+	LaunchSolutionTimerHandle.Invalidate();
 }

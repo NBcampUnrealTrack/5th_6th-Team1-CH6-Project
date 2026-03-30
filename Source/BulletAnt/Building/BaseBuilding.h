@@ -43,6 +43,30 @@ struct FBuildingEdge
 	}
 };
 
+USTRUCT(BlueprintType)
+struct FBuildingPreviewStat
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FText Label;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FText Value;
+};
+
+USTRUCT(BlueprintType)
+struct FBuildingPreviewInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float Health = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TArray<FBuildingPreviewStat> ExtraStats;
+};
+
 UCLASS()
 class BULLETANT_API ABaseBuilding : public AActor
 								  , public IAbilitySystemInterface
@@ -100,6 +124,7 @@ public:
 	float GetMaxHealth() const;
 
 	virtual void GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const;
+	virtual void GetBuildPreviewInfo(FBuildingPreviewInfo& OutInfo) const;
 
 protected:
 	UFUNCTION()
