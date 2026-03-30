@@ -40,8 +40,7 @@ void UMultiplayerSubsystem::Login()
 	if (bLogin == true)
 		return;
 
-	EpicLogin();
-	/*IOnlineSubsystem* SteamSub = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
+	IOnlineSubsystem* SteamSub = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
 	if (SteamSub && SteamAPI_Init() == true)
 	{
 		SteamLogin();
@@ -49,7 +48,7 @@ void UMultiplayerSubsystem::Login()
 	else
 	{
 		EpicLogin();
-	}*/
+	}
 }
 
 void UMultiplayerSubsystem::EpicLogin()
