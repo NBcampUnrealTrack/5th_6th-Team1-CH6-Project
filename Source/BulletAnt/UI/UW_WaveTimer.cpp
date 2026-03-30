@@ -1,10 +1,12 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "UI/UW_WaveTimer.h"
 #include "Components/TextBlock.h"
 #include "Framework/BAGameState.h"
 #include "Components/Image.h"
+#include "Audio/BABGMManager.h"
+#include "Kismet/GameplayStatics.h"
 
 void UUW_WaveTimer::NativeConstruct()
 {
@@ -18,7 +20,11 @@ void UUW_WaveTimer::NativeConstruct()
     {
         return;
     }
-
+    BGMManager = Cast<ABABGMManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABABGMManager::StaticClass()));
+    if (BGMManager)
+    {
+        BGMManager->StartDayPhase();
+    }
     CachedGameState->OnWaveTimeChanged.AddUObject(this, &UUW_WaveTimer::UpdateTime);
 
     UpdateTime();
@@ -43,6 +49,14 @@ void UUW_WaveTimer::UpdateTime()
     {
         UpdateClockRotation(InitWaveTime, RemainingTime);
     }
+
+    if (InitWaveTime == RemainingTime)
+    {
+        BGMManager->StartDayPhase();
+    }
+    else if(RemainingTime <= 100.f)
+        BGMManager->StartNightPhase();
+
 }
 
 void UUW_WaveTimer::UpdateClockRotation(const int InitTime, const int CurrentTime)

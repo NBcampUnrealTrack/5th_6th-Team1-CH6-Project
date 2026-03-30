@@ -39,6 +39,9 @@
 #include "NiagaraComponent.h"
 #include "Components/WidgetComponent.h"
 #include "UI/UW_IngameUserInfo.h"
+//오디오
+#include "Audio/BABGMManager.h"
+#include "Kismet/GameplayStatics.h"
 
 TWeakObjectPtr<USceneCaptureComponent2D> ABACharacter::LocalSceneCapture = nullptr;
 const FName ABACharacter::NameReturnEffectColor("User.Color");
@@ -143,6 +146,7 @@ ABACharacter::ABACharacter()
 	IngameUserInfoUI->SetDrawSize(FVector2D(300.0f, 72.0f));
 
 	GetMesh()->SetCanEverAffectNavigation(false);
+
 }
 
 // Called when the game starts or when spawned
@@ -226,6 +230,9 @@ void ABACharacter::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("[디버그] HideOnAim 태그가 달린 부위 개수: %d 개입니다!"), HiddenComp.Num());
 	PC = Cast<ABAPlayerController>(GetController());
 
+	CachedBGMManager = Cast<ABABGMManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABABGMManager::StaticClass()));
+
+	GetWorldTimerManager().SetTimer(EnvTimerHandle, this, &ABACharacter::CheckEnvironmentTimer, 0.1f, true);
 }
 
 void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -2131,6 +2138,14 @@ void ABACharacter::UpdateIngameInfoScale()
 
 	bool bVisible = NewScale > 0.01f;
 	IngameUserInfoUI->SetVisibility(bVisible);
+}
+
+void ABACharacter::CheckEnvironmentTimer()
+{
+	if (CachedBGMManager)
+	{
+		CachedBGMManager->UpdateEnvironmentVolume(GetActorLocation().Z);
+	}
 }
 
 void ABACharacter::GetEXP(float InEXP)
