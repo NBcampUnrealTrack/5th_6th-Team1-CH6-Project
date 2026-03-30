@@ -7,6 +7,7 @@
 class UUW_RoomListItem;
 class UUniformGridPanel;
 class UButton;
+class UOverlay;
 
 UCLASS()
 class BULLETANT_API UUW_RoomList : public UUserWidget
@@ -24,6 +25,7 @@ public:
 protected:
 	void OnUpdateRooms(bool bSuccessful);
 	void UpdateList();
+	void ShowRefreshPanel(bool bInShow);
 
 	UFUNCTION()
 	void CloseUI();
@@ -33,6 +35,8 @@ protected:
 	TSubclassOf<UUW_RoomListItem> ItemClass;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UUniformGridPanel> ItemParent;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UOverlay> RefreshPanel;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> BtnRefresh;

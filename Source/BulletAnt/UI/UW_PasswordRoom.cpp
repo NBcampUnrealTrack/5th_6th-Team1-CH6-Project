@@ -4,6 +4,7 @@
 #include "Components/Button.h"
 #include "UI/UISubsystem.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Components/Overlay.h"
 
 void UUW_PasswordRoom::NativeConstruct()
 {
@@ -77,6 +78,16 @@ void UUW_PasswordRoom::JoinRoom()
         return;
     }
 
+    JoinHandle = MultiplayerSubsystem->BindOnJoinSession(FOnJoinSession::FDelegate::CreateLambda(
+        [WeakThis = TWeakObjectPtr(this)](FName, EOnJoinSessionCompleteResult::Type)
+        {
+            if (WeakThis.IsValid() == false)
+                return;
+
+            WeakThis->ShowLoadingPanel(false);
+        }));
+
+    ShowLoadingPanel(true);
 	MultiplayerSubsystem->JoinSession(*RoomInfo.SearchResult);
 }
 
@@ -91,4 +102,13 @@ void UUW_PasswordRoom::Cancel()
         return;
 
     UISubsystem->CloseUI(EUIType::PasswordRoom);
+}
+
+void UUW_PasswordRoom::ShowLoadingPanel(bool bShow)
+{
+    if (IsValid(LoadingPanel) == true)
+    {
+        ESlateVisibility NewVisibility = bShow == true ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+        LoadingPanel->SetVisibility(NewVisibility);
+    }
 }
