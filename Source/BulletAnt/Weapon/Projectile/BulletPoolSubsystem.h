@@ -26,6 +26,8 @@ class BULLETANT_API UBulletPoolSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
+
+	UFUNCTION(BlueprintCallable)
 	ABaseProjectile* GetProjectile(TSubclassOf<ABaseProjectile> ProjectileClass, UObject* Owner);
 
 protected:

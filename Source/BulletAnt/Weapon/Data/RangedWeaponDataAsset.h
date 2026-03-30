@@ -14,13 +14,13 @@ class BULLETANT_API URangedWeaponDataAsset : public UWeaponDataAsset
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TSubclassOf<ABaseProjectile> ProjectileClass;
 
-	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 0.f))
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, meta = (ClampMin = 0.f))
 	float ProjectileRadius;
 
-	UPROPERTY(EditDefaultsOnly, meta = (ClampMin = 0.f));
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (ClampMin = 0.f));
 	float ProjectileSpeed;
 
 	UPROPERTY(EditDefaultsOnly);

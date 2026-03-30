@@ -105,9 +105,6 @@ void UGA_Fire::FireOnce()
 	if (!CurrentActorInfo || !CurrentActorInfo->IsNetAuthority()) return;
 
 	ContinuousBullet++;
-	
-	FActorSpawnParameters Params;
-	Params.Owner = SourceActor;
 
 	for (int32 i = 0; i < RangedData->FirePerShot; ++i)
 	{
@@ -130,6 +127,12 @@ void UGA_Fire::FireOnce()
 		);
 
 		Prj->ActivateProjectile();
+
+		FGameplayCueParameters BulletParams;
+		BulletParams.SourceObject = RangedData;
+		BulletParams.Instigator = CurrentActorInfo->AvatarActor.Get();
+
+		CachedASC->ExecuteGameplayCue(TAG_GameplayCue_Combat_Bullet, BulletParams);
 	}
 }
 
