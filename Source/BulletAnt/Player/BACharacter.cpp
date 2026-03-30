@@ -2135,6 +2135,19 @@ void ABACharacter::UpdateLevelUI(float CurrentLevel, float OldLevel)
 	UserInfoUI->SetLevel((int32)CurrentLevel);
 }
 
+void ABACharacter::UpdateLevelUI()
+{
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == true)
+	{
+		const UEXPAttributeSet* EXPSet = PS->GetEXPAttributeSet();
+		if (IsValid(EXPSet) == true)
+		{
+			UpdateLevelUI(EXPSet->GetCurrentLevel(), 0.0f);
+		}
+	}
+}
+
 void ABACharacter::UpdateIngameInfoScale()
 {
 	if (IsValid(IngameUserInfoUI) == false)
