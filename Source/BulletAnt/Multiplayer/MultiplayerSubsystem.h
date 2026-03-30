@@ -119,6 +119,12 @@ public:
 	void SetVolume(int32 LocalUserNum, float InVolume);
 	void SetMute(int32 LocalUserNum, bool bMute);
 
+	// 로비에서만 호출해서 갱신
+	void StartSessionHeartBeat();
+	UFUNCTION()
+	void UpdateSessionHearBeat();
+	void StopSessionHeartBeat();
+
 
 	FORCEINLINE bool IsLogin() const { return bLogin; }
 
@@ -151,6 +157,8 @@ private:
 
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 
+	FTimerHandle SessionHeartbeatTimer;
+
 	class IVoiceChat* VoiceChat = nullptr;
 	IVoiceChatUser* VoiceChatUser = nullptr;
 	FOnSetVoiceChatUser OnSetVoiceChatUser;
@@ -171,6 +179,7 @@ private:
 	static const FName SETTING_PASSWORD;
 	static const FName SETTING_PRIVATE;
 	static const FName SETTING_PARTICIPANTNICKNAMES;
+	static const FName SETTING_LASTHEARTBEAT;		// 유효한 세션인지 확인하기 위해, 주기적으로 호스트가 갱신 <= 오래됐으면 호스트는 나갔으나 살아있는 좀비 세션
 	static const FName SEARCH_PRESENCE;
 	
 	static const FName NAME_GAMESESSION;
