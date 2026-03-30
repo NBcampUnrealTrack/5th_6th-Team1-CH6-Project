@@ -72,7 +72,7 @@ void ABAGameMode::HandleSeamlessTravelPlayer(AController*& C)
     PC->SetLevelType(ELevelType::Main);
 }
 
-void ABAGameMode::MineOre(EOreType OreType, int32 PointCount)
+void ABAGameMode::MineOre(ABAPlayerState* MinedPlayerState, EOreType OreType, int32 PointCount)
 {
     if (OreType == EOreType::None)
         return;
@@ -91,6 +91,11 @@ void ABAGameMode::MineOre(EOreType OreType, int32 PointCount)
 	int32 CurrOreCount = GS->GetOreCount(OreType);
 	int32 TotalOreCount = CurrOreCount + GainedCount;
 	GS->SetOreCount(OreType, TotalOreCount);
+
+    if (IsValid(MinedPlayerState) == true)
+    {
+        MinedPlayerState->Client_AcquireOre(OreType, GainedCount);
+    }
 }
 
 bool ABAGameMode::TrySpendOre(const TMap<EOreType, int32>& Cost)

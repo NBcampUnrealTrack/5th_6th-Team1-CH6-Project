@@ -106,18 +106,6 @@ void AVoxelGround::DigGround(TMap<EVoxelType, int32>& HitMap, TMap<EOreType, int
 			}
 		}
 	}
-
-	for (const auto& Pair : MinedOreMap)
-	{
-		if (Pair.Key == EOreType::None)
-			continue;
-
-		ABAGameMode* GameMode = GetWorld()->GetAuthGameMode<ABAGameMode>();
-		if (IsValid(GameMode) == true)
-		{
-			GameMode->MineOre(Pair.Key, Pair.Value);
-		}
-	}
 }
 
 bool AVoxelGround::DigGround(int32 ChunkIdx, const FVector& ChunkOffset, const FVector& WorldLocation, float Radius, FVoxelChunkEditData& OutData, TMap<EVoxelType, int32>& HitMap, TMap<EOreType, int32>& MinedOreMap)

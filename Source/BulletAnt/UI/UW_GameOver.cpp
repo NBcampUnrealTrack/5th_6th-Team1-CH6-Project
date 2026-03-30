@@ -66,6 +66,14 @@ void UUW_GameOver::InitText(bool bIsComplete)
 				}
 			}
 		}
+		if (CollectedGoldText)
+		{
+			CollectedGoldText->SetText(FText::AsNumber(PS->GetOreCount(EOreType::Gold)));			
+		}
+		if (CollectedMineralText)
+		{
+			CollectedMineralText->SetText(FText::AsNumber(PS->GetOreCount(EOreType::Mineral)));
+		}
 	}
 
 	SetCompleteImage(bIsComplete);
