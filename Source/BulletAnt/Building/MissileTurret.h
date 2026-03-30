@@ -54,6 +54,9 @@ private:
 	void ClearMissileVisualsImmediate();
 	void StopAllMissileTurretTimers();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetMissileVisualLoaded(int32 Index, bool bLoaded);
+
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Missile|Timing", meta = (ClampMin = "0.1", ClampMax = "0.9"))
 	float FirePhaseRatio = 0.5f;
