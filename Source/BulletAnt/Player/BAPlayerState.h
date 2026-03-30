@@ -6,12 +6,14 @@
 #include "GameplayEffectTypes.h"
 #include "BAPlayerState.generated.h"
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerName, const FString&);
-
 class UHealthAttributeSet;
 class UAmmoAttributeSet;
 class UEXPAttributeSet;
+enum class EOreType : uint8;
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerName, const FString&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerLevel, float);
 
 UCLASS()
 class BULLETANT_API ABAPlayerState : public APlayerState, public IAbilitySystemInterface
@@ -41,17 +43,28 @@ public:
 	void UnbindOnChangedPlayerName(const UObject* Object);
 	void UnbindOnChangedPlayerName(FDelegateHandle Handle);
 
+	FDelegateHandle BindOnChangedPlayerLevel(const FOnChangedPlayerLevel::FDelegate& Delegate);
+	void UnbindOnChangedPlayerLevel(const UObject* Object);
+	void UnbindOnChangedPlayerLevel(FDelegateHandle Handle);
+
 	UFUNCTION(Server, Reliable)
 	void Server_UpdatePlayerName(const FString& NewName);
 	FORCEINLINE bool IsSetNickname() const { return bSetNickname; }
+
+	void SetPlayerLevel(float InLevel);
+	FORCEINLINE float GetPlayerLevel() const { return PlayerLevel; }
 
 protected:
 	UFUNCTION()
 	void OnRep_PlayerColorIdx();
 
+	UFUNCTION()
+	void OnRep_PlayerLevel();
+
 protected:
 	FOnChangedPlayerColor OnChangedPlayerColor;
 	FOnChangedPlayerName OnChangedPlayerName;
+	FOnChangedPlayerLevel OnChangedPlayerLevel;
 
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerColorIdx)
 	int32 PlayerColorIdx = -1;
@@ -61,6 +74,23 @@ protected:
 
 	UPROPERTY()
 	uint8 bSetNickname : 1 = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerLevel)
+	float PlayerLevel = 1;
+
+#pragma region GameResult
+
+	// 결과 화면 출력용 개인 획득량
+
+public:
+	UFUNCTION(Client, Reliable)
+	void Client_AcquireOre(EOreType OreType, int32 Count);
+	int32 GetOreCount(EOreType OreType);
+
+protected:
+	TMap<EOreType, int32> OreAcquired;
+
+#pragma endregion
 
 #pragma region GAS 
 

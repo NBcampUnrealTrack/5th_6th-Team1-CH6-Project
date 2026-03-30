@@ -7,6 +7,7 @@
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
+#include "Mining/VoxelData.h"
 
 ABAPlayerState::ABAPlayerState()
 {
@@ -181,6 +182,21 @@ void ABAPlayerState::UnbindOnChangedPlayerName(FDelegateHandle Handle)
 	OnChangedPlayerName.Remove(Handle);
 }
 
+FDelegateHandle ABAPlayerState::BindOnChangedPlayerLevel(const FOnChangedPlayerLevel::FDelegate& Delegate)
+{
+	return OnChangedPlayerLevel.Add(Delegate);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerLevel(const UObject* Object)
+{
+	OnChangedPlayerLevel.RemoveAll(Object);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerLevel(FDelegateHandle Handle)
+{
+	OnChangedPlayerLevel.Remove(Handle);
+}
+
 void ABAPlayerState::Server_UpdatePlayerName_Implementation(const FString& NewName)
 {
 	bSetNickname = true;
@@ -195,8 +211,30 @@ void ABAPlayerState::Server_UpdatePlayerName_Implementation(const FString& NewNa
 	MultiplayerSubsystem->UpdateSessionParticipants();
 }
 
+void ABAPlayerState::SetPlayerLevel(float InLevel)
+{
+	PlayerLevel = InLevel;
+	OnRep_PlayerLevel();
+}
+
 void ABAPlayerState::OnRep_PlayerColorIdx()
 {
 	OnChangedPlayerColor.Broadcast(GetPlayerColor());
 }
 
+void ABAPlayerState::OnRep_PlayerLevel()
+{
+	OnChangedPlayerLevel.Broadcast(PlayerLevel);
+}
+
+void ABAPlayerState::Client_AcquireOre_Implementation(EOreType OreType, int32 Count)
+{
+	OreAcquired.FindOrAdd(OreType) += Count;
+	FString StrOre = OreType == EOreType::Gold ? TEXT("Gold") : TEXT("Mineral");
+}
+
+int32 ABAPlayerState::GetOreCount(EOreType OreType)
+{
+	const int32* OreCountPtr = OreAcquired.Find(OreType);
+	return OreCountPtr != nullptr ? *OreCountPtr : 0;
+}

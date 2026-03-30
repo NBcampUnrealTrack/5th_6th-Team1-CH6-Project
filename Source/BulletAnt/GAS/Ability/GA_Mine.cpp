@@ -10,6 +10,8 @@
 #include "GAS/BAGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Character.h"
+#include "Framework/BAGameMode.h"
+#include "Player/BAPlayerState.h"
 
 UGA_Mine::UGA_Mine()
 {
@@ -117,6 +119,19 @@ void UGA_Mine::DigGround(FGameplayEventData Payload)
 						{
 							MostHitOre = static_cast<int32>(Pair.Key);
 							MostCount = Pair.Value;
+						}
+					}
+
+					ABAPlayerState* BAPS = Owner->GetPlayerState<ABAPlayerState>();
+					ABAGameMode* GameMode = GetWorld()->GetAuthGameMode<ABAGameMode>();
+					for (const auto& Pair : MinedOreMap)
+					{
+						if (Pair.Key == EOreType::None)
+							continue;
+
+						if (IsValid(GameMode) == true)
+						{
+							GameMode->MineOre(BAPS, Pair.Key, Pair.Value);
 						}
 					}
 

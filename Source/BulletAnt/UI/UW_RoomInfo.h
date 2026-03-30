@@ -10,6 +10,7 @@ class UButton;
 class UImage;
 class UUniformGridPanel;
 class UUW_RoomParticipantNickname;
+class UOverlay;
 
 UCLASS()
 class BULLETANT_API UUW_RoomInfo : public UUserWidget
@@ -28,6 +29,8 @@ protected:
 	UFUNCTION()
 	void CloseUI();
 
+	void ShowLoadingPanel(bool bShow);
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> TextRoomName;
@@ -39,6 +42,8 @@ protected:
 	TObjectPtr<UImage> ImgPrivate;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UUniformGridPanel> NicknameParent;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UOverlay> LoadingPanel;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<UUW_RoomParticipantNickname> NicknameUIClass;
@@ -47,6 +52,8 @@ protected:
 	TObjectPtr<UButton> BtnJoin;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> BtnCancel;
+
+	FDelegateHandle JoinHandle;
 
 	FRoomInfo RoomInfo;
 };

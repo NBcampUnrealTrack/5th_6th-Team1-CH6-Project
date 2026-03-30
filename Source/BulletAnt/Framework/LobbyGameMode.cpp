@@ -15,6 +15,12 @@ void ALobbyGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
+    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    if (IsValid(MultiplayerSubsystem) == true)
+    {
+        MultiplayerSubsystem->StartSessionHeartBeat();
+    }
+
     TWeakObjectPtr<ALobbyGameMode> WeakThis = TWeakObjectPtr(this);
     GetWorldTimerManager().SetTimerForNextTick(
         [WeakThis]()
@@ -35,6 +41,17 @@ void ALobbyGameMode::HandleSeamlessTravelPlayer(AController*& C)
         return;
 
     PC->SetLevelType(ELevelType::Lobby);
+}
+
+void ALobbyGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    if (IsValid(MultiplayerSubsystem) == true)
+    {
+        MultiplayerSubsystem->StopSessionHeartBeat();
+    }
+
+    Super::EndPlay(EndPlayReason);
 }
 
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)

@@ -165,8 +165,6 @@ void ABACharacter::BeginPlay()
 		GS->AddActiveCharacter(this);
 	}
 
-	OnLevelChanged.AddDynamic(this, &ThisClass::UpdateLevelUI);
-
 	if (IsLocallyControlled() == true)
 	{
 		InitializeSceneCapture();
@@ -544,32 +542,26 @@ void ABACharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
-	if (IsValid(PS) == false)
-		return;
-
 	SetPlayerColor();
 	UpdateNicknameUI();
 
-	UAbilitySystemComponent* ASCFromPS = PS->GetAbilitySystemComponent();
-	if (IsValid(ASCFromPS) == false)
-		return;
-
-	const UEXPAttributeSet* EXPSet = PS->GetEXPAttributeSet();
-	if (IsValid(EXPSet) == true)
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == true)
 	{
-		ASCFromPS->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
-			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+		PS->BindOnChangedPlayerLevel(FOnChangedPlayerLevel::FDelegate::CreateUObject(this, &ThisClass::UpdateLevelUI));
 	}
 
 	if (IsLocallyControlled())
 	{
-		ASC = ASCFromPS;
+		if (IsValid(PS) == false)
+			return;
+
+		ASC = PS->GetAbilitySystemComponent();
 		ASC->InitAbilityActorInfo(PS, this);
 
 		HealthAttributeSet = PS->GetHealthAttributeSet();
 		AmmoAttributeSet = PS->GetAmmoAttributeSet();
-		EXPAttributeSet = EXPSet;
+		EXPAttributeSet = PS->GetEXPAttributeSet();
 
 		ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
 			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
@@ -746,10 +738,11 @@ void ABACharacter::PossessedBy(AController* NewController)
 	SetPlayerColor();
 	UpdateNicknameUI();
 
-
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (PS)
 	{
+		PS->BindOnChangedPlayerLevel(FOnChangedPlayerLevel::FDelegate::CreateUObject(this, &ThisClass::UpdateLevelUI));
+
 		ASC = PS->GetAbilitySystemComponent();
 		ASC->InitAbilityActorInfo(PS, this);
 		PS->InitAbility();
@@ -2128,7 +2121,7 @@ void ABACharacter::UpdateNicknameUI()
 		}));
 }
 
-void ABACharacter::UpdateLevelUI(float CurrentLevel, float OldLevel)
+void ABACharacter::UpdateLevelUI(float InLevel)
 {
 	if (IsValid(IngameUserInfoUI) == false)
 		return;
@@ -2139,7 +2132,7 @@ void ABACharacter::UpdateLevelUI(float CurrentLevel, float OldLevel)
 	if (IsValid(UserInfoUI) == false)
 		return;
 
-	UserInfoUI->SetLevel((int32)CurrentLevel);
+	UserInfoUI->SetLevel((int32)InLevel);
 }
 
 void ABACharacter::UpdateLevelUI()
@@ -2147,11 +2140,7 @@ void ABACharacter::UpdateLevelUI()
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (IsValid(PS) == true)
 	{
-		const UEXPAttributeSet* EXPSet = PS->GetEXPAttributeSet();
-		if (IsValid(EXPSet) == true)
-		{
-			UpdateLevelUI(EXPSet->GetCurrentLevel(), 0.0f);
-		}
+		UpdateLevelUI(PS->GetPlayerLevel());
 	}
 }
 
@@ -2188,6 +2177,21 @@ void ABACharacter::UpdateIngameInfoScale()
 	IngameUserInfoUI->SetVisibility(bVisible);
 }
 
+void ABACharacter::Multicast_SetPlayerColor_Implementation()
+{
+	SetPlayerColor();
+}
+
+void ABACharacter::Multicast_UpdateNicknameUI_Implementation()
+{
+	UpdateNicknameUI();
+}
+
+void ABACharacter::Multicast_UpdateLevelUI_Implementation()
+{
+	UpdateLevelUI();
+}
+
 void ABACharacter::CheckEnvironmentTimer()
 {
 	if (CachedBGMManager)
@@ -2222,6 +2226,12 @@ void ABACharacter::LevelUp()
 {
 	if (!HasAuthority()) return;
 	if (!ASC || !LevelUpEffectClass) return;
+
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == true && IsValid(EXPAttributeSet) == true)
+	{
+		PS->SetPlayerLevel(EXPAttributeSet->GetCurrentLevel());
+	}
 
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 
