@@ -12,6 +12,7 @@ class ABACharacter;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EOreType, OreType, int32, OreCount);
 DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
+DECLARE_MULTICAST_DELEGATE(FOnRemainingEnemy);
 
 UCLASS()
 class BULLETANT_API ABAGameState : public AGameState
@@ -86,12 +87,25 @@ public:
 
 	ABAPlayerController* GetPlayerControllerByIndex(int32 Index) const;
 
+	int32 GetRemainingEnemy() const;
+
+	void SetRemainingEnemy(int32 InRemainingEnemy);
+
+	UFUNCTION()
+	void OnRep_RemainingEnemy();
+
 protected:
 	UPROPERTY()
 	TObjectPtr<ABaseCore> TargetCore;
 
 	UPROPERTY()
 	TArray<TObjectPtr<ABAPlayerController>> ConnectedPlayers;
+
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_RemainingEnemy)
+	int32 RemainingEnemy = 0;
+
+public:
+	FOnRemainingEnemy OnRemainingEnemy;
 
 #pragma endregion
 

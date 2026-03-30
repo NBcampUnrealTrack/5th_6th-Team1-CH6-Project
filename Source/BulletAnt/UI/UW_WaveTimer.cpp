@@ -20,8 +20,18 @@ void UUW_WaveTimer::NativeConstruct()
     }
 
     CachedGameState->OnWaveTimeChanged.AddUObject(this, &UUW_WaveTimer::UpdateTime);
+    CachedGameState->OnRemainingEnemy.AddUObject(this, &UUW_WaveTimer::OnEnemyCount);
 
     UpdateTime();
+    OnEnemyCount();
+}
+
+void UUW_WaveTimer::OnEnemyCount()
+{
+    if (IsValid(EnemyCount))
+    {
+        EnemyCount->SetText(FText::FromString(FString::Printf(TEXT("Enemy : %d"), CachedGameState->GetRemainingEnemy())));
+    }
 }
 
 void UUW_WaveTimer::UpdateTime()

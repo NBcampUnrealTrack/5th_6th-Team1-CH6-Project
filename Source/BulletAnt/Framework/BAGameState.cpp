@@ -43,6 +43,7 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
     DOREPLIFETIME(ThisClass, SpawnTime);
     DOREPLIFETIME(ThisClass, Date);
     DOREPLIFETIME(ThisClass, HaveWeaponArray);
+    DOREPLIFETIME(ThisClass, RemainingEnemy);
 }
 
 void ABAGameState::AddActiveCharacter(ABACharacter* InCharacter)
@@ -179,6 +180,25 @@ ABAPlayerController* ABAGameState::GetPlayerControllerByIndex(int32 Index) const
         return ConnectedPlayers[Index];
     }
     return nullptr;
+}
+
+int32 ABAGameState::GetRemainingEnemy() const
+{
+    return RemainingEnemy;
+}
+
+void ABAGameState::SetRemainingEnemy(int32 InRemainingEnemy)
+{
+    if (HasAuthority())
+    {
+        RemainingEnemy = InRemainingEnemy;
+        OnRep_RemainingEnemy();
+    }
+}
+
+void ABAGameState::OnRep_RemainingEnemy()
+{
+    OnRemainingEnemy.Broadcast();
 }
 
 int32 ABAGameState::GetInitWavePreparationTime() const
