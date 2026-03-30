@@ -35,6 +35,10 @@ protected:
 
 	void CollectMuzzleSockets();
 
+	virtual float GetPreviewRange() const;
+	virtual float GetPreviewDamage() const;
+	virtual float GetPreviewAttackRate() const;
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Turret|Data")
 	TObjectPtr<URangedTurretDataAsset> RangedTurretData;

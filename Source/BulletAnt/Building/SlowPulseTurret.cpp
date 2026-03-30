@@ -71,6 +71,20 @@ void ASlowPulseTurret::ExecuteAttack()
 	Multicast_PlayPulseFX();
 }
 
+void ASlowPulseTurret::GetBuildPreviewInfo(FBuildingPreviewInfo& OutInfo) const
+{
+	Super::GetBuildPreviewInfo(OutInfo);
+
+	if (!PulseTurretData)
+	{
+		return;
+	}
+
+	OutInfo.ExtraStats.Add({ FText::FromString(TEXT("Attack")), FText::AsNumber(PulseTurretData->PulseDamage) });
+	OutInfo.ExtraStats.Add({ FText::FromString(TEXT("Attack Speed")), FText::AsNumber(1.f / PulseTurretData->PulseInterval) });
+	OutInfo.ExtraStats.Add({ FText::FromString(TEXT("Range")), FText::AsNumber(PulseTurretData->PulseRadius) });
+}
+
 void ASlowPulseTurret::GatherPulseTargets(TArray<ABaseEnemyCharacter*>& OutEnemies) const
 {
 	OutEnemies.Reset();
