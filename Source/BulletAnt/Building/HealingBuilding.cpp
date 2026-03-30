@@ -32,7 +32,7 @@ void AHealingBuilding::BeginPlay()
 		HealZone->OnComponentEndOverlap.AddDynamic(this, &AHealingBuilding::OnHealZoneEndOverlap);
 	}
 
-	if (HasAuthority())
+	if (HasAuthority() && !bPreviewMode)
 	{
 		GetWorldTimerManager().SetTimer(
 			HealTimerHandle,
