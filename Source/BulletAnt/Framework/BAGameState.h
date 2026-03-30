@@ -123,8 +123,14 @@ public:
 	int32 GetDate() const;
 	void SetDate(int32 InDate);
 
+	int32 GetFinalDate() const;
+	void SetFinalDate(int32 InDate);
+
 	UFUNCTION()
 	void OnRep_WavePreparationTime();
+
+	UFUNCTION()
+	void OnRep_Date();
 
 protected:
 	UPROPERTY(Replicated)
@@ -136,8 +142,11 @@ protected:
 	UPROPERTY(Replicated)
 	int32 SpawnTime;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_Date)
 	int32 Date;
+
+	UPROPERTY(Replicated)
+	int32 FinalDate;
 
 public:
 	FOnWaveTimeChanged OnWaveTimeChanged;
