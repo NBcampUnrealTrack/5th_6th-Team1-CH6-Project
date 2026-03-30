@@ -38,6 +38,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
 	TObjectPtr<UImage> HandImage;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (BindWidget))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly/*, meta = (BindWidget)*/)
 	TObjectPtr<UTextBlock> EnemyCount;
 };
