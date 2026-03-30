@@ -168,6 +168,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* NightVisionAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* InGameMenuAction;
+
     //UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Interaction")
     //UInputAction* InteractionAction;
 
@@ -242,6 +245,7 @@ protected:
     void CrouchInput(const FInputActionValue& Value); 
     void ADSStart(const FInputActionValue& Value);
     void ToggleNightVision(const FInputActionValue& Value);
+    void ShowInGameMenu(const FInputActionValue& Value);
     void Interaction(const FInputActionValue& Value);
     void Interaction_F(const FInputActionValue& Value);
     void Interaction_Q(const FInputActionValue& Value);
@@ -555,6 +559,8 @@ protected:
     TWeakObjectPtr<AActor> CurrentInteractActor;
 
     FTimerHandle InteractionTraceTimerHandle;
+
+    bool bIsInMenu = false;;
 #pragma endregion
 
 #pragma region GroundScanner

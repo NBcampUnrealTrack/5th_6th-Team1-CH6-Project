@@ -10,11 +10,18 @@
 
 void USpawnManagerSubsystem::OnEnemyDie()
 {
-	//AliveEnemyCount--;
-	//if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
+	if (!IsValid(CachedGameState))
+	{
+		return;
+	}
+
+	int32 RemainingEnemy = CachedGameState->GetRemainingEnemy();
+	RemainingEnemy--;
+	CachedGameState->SetRemainingEnemy(RemainingEnemy);
+
+	//if (RemainingEnemy == 0 && WaveIndex >= MaxWaveIndex)
 	//{
-	//	WaveIndex++;
-	//	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
+	//	// Game Complete
 	//}
 }
 
@@ -47,6 +54,10 @@ void USpawnManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		return;
 	}
 	MaxWaveIndex = EnemySpawnHandle.DataTable->GetRowMap().Num();
+	CachedGameState->SetFinalDate(MaxWaveIndex);
+
+	CachedGameState->SetDate(WaveIndex + 1);
+	CachedGameState->OnRep_Date();
 
 	if (CanStartWave())
 	{
@@ -121,7 +132,6 @@ bool USpawnManagerSubsystem::CanStartWave()
 
 	if (WaveIndex >= MaxWaveIndex)
 	{
-		// Game Win Logic (적 모두 처치 시 게임엔딩)
 		return false;
 	}
 	return true;
@@ -148,7 +158,6 @@ void USpawnManagerSubsystem::PrepareWave()
 	CachedGameState->SetWavePreparationTime(InitWavePreparationTime);
 	CachedGameState->SetInitWavePreparationTime(InitWavePreparationTime);
 	CachedGameState->OnRep_WavePreparationTime();
-	CachedGameState->SetDate(WaveIndex + 1);
 	OnInitWaveTimeChanged.Broadcast(InitWavePreparationTime);
 
 	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::UpdatePreparationTime, 1.f, true);
@@ -249,7 +258,6 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		);
 		if (IsValid(Enemy))
 		{
-			AliveEnemyCount++;
 			if (IsValid(TribeDataAsset))
 			{
 				Enemy->SetTribeType(TribeDataAsset);
@@ -285,6 +293,9 @@ void USpawnManagerSubsystem::ChangeWave()
 	SpawnEnemyDataIdx = 0;
 
 	WaveIndex++;
+	CachedGameState->SetDate(WaveIndex + 1);
+	CachedGameState->OnRep_Date();
+
 	if (CanStartWave())
 	{
 		PrepareWave();

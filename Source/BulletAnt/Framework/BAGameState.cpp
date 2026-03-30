@@ -6,6 +6,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Weapon/BaseWeapon.h"
 #include "Player/BACharacter.h"
+#include "UI/UISubsystem.h"
+#include "UI/UW_GameOver.h"
 
 ABAGameState::ABAGameState()
 {
@@ -43,6 +45,8 @@ void ABAGameState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& O
     DOREPLIFETIME(ThisClass, SpawnTime);
     DOREPLIFETIME(ThisClass, Date);
     DOREPLIFETIME(ThisClass, HaveWeaponArray);
+    DOREPLIFETIME(ThisClass, RemainingEnemy);
+    DOREPLIFETIME(ThisClass, FinalDate);
 }
 
 void ABAGameState::AddActiveCharacter(ABACharacter* InCharacter)
@@ -181,6 +185,25 @@ ABAPlayerController* ABAGameState::GetPlayerControllerByIndex(int32 Index) const
     return nullptr;
 }
 
+int32 ABAGameState::GetRemainingEnemy() const
+{
+    return RemainingEnemy;
+}
+
+void ABAGameState::SetRemainingEnemy(int32 InRemainingEnemy)
+{
+    if (HasAuthority())
+    {
+        RemainingEnemy = InRemainingEnemy;
+        OnRep_RemainingEnemy();
+    }
+}
+
+void ABAGameState::OnRep_RemainingEnemy()
+{
+    OnRemainingEnemy.Broadcast();
+}
+
 int32 ABAGameState::GetInitWavePreparationTime() const
 {
     return InitWavePreparationTime;
@@ -221,9 +244,38 @@ void ABAGameState::SetDate(int32 InDate)
     Date = InDate;
 }
 
+int32 ABAGameState::GetFinalDate() const
+{
+    return FinalDate;
+}
+
+void ABAGameState::SetFinalDate(int32 InDate)
+{
+    FinalDate = InDate;
+}
+
 void ABAGameState::OnRep_WavePreparationTime()
 {
     OnWaveTimeChanged.Broadcast();
+}
+
+void ABAGameState::OnRep_Date()
+{
+    if (Date > FinalDate)
+    {
+        if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+        {
+            if (ULocalPlayer* LP = PC->GetLocalPlayer())
+            {
+                UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+                if (UISubsystem)
+                {
+                    UUW_GameOver* GameOverUI = UISubsystem->ShowUI<UUW_GameOver>(EUIType::GameOver);
+                    GameOverUI->InitText(true);
+                }
+            }
+        }
+    }
 }
 
 void ABAGameState::AddHaveWeapon(TSubclassOf<ABaseWeapon> InWeaponClass)

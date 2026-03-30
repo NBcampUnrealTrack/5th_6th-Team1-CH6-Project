@@ -24,6 +24,7 @@
 #include "GAS/AttributeSet/EXPAttributeSet.h"
 #include "GAS/BAGameplayTags.h"
 #include "Weapon/Sniper/WeaponSniper.h"
+#include "UI/UW_InGameMenu.h"
 //#include "DrawDebugHelpers.h"//디버그 용 빨간 선
 #include "Common/BAItemInterface.h"
 #include "Weapon/BaseRangedWeapon.h"
@@ -426,11 +427,13 @@ void ABACharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 			EnhancedInputComponent->BindAction(NightVisionAction, ETriggerEvent::Started, this, &ABACharacter::ToggleNightVision);
 		}
 
+		if (InGameMenuAction)
+		{
+			EnhancedInputComponent->BindAction(InGameMenuAction, ETriggerEvent::Started, this, &ABACharacter::ShowInGameMenu);
+		}
+
+
 		//상호작용
-		//if (InteractionAction)
-		//{
-		//	EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Started, this, &ABACharacter::Interaction);
-		//}
 
 		if (InteractionFAction)
 		{
@@ -1163,6 +1166,38 @@ void ABACharacter::ToggleNightVision(const FInputActionValue& Value)
 
 	bIsNightVision = !bIsNightVision;
 }
+
+void ABACharacter::ShowInGameMenu(const FInputActionValue& Value)
+{
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	if (!GetWorld())
+	{
+		return;
+	}
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
+	if (!LP)
+	{
+		return;
+	}
+
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		if (bIsInMenu)
+		{
+			UISubsystem->HideUI(EUIType::InGameMenu);
+			UISubsystem->ApplyGameOnlyInputMode();
+			bIsInMenu = false;
+		}
+		else
+		{
+			UUW_InGameMenu* InGameMenu = UISubsystem->ShowUI<UUW_InGameMenu>(EUIType::InGameMenu);
+			UISubsystem->ApplyUIOnlyInputMode(InGameMenu);
+			bIsInMenu = true;
+		}
+	}
+}
+
 void ABACharacter::Server_SetJetPack_Implementation(bool bNewJetPackState)
 {
 	bIsJetPack = bNewJetPackState;

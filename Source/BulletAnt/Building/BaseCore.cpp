@@ -80,7 +80,7 @@ void ABaseCore::Multi_ShowResult_Implementation()
 	{
 		UUW_GameOver* Widget = UISubsystem->ShowUI<UUW_GameOver>(EUIType::GameOver);
 		UISubsystem->ApplyUIOnlyInputMode(Widget);
-		Widget->InitText();
+		Widget->InitText(false);
 	}
 }
 

@@ -69,19 +69,9 @@ void UDieTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTr
 		}
 
 		ASC->CancelAllAbilities();
-	}
+	}	
 
 	ContextActor->Destroy();
-
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
-	}
 
 	Super::ExitState(Context, Transition);
 }

@@ -22,6 +22,8 @@ class BULLETANT_API UUW_WaveTimer : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
+	void OnEnemyCount();
+
 protected:
 	void UpdateTime();
 
@@ -42,4 +44,6 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<ABABGMManager> BGMManager;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly/*, meta = (BindWidget)*/)
+	TObjectPtr<UTextBlock> EnemyCount;
 };
