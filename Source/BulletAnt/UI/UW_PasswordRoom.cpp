@@ -79,12 +79,15 @@ void UUW_PasswordRoom::JoinRoom()
     }
 
     JoinHandle = MultiplayerSubsystem->BindOnJoinSession(FOnJoinSession::FDelegate::CreateLambda(
-        [WeakThis = TWeakObjectPtr(this)](FName, EOnJoinSessionCompleteResult::Type)
+        [WeakThis = TWeakObjectPtr(this)](FName SessionName, EOnJoinSessionCompleteResult::Type Result)
         {
             if (WeakThis.IsValid() == false)
                 return;
 
-            WeakThis->ShowLoadingPanel(false);
+            if (Result != EOnJoinSessionCompleteResult::Success)
+            {
+                WeakThis->ShowLoadingPanel(false);
+            }
         }));
 
     ShowLoadingPanel(true);
