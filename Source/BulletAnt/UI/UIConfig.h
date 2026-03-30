@@ -25,7 +25,8 @@ enum class EUIType : uint8
     Interaction,
     Scope,
     GameOver,
-    Option
+    Option,
+    InGameMenu
 };
 
 USTRUCT()
