@@ -385,11 +385,38 @@ UStateTreeComponent* ABaseEnemyCharacter::GetStateTreeComponent() const
 	return StateTreeComponent;
 }
 
+bool ABaseEnemyCharacter::IsDead() const
+{
+	return bDead;
+}
+
+void ABaseEnemyCharacter::SetDead(bool flag)
+{
+	bDead = flag;
+}
+
 void ABaseEnemyCharacter::OnDeadEventReceived(const FGameplayEventData* Payload)
 {
-	if (IsValid(BaseEnemyDataAsset))
+	if (HasAuthority())
 	{
-		StateTreeComponent->SendStateTreeEvent(BaseEnemyDataAsset->DeathStateTag);
+		if (IsValid(BaseEnemyDataAsset))
+		{
+			StateTreeComponent->SendStateTreeEvent(BaseEnemyDataAsset->DeathStateTag);
+		}
+
+		if (!bDead)
+		{
+			bDead = true;
+			UWorld* World = GetWorld();
+			if (IsValid(World))
+			{
+				USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+				if (IsValid(SpawnManagerSubsystem))
+				{
+					SpawnManagerSubsystem->OnEnemyDie();
+				}
+			}
+		}
 	}
 }
 
@@ -595,6 +622,13 @@ void ABaseEnemyCharacter::BeginPlay()
 		{
 			GetWorldTimerManager().SetTimer(SensingTimerHandle, this, &ABaseEnemyCharacter::SenseNearbyActors, 0.2f, true);
 			GetWorldTimerManager().SetTimer(AbortedTargetTimerHandle, this, &ABaseEnemyCharacter::ClearAbortedTarget, 1.f, true);
+
+			ABAGameState* GameState = World->GetGameState<ABAGameState>();
+			if (IsValid(GameState))
+			{
+				int32 Count = GameState->GetRemainingEnemy();
+				GameState->SetRemainingEnemy(Count + 1);
+			}
 		}
 	}
 
@@ -718,6 +752,15 @@ void ABaseEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 UDataAsset* ABaseEnemyCharacter::GetDataAsset() const
 {
 	return BaseEnemyDataAsset->BaseEnemyAttackDataAssetArray[0].AttackDataAsset;
+}
+
+bool ABaseEnemyCharacter::ShouldCallPreAttack()
+{
+	return false;
+}
+
+void ABaseEnemyCharacter::PreAttack()
+{
 }
 
 bool ABaseEnemyCharacter::ShouldCallAfterAttack()

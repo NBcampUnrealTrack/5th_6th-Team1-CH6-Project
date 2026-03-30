@@ -10,12 +10,19 @@
 
 void USpawnManagerSubsystem::OnEnemyDie()
 {
-	//AliveEnemyCount--;
-	//if (AliveEnemyCount == 0 && WaveIndex <= MaxWaveIndex)
-	//{
-	//	WaveIndex++;
-	//	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::StartWave, 1.f, false);
-	//}
+	if (!IsValid(CachedGameState))
+	{
+		return;
+	}
+
+	int32 RemainingEnemy = CachedGameState->GetRemainingEnemy();
+	RemainingEnemy--;
+	CachedGameState->SetRemainingEnemy(RemainingEnemy);
+
+	if (RemainingEnemy == 0 && WaveIndex >= MaxWaveIndex)
+	{
+		// Game Complete
+	}
 }
 
 void USpawnManagerSubsystem::SetCachedSpawnLocationManager(ASpawnLocationManager* InSpawnLocationManager)
@@ -249,7 +256,6 @@ void USpawnManagerSubsystem::SpawnEnemies()
 		);
 		if (IsValid(Enemy))
 		{
-			AliveEnemyCount++;
 			if (IsValid(TribeDataAsset))
 			{
 				Enemy->SetTribeType(TribeDataAsset);

@@ -33,20 +33,25 @@ EStateTreeRunStatus URagDollTask::EnterState(FStateTreeExecutionContext& Context
 	}
 	ContextActor->SetLifeSpan(DA->DeathTime);
 
+	if (ContextActor->IsDead() == false)
+	{
+		ContextActor->SetDead(true);
+
+		UWorld* World = GetWorld();
+		if (IsValid(World))
+		{
+			USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+			if (IsValid(SpawnManagerSubsystem))
+			{
+				SpawnManagerSubsystem->OnEnemyDie();
+			}
+		}
+	}
+
 	return EStateTreeRunStatus::Running;
 }
 
 void URagDollTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition)
 {
-	UWorld* World = GetWorld();
-	if (IsValid(World))
-	{
-		USpawnManagerSubsystem* SpawnManagerSubsystem = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
-		if (IsValid(SpawnManagerSubsystem))
-		{
-			SpawnManagerSubsystem->OnEnemyDie();
-		}
-	}
-
 	Super::ExitState(Context, Transition);
 }
