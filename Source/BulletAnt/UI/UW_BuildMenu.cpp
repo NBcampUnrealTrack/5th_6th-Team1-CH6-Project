@@ -8,6 +8,7 @@
 #include "Engine/Texture2D.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "Building/BaseBuilding.h"
 #include "Engine/DataTable.h"
 
 UUW_BuildMenu::UUW_BuildMenu(const FObjectInitializer& ObjectInitializer)
@@ -173,7 +174,25 @@ void UUW_BuildMenu::UpdateSelectedInfo(FName BuildingRowName)
 
 	if (IsValid(SelectedInfoText))
 	{
-		const FString InfoString = FString::Printf(TEXT("Health : %.0f"), Row->Health);
+		FString InfoString;
+
+		if (Row->BuildingClass)
+		{
+			if (const ABaseBuilding* BuildingCDO = Cast<ABaseBuilding>(Row->BuildingClass->GetDefaultObject()))
+			{
+				FBuildingPreviewInfo PreviewInfo;
+				BuildingCDO->GetBuildPreviewInfo(PreviewInfo);
+
+				InfoString += FString::Printf(TEXT("Health : %.0f\n"), PreviewInfo.Health);
+
+				for (const FBuildingPreviewStat& Stat : PreviewInfo.ExtraStats)
+				{
+					InfoString += FString::Printf(TEXT("%s : %s\n"),
+						*Stat.Label.ToString(),
+						*Stat.Value.ToString());
+				}
+			}
+		}
 
 		SelectedInfoText->SetText(FText::FromString(InfoString));
 	}

@@ -24,6 +24,8 @@ protected:
 	virtual bool CanStartAttack() const override;
 	virtual float GetAttackInterval() const override;
 	virtual void ExecuteAttack() override;
+	
+	virtual void GetBuildPreviewInfo(FBuildingPreviewInfo& OutInfo) const;
 
 	void GatherPulseTargets(TArray<class ABaseEnemyCharacter*>& OutEnemies) const;
 	void ApplyEffectToEnemy(ABaseEnemyCharacter* Enemy, TSubclassOf<UGameplayEffect> EffectClass, float Level = 1.f) const;

@@ -693,6 +693,11 @@ void ABaseBuilding::GetEdgesLocal(TArray<FBuildingEdge>& OutEdges) const
 	OutEdges = CachedLocalEdges;
 }
 
+void ABaseBuilding::GetBuildPreviewInfo(FBuildingPreviewInfo& OutInfo) const
+{
+	OutInfo.Health = DefaultHealth;
+}
+
 void ABaseBuilding::OnRep_Dead()
 {
 	if (!bDead)

@@ -23,6 +23,7 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void ApplyPreviewMode() override;
+	virtual void GetBuildPreviewInfo(FBuildingPreviewInfo& OutInfo) const override;
 
 protected:
 	// IOnDeathInterface
@@ -40,6 +41,10 @@ protected:
 	void StartFireLoop();
 	void StopFireLoop();
 	void HandleAttackTick();
+
+	virtual float GetPreviewRange() const;
+	virtual float GetPreviewDamage() const;
+	virtual float GetPreviewAttackRate() const;
 
 private:
 	UFUNCTION()

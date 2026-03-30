@@ -123,6 +123,22 @@ void ARangedTurret::CollectMuzzleSockets()
 		});
 }
 
+float ARangedTurret::GetPreviewRange() const
+{
+	return RangedTurretData->SearchRadius;
+}
+
+float ARangedTurret::GetPreviewDamage() const
+{
+	return RangedTurretData->WeaponData->BaseDamage;
+}
+
+float ARangedTurret::GetPreviewAttackRate() const
+{
+	const float Interval = GetAttackInterval();
+	return Interval > 0.f ? 1.f / Interval : 0.f;
+}
+
 void ARangedTurret::OnDeath()
 {
 	Super::OnDeath();
