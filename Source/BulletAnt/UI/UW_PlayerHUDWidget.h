@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Weapon/Data/WeaponDataAsset.h"
 #include "UW_PlayerHUDWidget.generated.h"
 
 class ABACharacter;
@@ -11,6 +12,7 @@ class UVerticalBox;
 class UUW_WeaponLog;
 class UUW_OreCount;
 class UImage;
+class ABaseWeapon;
 
 UCLASS()
 class BULLETANT_API UUW_PlayerHUDWidget : public UUserWidget
@@ -37,6 +39,7 @@ public:
 
 	void SetAutoImage(bool bIsFullAuto);
 	void SetCrossHairImage(bool bIsADS);
+	void UpdateWeaponName(TSubclassOf<ABaseWeapon> InWeaponClass);
 
 protected:
 	UFUNCTION()
@@ -73,6 +76,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* CurrentAmmoText;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* WeaponName;
 
 	UPROPERTY(EditAnywhere)
 	UTexture2D* SingleShotImage;

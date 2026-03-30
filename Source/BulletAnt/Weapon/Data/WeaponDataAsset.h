@@ -12,7 +12,9 @@ enum class ERarity : uint8
 {
 	Common		UMETA(DisplayName = "Common"),
 	Rare		UMETA(DisplayName = "Rare"),
-	SuperRare	UMETA(DisplayName = "SuperRare")
+	SuperRare	UMETA(DisplayName = "SuperRare"),
+	UltraRare	UMETA(DisplayName = "UltraRare"),
+	Legend		UMETA(DisplayName = "Legend")
 };
 
 UENUM(BlueprintType)
@@ -37,6 +39,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	ERarity Rarity = ERarity::Common;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FName WeaponSocket = TEXT("WeaponSocket");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	EWeaponType WeaponType;

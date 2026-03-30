@@ -7,7 +7,6 @@
 #include "GAS/BAGameplayTags.h"
 #include "AbilitySystemComponent.h"
 #include "Multiplayer/MultiplayerSubsystem.h"
-#include "Player/BACharacter.h"
 
 ABAPlayerState::ABAPlayerState()
 {
@@ -130,7 +129,7 @@ void ABAPlayerState::PostNetInit()
 		if (IsValid(MultiplayerSubsystem) == false)
 			return;
 
-		MultiplayerSubsystem->SyncNicknameToPlayerState();
+		MultiplayerSubsystem->SyncNicknameToPlayerState(this);
 	}
 }
 
@@ -138,11 +137,7 @@ void ABAPlayerState::OnRep_PlayerName()
 {
 	Super::OnRep_PlayerName();
 
-	ABACharacter* BACharacter = Cast<ABACharacter>(GetPawn());
-	if (IsValid(BACharacter) == false)
-		return;
-
-	BACharacter->UpdateNicknameUI();
+	OnChangedPlayerName.Broadcast(GetPlayerName());
 }
 
 void ABAPlayerState::SetPlayerColorIdx(int32 NewIdx)
@@ -169,6 +164,21 @@ void ABAPlayerState::UnbindOnChangedPlayerColor(const UObject* Object)
 void ABAPlayerState::UnbindOnChangedPlayerColor(FDelegateHandle Handle)
 {
 	OnChangedPlayerColor.Remove(Handle);
+}
+
+FDelegateHandle ABAPlayerState::BindOnChangedPlayerName(const FOnChangedPlayerName::FDelegate& Delegate)
+{
+	return OnChangedPlayerName.Add(Delegate);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerName(const UObject* Object)
+{
+	OnChangedPlayerName.RemoveAll(Object);
+}
+
+void ABAPlayerState::UnbindOnChangedPlayerName(FDelegateHandle Handle)
+{
+	OnChangedPlayerName.Remove(Handle);
 }
 
 void ABAPlayerState::Server_UpdatePlayerName_Implementation(const FString& NewName)

@@ -18,7 +18,13 @@ void UUW_WeaponLog::ShowWeaponLog(UWeaponDataAsset* InData)
 			Color = FLinearColor::Blue;
 			break;
 		case ERarity::SuperRare :
+			Color = FLinearColor::Green;
+			break;
+		case ERarity::UltraRare :
 			Color = FLinearColor::Red;
+			break;
+		case ERarity::Legend :
+			Color = FLinearColor::Yellow;
 			break;
 		default:
 			break;

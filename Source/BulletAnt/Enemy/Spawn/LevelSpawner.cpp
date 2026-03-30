@@ -30,14 +30,10 @@ void ALevelSpawner::BeginPlay()
 		DetectionBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);	// Player
 		DetectionBox->OnComponentBeginOverlap.AddDynamic(this, &ALevelSpawner::OnDetectionBoxBeginOverlap);
 		DetectionBox->OnComponentEndOverlap.AddDynamic(this, &ALevelSpawner::OnDetectionBoxEndOverlap);
-
-		FVector SpawnBoxExtent = SpawnBox->GetScaledBoxExtent();
-		float SpawnSize = SpawnBoxExtent.X * SpawnBoxExtent.Y;
-		EnemyCount = SpawnDataAsset->AreaForPerSpawn ? SpawnSize / SpawnDataAsset->AreaForPerSpawn : SpawnSize;
 	}
 	else
 	{
-		SpawnBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		DetectionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
 
@@ -96,7 +92,7 @@ void ALevelSpawner::SpawnEnemy()
 	if (EnemyCount == 0)
 	{
 		GetWorldTimerManager().ClearAllTimersForObject(this);
-		DetectionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Destroy();
 		return;
 	}
 

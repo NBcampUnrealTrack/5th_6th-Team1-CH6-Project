@@ -178,7 +178,7 @@ void ABACharacter::BeginPlay()
 		LocalSceneCapture = SceneCapture2D;
 
 		USkeletalMeshComponent* CharacterMesh = GetMesh();
-		CharacterMesh->SetCustomDepthStencilValue(0);	
+		CharacterMesh->SetCustomDepthStencilValue(0);
 	}
 	else
 	{
@@ -248,6 +248,16 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 	}
 
+	if (PlayerNicknameHandle.IsValid() == true)
+	{
+		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+		if (IsValid(PS) == true)
+		{
+			PS->UnbindOnChangedPlayerName(PlayerNicknameHandle);
+			PlayerNicknameHandle.Reset();
+		}
+	}
+
 	if (HasAuthority() && EquippedWeapon)
 	{
 		EquippedWeapon->Destroy();
@@ -260,7 +270,7 @@ void ABACharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABACharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	if (bIsReturning == true)
 	{
 		if (HasAuthority() == true || IsLocallyControlled() == true)
@@ -310,11 +320,11 @@ void ABACharacter::Tick(float DeltaTime)
 		Params.AddIgnoredActor(this);
 		if (EquippedWeapon)
 			Params.AddIgnoredActor(EquippedWeapon);
-		
+
 		FVector ExactTarget = LineTraceTarget(Params, ECC_GameTraceChannel11);
 		Server_UpdateAimTarget(ExactTarget);
 	}
-	if(ASC && !bIsReturning)
+	if (ASC && !bIsReturning)
 	{
 		if (!ASC->HasMatchingGameplayTag(TAG_State_Combat_ADS))
 		{
@@ -505,45 +515,68 @@ void ABACharacter::OnRep_Controller()
 	Super::OnRep_Controller();
 
 	StartInteractionTraceTimer();
+
+	if (!GetWorld()) return;
+	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	ULocalPlayer* LP = FPC->GetLocalPlayer();
+	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem))
+	{
+		UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+		if (HUD)
+		{
+			HUD->UpdateWeaponName(OwnedEquipment[0]);
+		}
+	}
 }
 
 void ABACharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	if (IsLocallyControlled())
-	{
-		ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
-		if (PS)
-		{
-			ASC = PS->GetAbilitySystemComponent();
-			ASC->InitAbilityActorInfo(PS, this);
-
-			HealthAttributeSet = PS->GetHealthAttributeSet();
-			AmmoAttributeSet = PS->GetAmmoAttributeSet();
-			EXPAttributeSet = PS->GetEXPAttributeSet();
-
-			ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
-				.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetMaxAmmoAttribute())
-				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
-				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
-			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
-				.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
-
-			ASC->RegisterGameplayTagEvent(
-				TAG_State_Combat_Dead,
-				EGameplayTagEventType::NewOrRemoved
-			).AddUObject(this, &ABACharacter::HandleRespawnUI);
-
-		}
-	}
+	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(PS) == false)
+		return;
 
 	SetPlayerColor();
 	UpdateNicknameUI();
+
+	UAbilitySystemComponent* ASCFromPS = PS->GetAbilitySystemComponent();
+	if (IsValid(ASCFromPS) == false)
+		return;
+
+	const UEXPAttributeSet* EXPSet = PS->GetEXPAttributeSet();
+	if (IsValid(EXPSet) == true)
+	{
+		ASCFromPS->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+	}
+
+	if (IsLocallyControlled())
+	{
+		ASC = ASCFromPS;
+		ASC->InitAbilityActorInfo(PS, this);
+
+		HealthAttributeSet = PS->GetHealthAttributeSet();
+		AmmoAttributeSet = PS->GetAmmoAttributeSet();
+		EXPAttributeSet = EXPSet;
+
+		ASC->GetGameplayAttributeValueChangeDelegate(HealthAttributeSet->GetHealthAttribute())
+			.AddUObject(this, &ABACharacter::OnHealthChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetCurrentAmmoAttribute())
+			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(AmmoAttributeSet->GetMaxAmmoAttribute())
+			.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
+			.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
+		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
+			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
+
+		ASC->RegisterGameplayTagEvent(
+			TAG_State_Combat_Dead,
+			EGameplayTagEventType::NewOrRemoved
+		).AddUObject(this, &ABACharacter::HandleRespawnUI);
+	}
 }
 
 void ABACharacter::SpringArmRot(bool check)
@@ -649,7 +682,13 @@ void ABACharacter::StartAttack(const FInputActionValue& Value)
 	if (!EquippedWeapon) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Ranged) && ASC->HasMatchingGameplayTag(TAG_State_Combat_Cooldown)) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+	{
 		bIsJetPack = true;
+		if (!HasAuthority())
+		{
+			Server_SetJetPack(true);
+		}
+	}
 
 	FGameplayTagContainer Tag;
 
@@ -674,7 +713,13 @@ void ABACharacter::StopAttack(const FInputActionValue& Value)
 	if (!ASC) return;
 	if (!EquippedWeapon || !EquippedWeapon->bAutoActive) return;
 	if (ASC->HasMatchingGameplayTag(TAG_Weapon_Equipped_Jetpack))
+	{
 		bIsJetPack = false;
+		if (!HasAuthority())
+		{
+			Server_SetJetPack(false);
+		}
+	}
 	FGameplayTagContainer CancelTags;
 	FGameplayTagContainer IgnoreTags;
 	CancelTags.AddTag(TAG_Ability_Active);
@@ -691,6 +736,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 	SetPlayerColor();
 	UpdateNicknameUI();
 
+
 	ABAPlayerState* PS = GetPlayerState<ABAPlayerState>();
 	if (PS)
 	{
@@ -701,9 +747,9 @@ void ABACharacter::PossessedBy(AController* NewController)
 		HealthAttributeSet = PS->GetHealthAttributeSet();
 		AmmoAttributeSet = PS->GetAmmoAttributeSet();
 		EXPAttributeSet = PS->GetEXPAttributeSet();
-		HealthAttributeSet->InitValue(100.f, 150.f);
+		HealthAttributeSet->InitValue(100.f, 30.f);
 
-		
+
 		ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentLevelAttribute())
 			.AddUObject(this, &ABACharacter::OnLevelChangedCallback);
 
@@ -717,7 +763,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 				.AddUObject(this, &ABACharacter::OnAmmoChangedCallback);
 			ASC->GetGameplayAttributeValueChangeDelegate(EXPAttributeSet->GetCurrentEXPAttribute())
 				.AddUObject(this, &ABACharacter::OnEXPChangedCallback);
-			
+
 
 			ASC->RegisterGameplayTagEvent(
 				TAG_State_Combat_Dead,
@@ -730,6 +776,23 @@ void ABACharacter::PossessedBy(AController* NewController)
 	{
 		UpdateAmmo(OwnedEquipment[0]);
 		Server_EquipWeapon(DefaultWeaponClass);
+	}
+
+	if (IsLocallyControlled())
+	{
+		if (!GetWorld()) return;
+		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());	
+		ULocalPlayer* LP = FPC->GetLocalPlayer();
+		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
+		if (IsValid(UISubsystem))
+		{
+			UUW_PlayerHUDWidget* HUD = UISubsystem->ShowUI<UUW_PlayerHUDWidget>(EUIType::PlayerHUD);
+			if (HUD)
+			{
+				HUD->UpdateWeaponName(OwnedEquipment[0]);
+			}
+		}
+
 	}
 
 #pragma region InteractionUI
@@ -750,7 +813,7 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 	if (!HasAuthority()) return;
 	if (!WeaponClass) return;
 	if (EquippedWeapon && EquippedWeapon->GetClass() == WeaponClass) return;
-	
+
 
 	if (EquippedWeapon)
 	{
@@ -769,10 +832,12 @@ void ABACharacter::Server_EquipWeapon_Implementation(TSubclassOf<ABaseWeapon> We
 
 	if (!NewWeapon) return;
 
+	FName& Socket = NewWeapon->GetWeaponData()->WeaponSocket;
+
 	NewWeapon->AttachToComponent(
 		GetMesh(),
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-		TEXT("WeaponSocket")
+		Socket
 	);
 	NewWeapon->SetActorRelativeTransform(NewWeapon->GripOffset);
 	NewWeapon->EquipWeapon(ASC);
@@ -1091,7 +1156,10 @@ void ABACharacter::ToggleNightVision(const FInputActionValue& Value)
 
 	bIsNightVision = !bIsNightVision;
 }
-
+void ABACharacter::Server_SetJetPack_Implementation(bool bNewJetPackState)
+{
+	bIsJetPack = bNewJetPackState;
+}
 
 void ABACharacter::Server_SetAiming_Implementation(bool bNewIsAiming)
 {
@@ -1187,6 +1255,9 @@ void ABACharacter::TryInteractionByKey(const FKey& PressedKey)
 
 void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 {
+	if (bIsReturning == true)
+		return;
+
 	UE_LOG(LogTemp, Warning, TEXT(" [1단계] 캐릭터: B키 입력 감지 성공!"));
 	if (!BuildManager->IsBuildMode())
 	{
@@ -1202,7 +1273,7 @@ void ABACharacter::EnterBuildMode(const FInputActionValue& Value)
 	}
 }
 
-void ABACharacter::ExitBuildMode(const FInputActionValue& Value)
+void ABACharacter::ExitBuildMode()
 {
 	if (!BuildManager->IsBuildMode())
 	{
@@ -1263,6 +1334,9 @@ void ABACharacter::OnToggleBuildInfo(const FInputActionValue& Value)
 
 void ABACharacter::StartSwitchWeapon(const FInputActionValue& Value)
 {
+	if (bIsReturning == true)
+		return;
+
 	int32 Index = (int32)Value.Get<float>() - 1;
 	if (!OwnedEquipment.IsValidIndex(Index)) return;
 
@@ -1686,32 +1760,6 @@ void ABACharacter::SetPlayerColor()
 	}
 }
 
-void ABACharacter::Server_SetIsInZone_Implementation(bool bInZone)
-{
-	if (bIsInReturnZone == bInZone)
-		return;
-
-	bIsInReturnZone = bInZone;
-	
-	if (bIsInReturnZone == true)
-	{
-		Multicast_ResetPath();
-
-		FVector EnterLoc = GetActorLocation();
-		FVector AirPoint = EnterLoc + FVector(0.0f, 0.0f, ExitAirHeight);
-		FVector RandomDir = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f).Vector();
-		FVector LandingPoint = AirPoint + RandomDir * 600.0f - FVector(0.0f, 0.0f, 200.0f);
-
-		Multicast_AddPathPoint(LandingPoint);
-		Multicast_AddPathPoint(AirPoint);
-		Multicast_AddPathPoint(EnterLoc);
-	}
-	else
-	{
-		Server_StopRecordingPath();
-	}
-}
-
 void ABACharacter::ResetPath()
 {
 	PathSpline->ClearSplinePoints();
@@ -1733,17 +1781,11 @@ void ABACharacter::StopRecordingPath()
 
 void ABACharacter::UpdateSplinePath()
 {
-	if (bIsReturning == true || HasAuthority() == false || bIsInReturnZone == false)
+	if (bIsReturning == true || HasAuthority() == false)
 		return;
 
 	FVector CurrLocation = GetActorLocation();
 	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
-	if (TotalPoints == 0)
-	{
-		Multicast_AddPathPoint(CurrLocation);
-		return;
-	}
-	;
 	FVector LastPointLocation = PathSpline->GetLocationAtSplinePoint(TotalPoints - 1, ESplineCoordinateSpace::World);
 
 	float ThresholdSquared = PathDistThreshold * PathDistThreshold;
@@ -1765,17 +1807,26 @@ void ABACharacter::Multicast_ResetPath_Implementation()
 
 void ABACharacter::Server_StartRecordingPath_Implementation()
 {
-	if (bIsInReturnZone == false)
-		return;
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	if (TotalPoints == 0)
+	{
+		FVector EnterLoc = GetActorLocation();
+		FVector AirPoint = EnterLoc + FVector(0.0f, 0.0f, ExitAirHeight);
+		FVector RandomDir = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f).Vector();
+		FVector LandingPoint = AirPoint + RandomDir * 600.0f - FVector(0.0f, 0.0f, 200.0f);
 
-	Multicast_AddPathPoint(GetActorLocation());
+		Multicast_AddPathPoint(LandingPoint);
+		Multicast_AddPathPoint(AirPoint);
+		Multicast_AddPathPoint(EnterLoc);
+	}
 
 	GetWorldTimerManager().SetTimer(
 		PathUpdateTimer,
 		this,
 		&ThisClass::UpdateSplinePath,
 		0.2f,
-		true);
+		true,
+		0.0f);
 }
 
 void ABACharacter::Server_StopRecordingPath_Implementation()
@@ -1841,6 +1892,9 @@ void ABACharacter::Multicast_RemovePoints_Implementation(int32 LastIdx)
 
 void ABACharacter::SetIsReturning(bool bInReturning)
 {
+	if (bIsReturning == bInReturning)
+		return;
+
 	if (IsValid(ASC) == true)
 	{
 		if (bInReturning == true)
@@ -1851,15 +1905,20 @@ void ABACharacter::SetIsReturning(bool bInReturning)
 			if (ASC->HasAnyMatchingGameplayTags(Container) == true)
 				return;
 
-			Container.RemoveTag(TAG_State_Combat_Dead);
-			ASC->BlockAbilitiesWithTags(Container);
+			if (IsLocallyControlled() == true)
+			{
+				ExitBuildMode();
+			}
+			bool bIsAlreadyBlocked = false;
+			FGameplayTagContainer BlockContainer;
+			BlockContainer.AddTag(TAG_Ability_Active);
+			ASC->BlockAbilitiesWithTags(BlockContainer);
 		}
 		else
 		{
-			FGameplayTagContainer Container;
-			Container.AddTag(TAG_State);
-			Container.AddTag(TAG_Event_Weapon_Switch);
-			ASC->UnBlockAbilitiesWithTags(Container);
+			FGameplayTagContainer BlockContainer;
+			BlockContainer.AddTag(TAG_Ability_Active);
+			ASC->UnBlockAbilitiesWithTags(BlockContainer);
 		}
 	}
 
@@ -1888,6 +1947,10 @@ void ABACharacter::HandleReturnMovement(float DeltaTime)
 		{
 			Server_StopReturning();
 		}
+		else
+		{
+			SetIsReturning(false);
+		}
 	}
 
 	FVector TargetLoc = PathSpline->GetLocationAtDistanceAlongSpline(ReturnDistance, ESplineCoordinateSpace::World);
@@ -1906,7 +1969,11 @@ void ABACharacter::HandleReturnMovement(float DeltaTime)
 
 void ABACharacter::StopReturning()
 {
-	if (bIsReturning == false || bIsInReturnZone == false)
+	if (bIsReturning == false)
+		return;
+
+	int32 TotalPoints = PathSpline->GetNumberOfSplinePoints();
+	if (TotalPoints < 4)
 		return;
 
 	SetIsReturning(false);
@@ -1998,17 +2065,33 @@ void ABACharacter::UpdateNicknameUI()
 	if (IsValid(PS) == false)
 		return;
 
+	IngameUserInfoUI->InitWidget();
+
 	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
 	if (IsValid(UserInfoUI) == false)
 		return;
 
 	UserInfoUI->SetNickname(PS->GetPlayerName());
+
+	if (PlayerNicknameHandle.IsValid() == true)
+		return;
+
+	PlayerNicknameHandle = PS->BindOnChangedPlayerName(FOnChangedPlayerName::FDelegate::CreateLambda(
+		[WeakThis = TWeakObjectPtr(this)](const FString& NewNickname)
+		{
+			if (WeakThis.IsValid() == true)
+			{
+				WeakThis->UpdateNicknameUI();
+			}
+		}));
 }
 
 void ABACharacter::UpdateLevelUI(float CurrentLevel, float OldLevel)
 {
 	if (IsValid(IngameUserInfoUI) == false)
 		return;
+
+	IngameUserInfoUI->InitWidget();
 
 	UUW_IngameUserInfo* UserInfoUI = Cast<UUW_IngameUserInfo>(IngameUserInfoUI->GetWidget());
 	if (IsValid(UserInfoUI) == false)
@@ -2054,7 +2137,7 @@ void ABACharacter::GetEXP(float InEXP)
 {
 	if (!HasAuthority()) return;
 	if (!ASC || !EXPEffectClass) return;
-	
+
 
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 

@@ -25,6 +25,7 @@
 #include "GameplayEffect.h"
 #include "GAS/AttributeSet/MoveAttributeSet.h"
 #include "GameplayEffectTypes.h"
+#include "Kismet/GameplayStatics.h"
 
 
 ABaseEnemyCharacter::ABaseEnemyCharacter()
@@ -76,6 +77,10 @@ ABaseEnemyCharacter::ABaseEnemyCharacter()
 	GetMesh()->SetCanEverAffectNavigation(false);
 	GetCharacterMovement()->SetCanEverAffectNavigation(false);
 	DetectionSphere->SetCanEverAffectNavigation(false);
+
+	bAlwaysRelevant = true;
+	SetNetUpdateFrequency(60.f);
+	SetMinNetUpdateFrequency(30.f);
 }
 
 USphereComponent* ABaseEnemyCharacter::GetDetectionSphere() const
@@ -610,6 +615,12 @@ void ABaseEnemyCharacter::BeginPlay()
 			Rot
 		);
 	}
+
+	if (IsValid(BaseEnemyDataAsset->SpawnSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, BaseEnemyDataAsset->SpawnSound, GetActorLocation());
+	}
+
 	GetCharacterMovement()->RotationRate = FRotator(0.f, BaseEnemyDataAsset->RotationRate, 0.f);
 }
 

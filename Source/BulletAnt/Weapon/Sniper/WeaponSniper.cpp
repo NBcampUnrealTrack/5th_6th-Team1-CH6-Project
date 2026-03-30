@@ -11,12 +11,28 @@
 AWeaponSniper::AWeaponSniper()
 {
 	SceneCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture"));
-	SceneCapture->SetupAttachment(WeaponMesh, "ADS_Sight");	
+	SceneCapture->SetupAttachment(WeaponMesh, "ADS_Sight");
 
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
-}
+	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	SceneCapture->bAlwaysPersistRenderingState = true;
+	// 1. 내가 이 설정을 덮어쓰겠다고 선언 (true)
+	SceneCapture->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = true;
 
+	// 2. 방식을 지정 (Lumen, RayTracing, Plugin, None 중 선택)
+	SceneCapture->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
+
+	SceneCapture->PostProcessSettings.bOverride_LumenSceneLightingQuality = true;
+	SceneCapture->PostProcessSettings.LumenSceneLightingQuality = 2.0f;
+
+	// 스코프 화면의 빛 반사(Reflection) 방식을 루멘으로 고정하여 일관성을 줍니다.
+	SceneCapture->PostProcessSettings.bOverride_ReflectionMethod = true;
+	SceneCapture->PostProcessSettings.ReflectionMethod = EReflectionMethod::Lumen;
+
+	SceneCapture->PostProcessSettings.bOverride_ScreenSpaceReflectionQuality = true;
+	SceneCapture->PostProcessSettings.ScreenSpaceReflectionQuality = 0.0f;
+}
 void AWeaponSniper::StartNightVision()
 {
 	if (!SceneCapture || !NightVisionMaterial) return;
@@ -36,6 +52,7 @@ void AWeaponSniper::StartNightVision()
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = true;
 	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
 
+
 	SceneCapture->PostProcessSettings.AutoExposureMethod = EAutoExposureMethod::AEM_Manual;
 
 	SceneCapture->PostProcessSettings.AutoExposureBias = 8.0f;
@@ -54,7 +71,11 @@ void AWeaponSniper::StopNightVision()
 
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
-	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_SceneColorHDR;
+	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureSpeedUp = true;
+	SceneCapture->PostProcessSettings.bOverride_AutoExposureSpeedDown = true;
+	SceneCapture->PostProcessSettings.AutoExposureSpeedUp = 100.0f; // 매우 빠른 속도
+	SceneCapture->PostProcessSettings.AutoExposureSpeedDown = 100.0f;
 
 	if (NightVisionOffSound)
 	{

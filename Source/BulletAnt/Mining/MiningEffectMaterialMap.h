@@ -4,7 +4,7 @@
 #include "Engine/DataAsset.h"
 #include "MiningEffectMaterialMap.generated.h"
 
-enum class EOreType : uint8;
+enum class EVoxelType : uint8;
 
 UCLASS(BlueprintType)
 class BULLETANT_API UMiningEffectMaterialMap : public UDataAsset
@@ -13,5 +13,5 @@ class BULLETANT_API UMiningEffectMaterialMap : public UDataAsset
 	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TMap<EOreType, TObjectPtr<UMaterialInterface>> Map;
+	TMap<EVoxelType, TObjectPtr<UMaterialInterface>> Map;
 };
