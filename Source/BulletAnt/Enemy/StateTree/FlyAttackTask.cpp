@@ -88,7 +88,7 @@ void UFlyAttackTask::HitCheck()
 		Params
 	);
 
-	DrawDebugBox(GetWorld(), BoxOrigin, HalfExtent, BoxRotator, bHit ? FColor::Red : FColor::Green, false, 0.1f);
+	//DrawDebugBox(GetWorld(), BoxOrigin, HalfExtent, BoxRotator, bHit ? FColor::Red : FColor::Green, false, 0.1f);
 
 	if (bHit)
 	{
