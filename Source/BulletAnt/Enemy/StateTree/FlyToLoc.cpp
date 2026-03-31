@@ -47,6 +47,8 @@ EStateTreeRunStatus UFlyToLoc::EnterState(FStateTreeExecutionContext& Context, c
 
 	if (!ensureMsgf(IsValid(TargetActor), TEXT("UFlyToLoc : TargetActor Error")))
 	{
+		ContextEnemy->InitTarget();
+		TargetActor = ContextEnemy->GetTargetActor();
 		return EStateTreeRunStatus::Failed;
 	}
 	FindDestLoc();

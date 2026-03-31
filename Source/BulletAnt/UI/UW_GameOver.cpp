@@ -9,13 +9,13 @@
 #include "Framework/MapConfig.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Kismet/GameplayStatics.h"
 
 void UUW_GameOver::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	ToLobbyButton->OnClicked.AddDynamic(this, &ThisClass::GoToLobby);
-	ToTitleButton->OnClicked.AddDynamic(this, &ThisClass::GoToTitle);
+	ExitButton->OnClicked.AddDynamic(this, &ThisClass::OnClickedExit);
 }
 
 void UUW_GameOver::InitText(bool bIsComplete)
@@ -66,6 +66,14 @@ void UUW_GameOver::InitText(bool bIsComplete)
 				}
 			}
 		}
+		if (CollectedGoldText)
+		{
+			CollectedGoldText->SetText(FText::AsNumber(PS->GetOreCount(EOreType::Gold)));			
+		}
+		if (CollectedMineralText)
+		{
+			CollectedMineralText->SetText(FText::AsNumber(PS->GetOreCount(EOreType::Mineral)));
+		}
 	}
 
 	SetCompleteImage(bIsComplete);
@@ -87,29 +95,30 @@ void UUW_GameOver::SetCompleteImage(bool bIsComplete)
 	}
 }
 
-void UUW_GameOver::GoToLobby()
+//void UUW_GameOver::GoToLobby()
+//{
+//	APlayerController* PC = GetOwningPlayer();
+//	if (IsValid(PC) == false || PC->IsLocalController() == false)
+//		return;
+//
+//	UBAGameInstance* GameInstance = GetGameInstance<UBAGameInstance>();
+//	UMultiplayerSubsystem* MultiplayerSubsystem = IsValid(GameInstance) == true ?  GameInstance->GetSubsystem<UMultiplayerSubsystem>() : nullptr;
+//	if (IsValid(MultiplayerSubsystem) == false)
+//		return;
+//
+//	UMapConfig* MapConfig = IsValid(GameInstance) == true ? GameInstance->GetMapConfig() : nullptr;
+//	if (IsValid(MapConfig) == false)
+//	{
+//		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel Failed 1"));
+//		return;
+//	}
+//
+//	FString LobbyPath = MapConfig->LobbyLevel.ToSoftObjectPath().ToString();
+//	FString MapName = FPackageName::ObjectPathToPackageName(LobbyPath);
+//	MultiplayerSubsystem->ServerTravelToLevel(MapName);
+//}
+
+void UUW_GameOver::OnClickedExit()
 {
-	APlayerController* PC = GetOwningPlayer();
-	if (IsValid(PC) == false || PC->IsLocalController() == false)
-		return;
-
-	UBAGameInstance* GameInstance = GetGameInstance<UBAGameInstance>();
-	UMultiplayerSubsystem* MultiplayerSubsystem = IsValid(GameInstance) == true ?  GameInstance->GetSubsystem<UMultiplayerSubsystem>() : nullptr;
-	if (IsValid(MultiplayerSubsystem) == false)
-		return;
-
-	UMapConfig* MapConfig = IsValid(GameInstance) == true ? GameInstance->GetMapConfig() : nullptr;
-	if (IsValid(MapConfig) == false)
-	{
-		//UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Lobby Travel Failed 1"));
-		return;
-	}
-
-	FString LobbyPath = MapConfig->LobbyLevel.ToSoftObjectPath().ToString();
-	FString MapName = FPackageName::ObjectPathToPackageName(LobbyPath);
-	MultiplayerSubsystem->ServerTravelToLevel(MapName);
-}
-
-void UUW_GameOver::GoToTitle()
-{
+	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
 }

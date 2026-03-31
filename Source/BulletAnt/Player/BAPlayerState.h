@@ -6,13 +6,14 @@
 #include "GameplayEffectTypes.h"
 #include "BAPlayerState.generated.h"
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerName, const FString&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerLevel, float);
-
 class UHealthAttributeSet;
 class UAmmoAttributeSet;
 class UEXPAttributeSet;
+enum class EOreType : uint8;
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerColor, FLinearColor);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerName, const FString&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnChangedPlayerLevel, float);
 
 UCLASS()
 class BULLETANT_API ABAPlayerState : public APlayerState, public IAbilitySystemInterface
@@ -76,6 +77,20 @@ protected:
 
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerLevel)
 	float PlayerLevel = 1;
+
+#pragma region GameResult
+
+	// 결과 화면 출력용 개인 획득량
+
+public:
+	UFUNCTION(Client, Reliable)
+	void Client_AcquireOre(EOreType OreType, int32 Count);
+	int32 GetOreCount(EOreType OreType);
+
+protected:
+	TMap<EOreType, int32> OreAcquired;
+
+#pragma endregion
 
 #pragma region GAS 
 
