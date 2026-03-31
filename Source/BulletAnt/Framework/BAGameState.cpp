@@ -272,6 +272,8 @@ void ABAGameState::OnRep_Date()
                 {
                     UUW_GameOver* GameOverUI = UISubsystem->ShowUI<UUW_GameOver>(EUIType::GameOver);
                     GameOverUI->InitText(true);
+
+                    UISubsystem->ApplyUIOnlyInputMode(GameOverUI);
                 }
             }
         }
