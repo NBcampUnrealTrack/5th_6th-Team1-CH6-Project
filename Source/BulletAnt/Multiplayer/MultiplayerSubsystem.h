@@ -127,6 +127,10 @@ public:
 
 	void SetVoiceChatUser();
 	void RefreshOtherVoices();
+	void RemoveRefreshedPlayers(const FString& IdToRemove);
+
+	FString GetMyId();
+	FString GetCleanId(const FString& IdWithSession);
 
 	FORCEINLINE bool IsLogin() const { return bLogin; }
 
@@ -168,6 +172,8 @@ private:
 	uint8 bVoiceDelegatesBound : 1 = false;
 	uint8 bVoiceChatInitialized : 1 = false;
 	FTimerHandle ClientTravelHandle;
+	UPROPERTY()
+	TSet<FString> VoiceRefreshedPlayers;
 
 	FName CurrentSessionName;
 	FString PlayerNickname;

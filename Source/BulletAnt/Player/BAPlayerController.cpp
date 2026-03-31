@@ -225,14 +225,9 @@ void ABAPlayerController::SetLevelType(ELevelType InType)
 	Client_SetupController(LevelType);
 }
 
-void ABAPlayerController::Client_SetVoiceChatUser_Implementation()
+void ABAPlayerController::Client_RemoveRefreshedVoice_Implementation(const FString& IdToRemove)
 {
-	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
-	if (IsValid(MultiplayerSubsystem) == true)
-	{
-		MultiplayerSubsystem->SetVoiceChatUser();
-		MultiplayerSubsystem->RefreshOtherVoices();
-	}
+	ToRemoveRefresedVoices.Add(IdToRemove);
 }
 
 void ABAPlayerController::Client_SetupController_Implementation(ELevelType InType)
@@ -348,6 +343,16 @@ void ABAPlayerController::SetupForMain()
 
 void ABAPlayerController::Client_StartGame_Implementation()
 {
+	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	if (IsValid(MultiplayerSubsystem) == true)
+	{
+		for (const auto& ToRemoveRefresedVoice : ToRemoveRefresedVoices)
+		{
+			MultiplayerSubsystem->RemoveRefreshedPlayers(ToRemoveRefresedVoice);
+		}
+		MultiplayerSubsystem->RefreshOtherVoices();
+	}
+
 	FInputModeGameOnly GameAndUI;
 	SetInputMode(GameAndUI);
 

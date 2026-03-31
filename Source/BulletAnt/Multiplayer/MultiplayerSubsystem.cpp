@@ -683,7 +683,7 @@ void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSess
 		ClientTravelHandle,
 		[WeakThis = TWeakObjectPtr(this)]()
 		{
-			if (WeakThis.IsValid() == false && WeakThis->IsVoiceChatReadyForClientTravel() == true)
+			if (WeakThis.IsValid() == false || WeakThis->IsVoiceChatReadyForClientTravel() == true)
 				return;
 
 			WeakThis->GetWorld()->GetTimerManager().ClearTimer(WeakThis->ClientTravelHandle);
@@ -777,8 +777,8 @@ void UMultiplayerSubsystem::OnSessionUserInviteAccepted(const bool bWasSuccessfu
 
 void UMultiplayerSubsystem::SetVoiceChatUser()
 {
-	/*if (bVoiceChatInitialized == true)
-		return;*/
+	if (bVoiceChatInitialized == true)
+		return;
 
 	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SetVoiceChatUser"));
 	IOnlineSubsystemEOS* EOS = static_cast<IOnlineSubsystemEOS*>(Online::GetSubsystem(GetWorld(), EOS_SUBSYSTEM));
@@ -818,9 +818,10 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 			WeakThis->RefreshOtherVoices();
 		});*/
 
-	if (bVoiceDelegatesBound == false)
-	{
-		bVoiceDelegatesBound = true;
+	// ** 이거 해야 하긴 하는데, 일단 테스트해서 되는 버전으로 올림
+	//if (bVoiceDelegatesBound == false)
+	//{
+	//	bVoiceDelegatesBound = true;
 
 		VoiceChatUser->OnVoiceChatPlayerAdded().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName, const FString& PlayerName)
 			{
@@ -830,8 +831,8 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 				UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(TEXT("VC Added %s / %s"), *ChannelName, *PlayerName));
 
 				WeakThis->RefreshOtherVoices();
-				WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, true);
-				WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, false);
+				//WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, true);
+				//WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, false);
 				//WeakThis->VoiceChatUser->UnblockPlayers({ PlayerName });
 
 				/*const bool bMuted = WeakThis->VoiceChatUser->IsPlayerMuted(PlayerName);
@@ -845,18 +846,18 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 						bTalking ? TEXT("true") : TEXT("false")));*/
 			});
 
-		VoiceChatUser->OnVoiceChatPlayerTalkingUpdated().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName, const FString& PlayerName, bool bIsTalking)
-			{
-				if (WeakThis.IsValid() == false)
-					return;
+	//	VoiceChatUser->OnVoiceChatPlayerTalkingUpdated().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName, const FString& PlayerName, bool bIsTalking)
+	//		{
+	//			if (WeakThis.IsValid() == false)
+	//				return;
 
-				UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(
-					TEXT("VC Talking Channel=%s Player=%s Talking=%s"),
-					*ChannelName, *PlayerName, bIsTalking ? TEXT("true") : TEXT("false")));
-			});
-	}
+	//			UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(
+	//				TEXT("VC Talking Channel=%s Player=%s Talking=%s"),
+	//				*ChannelName, *PlayerName, bIsTalking ? TEXT("true") : TEXT("false")));
+	//		});
+	//}
 
-	//bVoiceChatInitialized = true;
+	bVoiceChatInitialized = true;
 }
 
 bool UMultiplayerSubsystem::IsVoiceChatReadyForClientTravel() const
@@ -881,11 +882,22 @@ void UMultiplayerSubsystem::RefreshOtherVoicesLoop()
 
 	for (const FString& Channel : VoiceChatUser->GetChannels())
 	{
-		TArray<FString> Players = VoiceChatUser->GetPlayersInChannel(Channel);
+		UKismetSystemLibrary::PrintString(GetWorld(),
+			FString::Printf(TEXT("Channel = [%s]"), *Channel));
+
+		const TArray<FString> Players = VoiceChatUser->GetPlayersInChannel(Channel);
+
+		UKismetSystemLibrary::PrintString(GetWorld(),
+			FString::Printf(TEXT("PlayersInChannel(%s) = %d"), *Channel, Players.Num()));
+
 		for (const auto& Player : Players)
 		{
-			VoiceChatUser->SetPlayerMuted(Player, true);
-			VoiceChatUser->SetPlayerMuted(Player, false);
+			if (VoiceRefreshedPlayers.Contains(Player) == false)
+			{
+				VoiceRefreshedPlayers.Add(Player);
+				VoiceChatUser->SetPlayerMuted(Player, true);
+				VoiceChatUser->SetPlayerMuted(Player, false);
+			}
 		}
 		//VoiceChatUser->UnblockPlayers(Players);
 	}
@@ -893,7 +905,7 @@ void UMultiplayerSubsystem::RefreshOtherVoicesLoop()
 
 void UMultiplayerSubsystem::RefreshOtherVoices()
 {
-	RefreshOtherVoicesLoop();
+	//RefreshOtherVoicesLoop();
 
 	FTimerHandle TimerDelay;
 	GetWorld()->GetTimerManager().SetTimer(
@@ -901,6 +913,39 @@ void UMultiplayerSubsystem::RefreshOtherVoices()
 		this,
 		&ThisClass::RefreshOtherVoicesLoop,
 		3.0f);
+}
+
+void UMultiplayerSubsystem::RemoveRefreshedPlayers(const FString& IdToRemove)
+{
+	if (VoiceRefreshedPlayers.Contains(IdToRemove) == true)
+	{
+		VoiceRefreshedPlayers.Remove(IdToRemove);
+	}
+}
+
+FString UMultiplayerSubsystem::GetMyId()
+{
+	IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
+	if (Identity.IsValid() == false || Identity->GetLoginStatus(0) != ELoginStatus::LoggedIn)
+		return FString();
+
+	FUniqueNetIdPtr UserId = Identity->GetUniquePlayerId(0);
+	if (UserId.IsValid() == false)
+		return FString();
+
+	return GetCleanId(UserId->ToString());
+}
+
+FString UMultiplayerSubsystem::GetCleanId(const FString& IdWithSession)
+{
+	FString CleanMyPlayerId = IdWithSession;
+	int32 PipeIndex;
+	if (IdWithSession.FindChar('|', PipeIndex))
+	{
+		CleanMyPlayerId = IdWithSession.RightChop(PipeIndex + 1);
+	}
+
+	return CleanMyPlayerId;
 }
 
 void UMultiplayerSubsystem::StartSessionHeartBeat()

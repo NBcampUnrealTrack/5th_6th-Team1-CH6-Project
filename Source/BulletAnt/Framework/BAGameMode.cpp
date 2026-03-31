@@ -5,6 +5,7 @@
 #include "Player/BAPlayerState.h"
 #include "Multiplayer/PlayerColorSubsystem.h"
 #include "Enemy/Spawn/SpawnManagerSubsystem.h"
+#include "Multiplayer/MultiplayerSubsystem.h"
 
 ABAGameMode::ABAGameMode()
 {
@@ -37,12 +38,17 @@ void ABAGameMode::PostLogin(APlayerController* NewPlayer)
         }
     }
 
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+    if (IsValid(MultiplayerSubsystem) == true)
     {
-        ABAPlayerController* PC = Cast<ABAPlayerController>(It->Get());
-        if (IsValid(PC) == true)
+        FString MyId = MultiplayerSubsystem->GetMyId();
+        for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
         {
-            PC->Client_SetVoiceChatUser();
+            ABAPlayerController* PC = Cast<ABAPlayerController>(It->Get());
+            if (IsValid(PC) == true)
+            {
+                PC->Client_RemoveRefreshedVoice(MyId);
+            }
         }
     }
 }
