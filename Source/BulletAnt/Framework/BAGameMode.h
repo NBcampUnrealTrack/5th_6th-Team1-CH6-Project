@@ -24,9 +24,18 @@ public:
 	void MineOre(ABAPlayerState* MinedPlayerState, EOreType OreType, int32 PointCount);
 	bool TrySpendOre(const TMap<EOreType, int32>& Cost);
 
+	void CheckAllPlayersReadyToStart();
+	FORCEINLINE bool GetGameStarted() const { return bGameStarted; }
+
+protected:
+	void StartGame();
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 OreMultiplierMin = 15;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 OreMultiplierMax = 20;
+
+	UPROPERTY()
+	uint8 bGameStarted : 1 = false;
 };

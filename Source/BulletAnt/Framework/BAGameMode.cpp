@@ -4,6 +4,7 @@
 #include "Player/BAPlayerController.h"
 #include "Player/BAPlayerState.h"
 #include "Multiplayer/PlayerColorSubsystem.h"
+#include "Enemy/Spawn/SpawnManagerSubsystem.h"
 
 ABAGameMode::ABAGameMode()
 {
@@ -150,4 +151,45 @@ bool ABAGameMode::TrySpendOre(const TMap<EOreType, int32>& Cost)
     }
 
     return true;
+}
+
+void ABAGameMode::CheckAllPlayersReadyToStart()
+{
+    ABAGameState* GS = GetGameState<ABAGameState>();
+    if (IsValid(GS) == false)
+        return;
+
+    for (APlayerState* PS : GS->PlayerArray)
+    {
+        ABAPlayerState* BAPS = Cast<ABAPlayerState>(PS);
+        if (IsValid(BAPS) == false)
+            return;
+
+        if (BAPS->GetReadyToStart() == false)
+            return;
+    }
+
+    StartGame();
+}
+
+void ABAGameMode::StartGame()
+{
+    if (bGameStarted == true)
+        return;
+
+    bGameStarted = true;
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        ABAPlayerController* BAPC = Cast<ABAPlayerController>(It->Get());
+        if (IsValid(BAPC) == false)
+            continue;
+
+        BAPC->Client_StartGame();
+    }
+
+    USpawnManagerSubsystem* SpawnManager = GetWorld()->GetSubsystem<USpawnManagerSubsystem>();
+    if (IsValid(SpawnManager) == true)
+    {
+        SpawnManager->StartInitialWave();
+    }
 }

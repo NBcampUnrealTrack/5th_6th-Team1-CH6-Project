@@ -22,6 +22,10 @@
 #include "Weapon/BaseWeapon.h"
 #include "Weapon/BaseRangedWeapon.h"
 #include "GAS/AttributeSet/AmmoAttributeSet.h"
+#include "Framework/BAGameMode.h"
+#include "UI/UW_Loading.h"
+#include "Audio/BABGMManager.h"
+#include "Kismet/GameplayStatics.h"
 
 void ABAPlayerController::BeginPlay()
 {
@@ -43,7 +47,7 @@ void ABAPlayerController::BeginPlay()
 		PlayerCameraManager->ViewPitchMin = -60.0f; // 아래 제한
 		PlayerCameraManager->ViewPitchMax = 85.0f;  // 위 제한
 	}
-	SetupForMain();
+	SetupForLobby();
 }
 
 void ABAPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -275,8 +279,14 @@ void ABAPlayerController::SetupForLobby()
 
 void ABAPlayerController::SetupForMain()
 {
-	FInputModeGameOnly GameAndUI;
-	SetInputMode(GameAndUI);
+	ABAPlayerState* BAPS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(BAPS) == true)
+	{
+		BAPS->SetReadyToStart(false);
+	}
+
+	FInputModeUIOnly InputUI;
+	SetInputMode(InputUI);
 	bShowMouseCursor = false;
 
 	bIsBuildMode = false;
@@ -315,6 +325,53 @@ void ABAPlayerController::SetupForMain()
 		if (IsValid(SpawnManager))
 		{
 			WaveTimerUI = UISubsystem->ShowUI<UUW_WaveTimer>(EUIType::WaveTimer);
+		}
+
+		UUW_Loading* LoadingUI = UISubsystem->ShowUI<UUW_Loading>(EUIType::Loading);
+		if (IsValid(LoadingUI) == true)
+		{
+			LoadingUI->ShowLoadingPanel(true);
+		}
+	}
+}
+
+void ABAPlayerController::Client_StartGame_Implementation()
+{
+	FInputModeGameOnly GameAndUI;
+	SetInputMode(GameAndUI);
+
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP) return;
+
+	UISubsystem = LP->GetSubsystem<UUISubsystem>();
+	if (IsValid(UISubsystem) == true)
+	{
+		UUW_Loading* LoadingUI = UISubsystem->ShowUI<UUW_Loading>(EUIType::Loading);
+		if (IsValid(LoadingUI) == true)
+		{
+			LoadingUI->ShowLoadingPanel(false);
+		}
+	}
+}
+
+void ABAPlayerController::Server_ReadyToStart_Implementation()
+{
+	ABAPlayerState* BAPS = GetPlayerState<ABAPlayerState>();
+	if (IsValid(BAPS) == false)
+		return;
+
+	if (BAPS->GetReadyToStart() == true)
+		return;
+
+	BAPS->SetReadyToStart(true);
+
+	ABAGameMode* GM = GetWorld()->GetAuthGameMode<ABAGameMode>();
+	if (IsValid(GM) == true)
+	{
+		GM->CheckAllPlayersReadyToStart();
+		if (GM->GetGameStarted() == true)
+		{
+			Client_StartGame();
 		}
 	}
 }

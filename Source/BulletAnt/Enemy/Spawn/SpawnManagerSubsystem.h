@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -21,6 +21,8 @@ public:
 	void OnEnemyDie();
 
 	void SetCachedSpawnLocationManager(ASpawnLocationManager* InSpawnLocationManager);
+	
+	void StartInitialWave();
 
 protected:
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

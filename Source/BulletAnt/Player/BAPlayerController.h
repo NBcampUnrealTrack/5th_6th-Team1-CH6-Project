@@ -126,7 +126,17 @@ protected:
 	void SetupForMain();
 
 protected:
-	ELevelType LevelType = ELevelType::Main;
+	ELevelType LevelType = ELevelType::Lobby;
+
+#pragma endregion
+
+#pragma region IntializeMain
+
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_ReadyToStart();
+	UFUNCTION(Client, Reliable)
+	void Client_StartGame();
 
 #pragma endregion
 

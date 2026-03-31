@@ -142,4 +142,17 @@ protected:
 	UPROPERTY(Replicated)
 	uint32 BuildCount = 0;
 #pragma endregion
+
+#pragma region InitializeMain
+
+	// 서버 전용
+public:
+	void SetReadyToStart(bool bInReadyToStart);
+	FORCEINLINE bool GetReadyToStart() const { return bIsReadyToStart; }
+
+protected:
+	UPROPERTY()
+	uint8 bIsReadyToStart : 1 = false;
+
+#pragma endregion
 };
