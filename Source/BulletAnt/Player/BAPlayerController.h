@@ -117,6 +117,9 @@ protected:
 public:
 	void SetLevelType(ELevelType InType);
 
+	UFUNCTION(Client, Reliable)
+	void Client_SetVoiceChatUser();
+
 protected:
 	UFUNCTION(Client, Reliable)
 	void Client_SetupController(ELevelType InType);

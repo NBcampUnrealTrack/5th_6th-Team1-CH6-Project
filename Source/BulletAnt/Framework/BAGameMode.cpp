@@ -36,6 +36,15 @@ void ABAGameMode::PostLogin(APlayerController* NewPlayer)
             PS->SetPlayerColorIdx(NewColorIdx);
         }
     }
+
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        ABAPlayerController* PC = Cast<ABAPlayerController>(It->Get());
+        if (IsValid(PC) == true)
+        {
+            PC->Client_SetVoiceChatUser();
+        }
+    }
 }
 
 void ABAGameMode::Logout(AController* Exiting)

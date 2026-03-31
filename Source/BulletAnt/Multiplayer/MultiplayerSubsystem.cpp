@@ -40,6 +40,7 @@ void UMultiplayerSubsystem::Login()
 	if (bLogin == true)
 		return;
 
+	//EpicLogin();
 	IOnlineSubsystem* SteamSub = Online::GetSubsystem(GetWorld(), STEAM_SUBSYSTEM);
 	if (SteamSub && SteamAPI_Init() == true)
 	{
@@ -677,6 +678,19 @@ void UMultiplayerSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSess
 		this,
 		&ThisClass::SetVoiceChatUser,
 		3.0f);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		ClientTravelHandle,
+		[WeakThis = TWeakObjectPtr(this)]()
+		{
+			if (WeakThis.IsValid() == false && WeakThis->IsVoiceChatReadyForClientTravel() == true)
+				return;
+
+			WeakThis->GetWorld()->GetTimerManager().ClearTimer(WeakThis->ClientTravelHandle);
+			WeakThis->ClientTravel(WeakThis->CurrentSessionName);
+		},
+		0.5f,
+		true);
 }
 
 void UMultiplayerSubsystem::OnReadFriendsComplete(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
@@ -763,17 +777,26 @@ void UMultiplayerSubsystem::OnSessionUserInviteAccepted(const bool bWasSuccessfu
 
 void UMultiplayerSubsystem::SetVoiceChatUser()
 {
-	if (bVoiceChatInitialized == true)
-		return;
+	/*if (bVoiceChatInitialized == true)
+		return;*/
 
 	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SetVoiceChatUser"));
 	IOnlineSubsystemEOS* EOS = static_cast<IOnlineSubsystemEOS*>(Online::GetSubsystem(GetWorld(), EOS_SUBSYSTEM));
 	IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
+	IVoiceChatUser* NewVoiceChatUser = nullptr;
 	if (Identity.IsValid() == true && Identity->GetLoginStatus(0) == ELoginStatus::LoggedIn)
 	{
 		FUniqueNetIdPtr UserId = Identity->GetUniquePlayerId(0);
-		VoiceChatUser = EOS != nullptr ? EOS->GetVoiceChatUserInterface(*UserId) : nullptr;
+		NewVoiceChatUser = EOS != nullptr ? EOS->GetVoiceChatUserInterface(*UserId) : nullptr;
 	}
+
+	if (NewVoiceChatUser == VoiceChatUser)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Same VoiceChatUser"));
+		return;
+	}
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Not Same VoiceChatUser"));
+	VoiceChatUser = NewVoiceChatUser;
 
 	if (VoiceChatUser == nullptr)
 	{
@@ -785,6 +808,15 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 	VoiceChatUser->SetSetting(TEXT("Input.VADThreshold"), TEXT("0.0"));
 	VoiceChatUser->SetAudioInputDeviceMuted(false);
 	VoiceChatUser->SetAudioOutputDeviceMuted(false);
+	
+	RefreshOtherVoices();
+	/*VoiceChatUser->OnVoiceChatChannelJoined().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName)
+		{
+			if (WeakThis.IsValid() == false)
+				return;
+
+			WeakThis->RefreshOtherVoices();
+		});*/
 
 	if (bVoiceDelegatesBound == false)
 	{
@@ -797,20 +829,20 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 
 				UKismetSystemLibrary::PrintString(WeakThis->GetWorld(), FString::Printf(TEXT("VC Added %s / %s"), *ChannelName, *PlayerName));
 
+				WeakThis->RefreshOtherVoices();
 				WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, true);
 				WeakThis->VoiceChatUser->SetPlayerMuted(PlayerName, false);
+				//WeakThis->VoiceChatUser->UnblockPlayers({ PlayerName });
 
-				const bool bMuted = WeakThis->VoiceChatUser->IsPlayerMuted(PlayerName);
-				const bool bTalking = WeakThis->VoiceChatUser->IsPlayerTalking(PlayerName);
-				WeakThis->VoiceChatUser->UnblockPlayers({ PlayerName });
+				/*const bool bMuted = WeakThis->VoiceChatUser->IsPlayerMuted(PlayerName);
+				const bool bTalking = WeakThis->VoiceChatUser->IsPlayerTalking(PlayerName);*/
 
-				//VoiceChatUser->UnblockPlayers();
-				UKismetSystemLibrary::PrintString(
+				/*UKismetSystemLibrary::PrintString(
 					WeakThis->GetWorld(),
 					FString::Printf(TEXT("VC State player=%s muted=%s talking=%s"),
 						*PlayerName,
 						bMuted ? TEXT("true") : TEXT("false"),
-						bTalking ? TEXT("true") : TEXT("false")));
+						bTalking ? TEXT("true") : TEXT("false")));*/
 			});
 
 		VoiceChatUser->OnVoiceChatPlayerTalkingUpdated().AddLambda([WeakThis = TWeakObjectPtr(this)](const FString& ChannelName, const FString& PlayerName, bool bIsTalking)
@@ -825,22 +857,6 @@ void UMultiplayerSubsystem::SetVoiceChatUser()
 	}
 
 	//bVoiceChatInitialized = true;
-
-	if (GetWorld()->GetNetMode() != NM_ListenServer)
-	{
-		GetWorld()->GetTimerManager().SetTimer(
-			ClientTravelHandle,
-			[this]()
-			{
-				if (IsVoiceChatReadyForClientTravel() == true)
-				{
-					GetWorld()->GetTimerManager().ClearTimer(ClientTravelHandle);
-					ClientTravel(CurrentSessionName);
-				}
-			},
-			3.0f,
-			true);
-	}
 }
 
 bool UMultiplayerSubsystem::IsVoiceChatReadyForClientTravel() const
@@ -856,6 +872,35 @@ bool UMultiplayerSubsystem::IsVoiceChatReadyForClientTravel() const
 	}
 
 	return false;
+}
+
+void UMultiplayerSubsystem::RefreshOtherVoicesLoop()
+{
+	if (VoiceChatUser == nullptr)
+		return;
+
+	for (const FString& Channel : VoiceChatUser->GetChannels())
+	{
+		TArray<FString> Players = VoiceChatUser->GetPlayersInChannel(Channel);
+		for (const auto& Player : Players)
+		{
+			VoiceChatUser->SetPlayerMuted(Player, true);
+			VoiceChatUser->SetPlayerMuted(Player, false);
+		}
+		//VoiceChatUser->UnblockPlayers(Players);
+	}
+}
+
+void UMultiplayerSubsystem::RefreshOtherVoices()
+{
+	RefreshOtherVoicesLoop();
+
+	FTimerHandle TimerDelay;
+	GetWorld()->GetTimerManager().SetTimer(
+		TimerDelay,
+		this,
+		&ThisClass::RefreshOtherVoices,
+		3.0f);
 }
 
 void UMultiplayerSubsystem::StartSessionHeartBeat()

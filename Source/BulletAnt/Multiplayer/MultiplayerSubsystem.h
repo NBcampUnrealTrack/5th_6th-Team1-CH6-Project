@@ -125,6 +125,8 @@ public:
 	void UpdateSessionHearBeat();
 	void StopSessionHeartBeat();
 
+	void SetVoiceChatUser();
+	void RefreshOtherVoices();
 
 	FORCEINLINE bool IsLogin() const { return bLogin; }
 
@@ -139,8 +141,9 @@ private:
 	void OnSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& InviterId, const FString& InviteData);
 	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
-	void SetVoiceChatUser();
 	bool IsVoiceChatReadyForClientTravel() const;
+	UFUNCTION()
+	void RefreshOtherVoicesLoop();
 
 private:
 	FDelegateHandle LoginHandle;

@@ -26,6 +26,7 @@
 #include "UI/UW_Loading.h"
 #include "Audio/BABGMManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "Multiplayer/MultiplayerSubsystem.h"
 
 void ABAPlayerController::BeginPlay()
 {
@@ -222,6 +223,16 @@ void ABAPlayerController::SetLevelType(ELevelType InType)
 {
 	LevelType = InType;
 	Client_SetupController(LevelType);
+}
+
+void ABAPlayerController::Client_SetVoiceChatUser_Implementation()
+{
+	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	if (IsValid(MultiplayerSubsystem) == true)
+	{
+		MultiplayerSubsystem->SetVoiceChatUser();
+		MultiplayerSubsystem->RefreshOtherVoices();
+	}
 }
 
 void ABAPlayerController::Client_SetupController_Implementation(ELevelType InType)
