@@ -17,7 +17,7 @@ AWeaponSniper::AWeaponSniper()
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
 	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
 
-	SceneCapture->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = true;
+	/*SceneCapture->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = true;
 
 	SceneCapture->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
 
@@ -28,7 +28,7 @@ AWeaponSniper::AWeaponSniper()
 	SceneCapture->PostProcessSettings.ReflectionMethod = EReflectionMethod::Lumen;
 
 	SceneCapture->PostProcessSettings.bOverride_ScreenSpaceReflectionQuality = true;
-	SceneCapture->PostProcessSettings.ScreenSpaceReflectionQuality = 0.0f;
+	SceneCapture->PostProcessSettings.ScreenSpaceReflectionQuality = 0.0f;*/
 }
 void AWeaponSniper::StartNightVision()
 {

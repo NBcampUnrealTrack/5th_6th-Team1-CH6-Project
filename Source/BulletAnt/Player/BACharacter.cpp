@@ -525,7 +525,7 @@ void ABACharacter::OnRep_Controller()
 	StartInteractionTraceTimer();
 
 	if (!GetWorld()) return;
-	APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
+	/*APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
 	ULocalPlayer* LP = FPC->GetLocalPlayer();
 	UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
 	if (IsValid(UISubsystem))
@@ -535,7 +535,7 @@ void ABACharacter::OnRep_Controller()
 		{
 			HUD->UpdateWeaponName(OwnedEquipment[0]);
 		}
-	}
+	}*/
 }
 
 void ABACharacter::OnRep_PlayerState()
@@ -784,7 +784,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 	if (IsLocallyControlled())
 	{
 		if (!GetWorld()) return;
-		APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());	
+		/*APlayerController* FPC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());	
 		ULocalPlayer* LP = FPC->GetLocalPlayer();
 		UUISubsystem* UISubsystem = LP->GetSubsystem<UUISubsystem>();
 		if (IsValid(UISubsystem))
@@ -794,7 +794,7 @@ void ABACharacter::PossessedBy(AController* NewController)
 			{
 				HUD->UpdateWeaponName(OwnedEquipment[0]);
 			}
-		}
+		}*/
 
 	}
 

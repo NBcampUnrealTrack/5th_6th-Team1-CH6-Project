@@ -125,6 +125,12 @@ public:
 	void UpdateSessionHearBeat();
 	void StopSessionHeartBeat();
 
+	void SetVoiceChatUser();
+	void RefreshOtherVoices();
+	void RemoveRefreshedPlayers(const FString& IdToRemove);
+
+	FString GetMyId();
+	FString GetCleanId(const FString& IdWithSession);
 
 	FORCEINLINE bool IsLogin() const { return bLogin; }
 
@@ -139,8 +145,9 @@ private:
 	void OnSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& InviterId, const FString& InviteData);
 	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
-	void SetVoiceChatUser();
 	bool IsVoiceChatReadyForClientTravel() const;
+	UFUNCTION()
+	void RefreshOtherVoicesLoop();
 
 private:
 	FDelegateHandle LoginHandle;
@@ -165,6 +172,8 @@ private:
 	uint8 bVoiceDelegatesBound : 1 = false;
 	uint8 bVoiceChatInitialized : 1 = false;
 	FTimerHandle ClientTravelHandle;
+	UPROPERTY()
+	TSet<FString> VoiceRefreshedPlayers;
 
 	FName CurrentSessionName;
 	FString PlayerNickname;

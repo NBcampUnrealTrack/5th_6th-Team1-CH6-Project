@@ -30,10 +30,8 @@ void USpawnManagerSubsystem::SetCachedSpawnLocationManager(ASpawnLocationManager
 	CachedSpawnLocationManager = InSpawnLocationManager;
 }
 
-void USpawnManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+void USpawnManagerSubsystem::StartInitialWave()
 {
-	Super::OnWorldBeginPlay(InWorld);
-
 	UWorld* World = GetWorld();
 	if (!ensureMsgf(IsValid(World), TEXT("SpawnManagerSubsystem : GetWorld Is NULL")))
 	{
@@ -63,6 +61,11 @@ void USpawnManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	{
 		PrepareWave();
 	}
+}
+
+void USpawnManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
 }
 
 void USpawnManagerSubsystem::OnWorldEndPlay(UWorld& InWorld)

@@ -12,6 +12,7 @@
 #include "Mining/VoxelGroundSubsystem.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Mining/BuriedComponent.h"
+#include "Player/BAPlayerController.h"
 
 // -X, +X, -Y, +Y, -Z, +Z
 const FIntVector AVoxelGround::NeighborOffsets[6] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
@@ -61,6 +62,16 @@ void AVoxelGround::Tick(float DeltaSeconds)
 
 		bool bIsNearPlayer = (GetChunkLODLevel(Result.TargetChunkIdx) == 0);
 		TargetChunk->UpdateChunk(Result.UpdateID, Result.MeshData, bIsNearPlayer);
+
+		if (bInitialLoading == true)
+		{
+			InitialChunkSet.Remove(Result.TargetChunkIdx);
+			if (InitialChunkSet.IsEmpty() == true)
+			{
+				bInitialLoading = false;
+				OnInitializeComplete();
+			}
+		}
 
 		++UpdateCount;
 	}
@@ -263,11 +274,14 @@ void AVoxelGround::EnqueueChunkUpdateResult(FChunkUpdateResult&& Result)
 void AVoxelGround::InitializeGround(int32 InSeed, const UGroundSettingPreset* InSetting)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(InitializeGround);
-	
+
 	Seed = InSeed;
 	Setting = InSetting;
 
 	ensureMsgf(IsValid(Setting) == true, TEXT("Setting is not valid"));
+
+	bInitialLoading = true;
+	InitialChunkSet.Empty();
 
 	ChunkSize = Setting->ChunkGridSize * Setting->ChunkVoxelSize;
 	CellSize = ChunkSize * 0.25f;
@@ -314,9 +328,20 @@ void AVoxelGround::InitializeGround(int32 InSeed, const UGroundSettingPreset* In
 			{
 				int32 ChunkIdx = GetChunkIndex(X, Y, Z);
 				SpawnChunk(ChunkIdx);
-				UpdateChunkMeshImmediately(ChunkIdx, false);
+
+				if (IsValid(Chunks[ChunkIdx]) == true)
+				{
+					InitialChunkSet.Add(ChunkIdx);
+					UpdateChunkMeshImmediately(ChunkIdx, false);
+				}
 			}
 		}
+	}
+
+	if (InitialChunkSet.IsEmpty() == true)
+	{
+		bInitialLoading = false;
+		OnInitializeComplete();
 	}
 
 	GetWorldTimerManager().SetTimer(
@@ -1334,6 +1359,15 @@ void AVoxelGround::EditGroundChunk(const FVoxelChunkEditData& Data)
 				UpdateChunkMeshImmediately(ChunkIdx, false);
 			}
 		}
+	}
+}
+
+void AVoxelGround::OnInitializeComplete()
+{
+	ABAPlayerController* PC = GetWorld()->GetFirstPlayerController<ABAPlayerController>();
+	if (IsValid(PC) == true)
+	{
+		PC->Server_ReadyToStart();
 	}
 }
 

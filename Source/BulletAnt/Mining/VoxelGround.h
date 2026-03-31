@@ -225,6 +225,21 @@ protected:
 
 #pragma endregion
 
+#pragma region InitialLoading
+	
+public:
+	void OnInitializeComplete();
+	
+protected:
+	UPROPERTY()
+	int32 InitialChunkCount = 10000;
+	UPROPERTY()
+	uint8 bInitialLoading : 1 = false;
+	UPROPERTY()
+	TSet<int32> InitialChunkSet;
+
+#pragma endregion
+
 #pragma region Bound
 
 protected:

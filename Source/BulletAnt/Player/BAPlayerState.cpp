@@ -67,6 +67,11 @@ const uint32 ABAPlayerState::GetBuildCount()
 	return BuildCount;
 }
 
+void ABAPlayerState::SetReadyToStart(bool bInReadyToStart)
+{
+	bIsReadyToStart = bInReadyToStart;
+}
+
 UAbilitySystemComponent* ABAPlayerState::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
@@ -117,6 +122,8 @@ void ABAPlayerState::BeginPlay()
 	FGameplayTagContainer DefaultTags;
 	DefaultTags.AddTag(TAG_Team_Player);
 	AbilitySystemComponent->AddLooseGameplayTags(DefaultTags);
+
+	SetReadyToStart(false);
 }
 
 void ABAPlayerState::PostNetInit()

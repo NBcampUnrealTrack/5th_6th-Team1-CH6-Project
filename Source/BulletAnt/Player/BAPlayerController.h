@@ -117,6 +117,9 @@ protected:
 public:
 	void SetLevelType(ELevelType InType);
 
+	UFUNCTION(Client, Reliable)
+	void Client_RemoveRefreshedVoice(const FString& IdToRemove);
+
 protected:
 	UFUNCTION(Client, Reliable)
 	void Client_SetupController(ELevelType InType);
@@ -126,7 +129,19 @@ protected:
 	void SetupForMain();
 
 protected:
-	ELevelType LevelType = ELevelType::Main;
+	ELevelType LevelType = ELevelType::Lobby;
+
+	TArray<FString> ToRemoveRefresedVoices;
+
+#pragma endregion
+
+#pragma region IntializeMain
+
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_ReadyToStart();
+	UFUNCTION(Client, Reliable)
+	void Client_StartGame();
 
 #pragma endregion
 
