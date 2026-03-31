@@ -2174,7 +2174,7 @@ void ABACharacter::UpdateIngameInfoScale()
 	UserInfoUI->SetScale(NewScale);
 
 	bool bVisible = NewScale > 0.01f;
-	IngameUserInfoUI->SetVisibility(bVisible);
+	//IngameUserInfoUI->SetVisibility(bVisible);
 }
 
 void ABACharacter::Multicast_SetPlayerColor_Implementation()
