@@ -899,7 +899,7 @@ void UMultiplayerSubsystem::RefreshOtherVoices()
 	GetWorld()->GetTimerManager().SetTimer(
 		TimerDelay,
 		this,
-		&ThisClass::RefreshOtherVoices,
+		&ThisClass::RefreshOtherVoicesLoop,
 		3.0f);
 }
 
