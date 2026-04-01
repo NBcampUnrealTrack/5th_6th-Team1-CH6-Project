@@ -68,32 +68,6 @@ void ABAGameMode::HandleSeamlessTravelPlayer(AController*& C)
 {
     Super::HandleSeamlessTravelPlayer(C);
 
-    UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
-    if (IsValid(MultiplayerSubsystem) == true)
-    {
-        APlayerState* PS = Cast<APlayerController>(C)->GetPlayerState<APlayerState>();
-        if (IsValid(PS) == false)
-            return;
-
-        UKismetSystemLibrary::PrintString(GetWorld(), TEXT("HandleSeamlessTravelPlayer 1"));
-
-        FUniqueNetIdRepl UniqueIdRepl = PS->GetUniqueId();
-        FUniqueNetIdPtr  UniqueNetId = UniqueIdRepl.GetUniqueNetId();
-        if (UniqueNetId.IsValid() == false)
-            return;
-
-        UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("HandleSeamlessTravelPlayer 2 = %s"), *UniqueNetId->ToString()));
-        FString EnteredId = MultiplayerSubsystem->GetCleanId(UniqueNetId->ToString());
-        for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-        {
-            ABAPlayerController* PC = Cast<ABAPlayerController>(It->Get());
-            if (PC != C && IsValid(PC) == true)
-            {
-                PC->Client_RemoveRefreshedVoice(EnteredId);
-            }
-        }
-    }
-
     ABAPlayerController* PC = Cast<ABAPlayerController>(C);
     if (IsValid(PC) == false)
         return;

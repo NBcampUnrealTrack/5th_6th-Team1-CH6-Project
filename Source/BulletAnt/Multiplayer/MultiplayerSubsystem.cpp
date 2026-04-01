@@ -182,7 +182,7 @@ void UMultiplayerSubsystem::CreateSession()
 	SessionSettings.bUsesPresence = true;										// 유저 상태 표시
 	SessionSettings.bAllowInvites = true;
 	SessionSettings.bUseLobbiesIfAvailable = true;								// 로비 사용
-	//SessionSettings.bUseLobbiesVoiceChatIfAvailable = true;						// 보이스챗 가능
+	SessionSettings.bUseLobbiesVoiceChatIfAvailable = true;						// 보이스챗 가능
 
 	// 방 목록에서 보여줄 커스텀 세팅들 (이것들 이용해서 필터링 가능)
 	//SessionSettings.Set(SETTING_MAPNAME, MapName, EOnlineDataAdvertisementType::ViaOnlineService);
@@ -892,12 +892,14 @@ void UMultiplayerSubsystem::RefreshOtherVoicesLoop()
 
 		for (const auto& Player : Players)
 		{
-			if (VoiceRefreshedPlayers.Contains(Player) == false)
-			{
-				VoiceRefreshedPlayers.Add(Player);
-				VoiceChatUser->SetPlayerMuted(Player, true);
-				VoiceChatUser->SetPlayerMuted(Player, false);
-			}
+			VoiceChatUser->SetPlayerVolume(Player, 2.0f);
+			//if (VoiceRefreshedPlayers.Contains(Player) == false)
+			//{
+			//	VoiceRefreshedPlayers.Add(Player);
+			//	VoiceChatUser->SetPlayerVolume(Player, 2.0f);
+			//	//VoiceChatUser->SetPlayerMuted(Player, true);
+			//	//VoiceChatUser->SetPlayerMuted(Player, false);
+			//}
 		}
 		//VoiceChatUser->UnblockPlayers(Players);
 	}
@@ -913,14 +915,6 @@ void UMultiplayerSubsystem::RefreshOtherVoices()
 		this,
 		&ThisClass::RefreshOtherVoicesLoop,
 		3.0f);
-}
-
-void UMultiplayerSubsystem::RemoveRefreshedPlayers(const FString& IdToRemove)
-{
-	if (VoiceRefreshedPlayers.Contains(IdToRemove) == true)
-	{
-		VoiceRefreshedPlayers.Remove(IdToRemove);
-	}
 }
 
 FString UMultiplayerSubsystem::GetMyId()

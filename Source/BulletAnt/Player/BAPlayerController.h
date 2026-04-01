@@ -118,8 +118,6 @@ public:
 	void SetLevelType(ELevelType InType);
 
 	UFUNCTION(Client, Reliable)
-	void Client_RemoveRefreshedVoice(const FString& IdToRemove);
-	UFUNCTION(Client, Reliable)
 	void Client_RefreshOtherVoices();
 
 protected:
@@ -132,8 +130,6 @@ protected:
 
 protected:
 	ELevelType LevelType = ELevelType::Lobby;
-
-	TArray<FString> ToRemoveRefresedVoices;
 
 #pragma endregion
 

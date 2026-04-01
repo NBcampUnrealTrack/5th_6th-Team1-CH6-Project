@@ -225,11 +225,6 @@ void ABAPlayerController::SetLevelType(ELevelType InType)
 	Client_SetupController(LevelType);
 }
 
-void ABAPlayerController::Client_RemoveRefreshedVoice_Implementation(const FString& IdToRemove)
-{
-	ToRemoveRefresedVoices.Add(IdToRemove);
-}
-
 void ABAPlayerController::Client_RefreshOtherVoices_Implementation()
 {
 	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
@@ -355,10 +350,6 @@ void ABAPlayerController::Client_StartGame_Implementation()
 	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
 	if (IsValid(MultiplayerSubsystem) == true)
 	{
-		for (const auto& ToRemoveRefresedVoice : ToRemoveRefresedVoices)
-		{
-			MultiplayerSubsystem->RemoveRefreshedPlayers(ToRemoveRefresedVoice);
-		}
 		MultiplayerSubsystem->RefreshOtherVoices();
 	}
 

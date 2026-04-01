@@ -172,8 +172,6 @@ private:
 	uint8 bVoiceDelegatesBound : 1 = false;
 	uint8 bVoiceChatInitialized : 1 = false;
 	FTimerHandle ClientTravelHandle;
-	UPROPERTY()
-	TSet<FString> VoiceRefreshedPlayers;
 
 	FName CurrentSessionName;
 	FString PlayerNickname;
