@@ -16,6 +16,8 @@ AWeaponSniper::AWeaponSniper()
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureMethod = false;
 	SceneCapture->PostProcessSettings.bOverride_AutoExposureBias = false;
 	SceneCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+	SceneCapture->PostProcessSettings.bOverride_ReflectionMethod = true;
+	SceneCapture->PostProcessSettings.ReflectionMethod = EReflectionMethod::ScreenSpace;
 
 	/*SceneCapture->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = true;
 
