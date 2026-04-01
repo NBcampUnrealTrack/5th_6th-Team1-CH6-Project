@@ -6,7 +6,6 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "SpawnManagerSubsystem.generated.h"
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInitWaveTimeChanged, int32);
 
 class ABaseCore;
 class ABAGameState;
@@ -65,7 +64,4 @@ protected:
 
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
-
-public:
-	FOnInitWaveTimeChanged OnInitWaveTimeChanged;
 };
