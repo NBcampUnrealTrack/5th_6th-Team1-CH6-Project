@@ -230,6 +230,15 @@ void ABAPlayerController::Client_RemoveRefreshedVoice_Implementation(const FStri
 	ToRemoveRefresedVoices.Add(IdToRemove);
 }
 
+void ABAPlayerController::Client_RefreshOtherVoices_Implementation()
+{
+	UMultiplayerSubsystem* MultiplayerSubsystem = GetGameInstance()->GetSubsystem<UMultiplayerSubsystem>();
+	if (IsValid(MultiplayerSubsystem) == true)
+	{
+		MultiplayerSubsystem->RefreshOtherVoices();
+	}
+}
+
 void ABAPlayerController::Client_SetupController_Implementation(ELevelType InType)
 {
 	LevelType = InType;

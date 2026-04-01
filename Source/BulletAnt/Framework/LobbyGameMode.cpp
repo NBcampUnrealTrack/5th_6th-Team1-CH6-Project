@@ -70,6 +70,12 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
             PS->SetPlayerColorIdx(NewColorIdx);
         }
     }
+    
+    ABAPlayerController* PC = Cast<ABAPlayerController>(NewPlayer);
+    if (IsValid(PC) == true)
+    {
+        PC->Client_RefreshOtherVoices();
+    }
 }
 
 void ALobbyGameMode::Logout(AController* Exiting)

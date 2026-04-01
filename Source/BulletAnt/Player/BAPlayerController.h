@@ -119,6 +119,8 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void Client_RemoveRefreshedVoice(const FString& IdToRemove);
+	UFUNCTION(Client, Reliable)
+	void Client_RefreshOtherVoices();
 
 protected:
 	UFUNCTION(Client, Reliable)
