@@ -13,6 +13,7 @@ class ABACharacter;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnOreChanged, EOreType, OreType, int32, OreCount);
 DECLARE_MULTICAST_DELEGATE(FOnWaveTimeChanged);
 DECLARE_MULTICAST_DELEGATE(FOnRemainingEnemy);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnInitWaveTimeChanged, int32);
 
 UCLASS()
 class BULLETANT_API ABAGameState : public AGameState
@@ -127,13 +128,16 @@ public:
 	void SetFinalDate(int32 InDate);
 
 	UFUNCTION()
+	void OnRep_InitWavePreparationTime();
+
+	UFUNCTION()
 	void OnRep_WavePreparationTime();
 
 	UFUNCTION()
 	void OnRep_Date();
 
 protected:
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_InitWavePreparationTime)
 	int32 InitWavePreparationTime;
 
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_WavePreparationTime)
@@ -149,6 +153,7 @@ protected:
 	int32 FinalDate;
 
 public:
+	FOnInitWaveTimeChanged OnInitWaveTimeChanged;
 	FOnWaveTimeChanged OnWaveTimeChanged;
 
 #pragma endregion

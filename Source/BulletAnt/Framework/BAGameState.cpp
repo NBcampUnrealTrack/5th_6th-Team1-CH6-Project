@@ -254,6 +254,11 @@ void ABAGameState::SetFinalDate(int32 InDate)
     FinalDate = InDate;
 }
 
+void ABAGameState::OnRep_InitWavePreparationTime()
+{
+    OnInitWaveTimeChanged.Broadcast(InitWavePreparationTime);
+}
+
 void ABAGameState::OnRep_WavePreparationTime()
 {
     OnWaveTimeChanged.Broadcast();

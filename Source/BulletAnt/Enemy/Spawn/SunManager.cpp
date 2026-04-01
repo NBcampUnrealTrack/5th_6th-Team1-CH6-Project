@@ -28,7 +28,6 @@ void ASunManager::BeginPlay()
         {
             return;
         }
-        SpawnManager->OnInitWaveTimeChanged.AddUObject(this, &ASunManager::OnInitWaveTime);
     }
     
     GetWorldTimerManager().SetTimer(
@@ -59,6 +58,7 @@ void ASunManager::TryCachingGameState()
         SetSunInitRotator(CachedGameState->GetInitWavePreparationTime());
 
         CachedGameState->OnWaveTimeChanged.AddUObject(this, &ASunManager::OnWaveTime);
+        CachedGameState->OnInitWaveTimeChanged.AddUObject(this, &ASunManager::OnInitWaveTime);
 
         GetWorldTimerManager().SetTimer(
             RotatingLightTimerHandle,

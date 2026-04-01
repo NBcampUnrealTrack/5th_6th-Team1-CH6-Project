@@ -161,7 +161,7 @@ void USpawnManagerSubsystem::PrepareWave()
 	CachedGameState->SetWavePreparationTime(InitWavePreparationTime);
 	CachedGameState->SetInitWavePreparationTime(InitWavePreparationTime);
 	CachedGameState->OnRep_WavePreparationTime();
-	OnInitWaveTimeChanged.Broadcast(InitWavePreparationTime);
+	CachedGameState->OnRep_InitWavePreparationTime();
 
 	GetWorld()->GetTimerManager().SetTimer(WaveTimer, this, &USpawnManagerSubsystem::UpdatePreparationTime, 1.f, true);
 }
